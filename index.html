@@ -35,7 +35,6 @@
       width: 18px; height: 18px; border-radius: 50%; background: #111827;
       cursor: pointer; border: 2px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
-    .speed-badge { font-size: 10px; padding: 2px 6px; border-radius: 9999px; background: #f3f4f6; color: #6b7280; }
     .dwell-input {
       width: 64px; padding: 2px 6px; font-size: 11px; border: 1px solid #d1d5db;
       border-radius: 6px; text-align: center; color: #111827; background: #ffffff;
@@ -82,6 +81,25 @@
         />
       </div>
 
+      <!-- Dwell control, visible before starting -->
+      <div class="w-full max-w-md mb-5 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <label for="dwellInput" class="text-xs text-gray-500">Dwell per QR</label>
+          <input
+            id="dwellInput"
+            type="number"
+            v-model.number="dwellInput"
+            min="20"
+            max="2000"
+            step="10"
+            class="dwell-input"
+            @change="clampDwell"
+          />
+          <span class="text-xs text-gray-400">ms</span>
+        </div>
+        <span class="text-xs text-gray-400 tabular-nums">{{ chunk_size }}B per QR</span>
+      </div>
+
       <div class="flex gap-3 mb-6">
         <button
           v-if="!is_transferring"
@@ -95,30 +113,10 @@
         >Stop Transfer</button>
       </div>
 
-      <!-- Transfer progress + dwell input -->
+      <!-- Transfer progress bar -->
       <div v-if="is_transferring" class="w-full max-w-md mb-4">
-        <div class="flex justify-between items-center text-xs text-gray-500 mb-1">
-          <span class="flex items-center gap-2">
-            Transfer progress
-            <span class="speed-badge">{{ activeSettings }}</span>
-          </span>
-          <div class="flex items-center gap-1.5">
-            <label for="dwellInput" class="text-gray-400">dwell</label>
-            <input
-              id="dwellInput"
-              type="number"
-              v-model.number="dwellInput"
-              min="20"
-              max="2000"
-              step="10"
-              class="dwell-input"
-              @change="clampDwell"
-            />
-            <span class="text-gray-400">ms</span>
-          </div>
-        </div>
-        <div class="flex justify-between items-center mb-1">
-          <span></span>
+        <div class="flex justify-between text-xs text-gray-500 mb-1">
+          <span>Transfer progress</span>
           <span class="tabular-nums">{{ transfer_progress }}%</span>
         </div>
         <div class="progress-bar">
@@ -138,14 +136,14 @@
         <p class="text-sm text-gray-500">{{ user_message }}</p>
       </div>
 
-      <div v-if="!cameraAvailable" class="w-full max-w-md mb-4">
+      <div v-if="cameraError" class="w-full max-w-md mb-4">
         <div class="camera-off-placeholder text-gray-500 text-sm">
           <p class="font-medium text-gray-700 mb-1">Camera not available</p>
-          <p>No camera was found on this device, or permission was denied. A camera is required to scan QR codes.</p>
+          <p>{{ cameraError }}</p>
         </div>
       </div>
 
-      <div v-if="cameraAvailable" class="w-full max-w-md mb-5 flex items-center justify-between text-sm text-gray-600">
+      <div v-if="is_receiving" class="w-full max-w-md mb-5 flex items-center justify-between text-sm text-gray-600">
         <span class="font-medium">Progress</span>
         <span class="tabular-nums font-mono bg-gray-100 px-3 py-1 rounded-full text-gray-800 text-xs">
           {{ Object.keys(decoded_chunks).length }} / {{ file_metadata.chunks || 0 }}
@@ -156,11 +154,11 @@
         <button
           v-if="!is_receiving"
           @click="start_receiver"
-          :disabled="!cameraAvailable"
-          :class="cameraAvailable
-            ? 'px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 focus:ring-2 focus:ring-gray-400 focus:outline-none'
-            : 'px-6 py-2.5 bg-gray-300 text-gray-500 text-sm font-medium rounded-xl cursor-not-allowed'"
-        >Start Receiver</button>
+          :disabled="starting_camera"
+          :class="starting_camera
+            ? 'px-6 py-2.5 bg-gray-300 text-gray-500 text-sm font-medium rounded-xl cursor-wait'
+            : 'px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 focus:ring-2 focus:ring-gray-400 focus:outline-none'"
+        >{{ starting_camera ? 'Opening camera ...' : 'Start Receiver' }}</button>
         <button
           v-else
           @click="stop_receiver"
@@ -168,8 +166,8 @@
         >Stop Receiver</button>
       </div>
 
-      <!-- Camera view with zoom -->
-      <div v-show="cameraAvailable" class="w-full max-w-md">
+      <!-- Camera view with zoom (only shown while receiving) -->
+      <div v-show="is_receiving" class="w-full max-w-md">
         <div class="video-wrapper border border-gray-200">
           <video
             id="videoElement"
@@ -208,9 +206,16 @@
             >{{ z }}x</button>
           </div>
         </div>
+        <p class="text-xs text-gray-400 mt-2">Point camera at the sender's QR code</p>
       </div>
 
-      <p v-if="cameraAvailable" class="text-xs text-gray-400 mt-2">Point camera at the sender's QR code</p>
+      <!-- Idle placeholder before starting -->
+      <div v-if="!is_receiving && !starting_camera && !cameraError" class="w-full max-w-md">
+        <div class="camera-off-placeholder text-gray-500 text-sm">
+          <p class="font-medium text-gray-700 mb-1">Camera is off</p>
+          <p>Press Start Receiver to open the camera and begin scanning.</p>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -229,20 +234,18 @@
      SPEED TUNING — adjust these values to change speed.
      ============================================================ */
   const SPEED = {
-    // 1. Bytes per QR code. Larger = fewer codes = faster,
-    //    but each code is denser and harder to scan.
+    // Bytes per QR code. Larger = fewer codes = faster,
+    // but each code is denser and harder to scan.
     chunk_size: 200,
 
-    // 2. Milliseconds each QR stays on screen.
-    //    Default is 100. Can also be changed live via the input box
-    //    next to the progress bar while a transfer is running.
+    // Milliseconds each QR stays on screen. Default is 100.
+    // Editable live via the input box on the sender panel.
     dwell_ms: 100,
 
-    // 3. Milliseconds before the receiver accepts the same
-    //    QR text again.
+    // Milliseconds before the receiver accepts the same QR again.
     min_repeat_ms: 120,
 
-    // 4. Milliseconds the scanner yields per iteration.
+    // Milliseconds the scanner yields per iteration.
     scan_yield_ms: 4,
   };
   /* ============================================================ */
@@ -254,10 +257,11 @@
       const user_message = ref('Choose a file to get started');
       const is_transferring = ref(false);
       const is_receiving = ref(false);
-      const cameraAvailable = ref(false);
+      const starting_camera = ref(false);
+      const cameraError = ref('');
       const transfer_progress = ref(0);
 
-      /* ---------- dwell input (live-editable) ---------- */
+      /* ---------- dwell input (editable before and during) ---------- */
       const dwellInput = ref(SPEED.dwell_ms);
 
       const clampDwell = () => {
@@ -268,10 +272,6 @@
         if (v > 2000) v = 2000;
         dwellInput.value = v;
       };
-
-      const activeSettings = computed(() => {
-        return `${SPEED.chunk_size}B · ${dwellInput.value}ms`;
-      });
 
       /* ---------- zoom state ---------- */
       const zoomLevel = ref(1);
@@ -373,14 +373,10 @@
         }
       };
 
-      const initCamera = async () => {
-        if (mediaStream && videoElement && videoElement.srcObject === mediaStream) {
-          const dimsOk = await waitForVideoDimensions(videoElement, 3000);
-          if (dimsOk) { setupCanvas(); cameraAvailable.value = true; return true; }
-        }
+      // Opens the camera. Only called from start_receiver.
+      const openCamera = async () => {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          cameraAvailable.value = false;
-          user_message.value = 'Camera not available';
+          cameraError.value = 'This browser does not expose a camera API.';
           return false;
         }
         try {
@@ -398,18 +394,17 @@
           await nextTick();
           videoElement = document.getElementById('videoElement');
           if (!videoElement) {
-            videoElement = document.createElement('video');
-            videoElement.id = 'videoElement';
-            videoElement.muted = true;
-            videoElement.autoplay = true;
-            videoElement.playsInline = true;
-            videoElement.style.display = 'none';
-            document.body.appendChild(videoElement);
+            cameraError.value = 'Video element could not be created.';
+            return false;
           }
           videoElement.srcObject = mediaStream;
           videoElement.muted = true;
           await videoElement.play().catch(() => {});
-          await waitForVideoDimensions(videoElement);
+          const dimsOk = await waitForVideoDimensions(videoElement);
+          if (!dimsOk) {
+            cameraError.value = 'Camera opened but did not deliver frames.';
+            return false;
+          }
           setupCanvas();
 
           videoTrack = mediaStream.getVideoTracks()[0];
@@ -430,12 +425,17 @@
           }
           if (!nativeZoomAvailable.value) maxZoom.value = 4;
 
-          cameraAvailable.value = true;
+          cameraError.value = '';
           return true;
         } catch (err) {
           console.warn('Camera init error:', err);
-          cameraAvailable.value = false;
-          user_message.value = 'Camera not available';
+          if (err && err.name === 'NotAllowedError') {
+            cameraError.value = 'Camera permission was denied.';
+          } else if (err && err.name === 'NotFoundError') {
+            cameraError.value = 'No camera device was found.';
+          } else {
+            cameraError.value = 'The camera could not be opened.';
+          }
           return false;
         }
       };
@@ -450,7 +450,7 @@
         if (newMode === 'send') {
           if (previousMode === 'receive') {
             stopCamera();
-            cameraAvailable.value = false;
+            cameraError.value = '';
             zoomLevel.value = 1;
             nativeZoomAvailable.value = false;
           }
@@ -459,12 +459,8 @@
             initQrCode();
           });
         } else {
-          user_message.value = 'Requesting camera access ...';
-          const ok = await initCamera();
-          if (ok) {
-            user_message.value = 'Click receive button to start receiving';
-            nextTick(() => applyZoom());
-          }
+          // Do NOT open the camera here. Wait for Start Receiver.
+          user_message.value = 'Press Start Receiver to open the camera';
         }
       };
 
@@ -494,15 +490,12 @@
         const file = file_input.files[0];
         if (!file) return;
 
+        clampDwell();
         if (!qrcode_object) initQrCode();
 
         transfer_cancelled = false;
         is_transferring.value = true;
         transfer_progress.value = 0;
-
-        // Read the current dwell value once at start; the live input
-        // updates it between chunks.
-        let currentDwell = Number(dwellInput.value) || SPEED.dwell_ms;
 
         const data_array = pako.gzip(await file.arrayBuffer(), { level: 9 });
         const total_chunks = Math.ceil(data_array.length / chunk_size);
@@ -516,8 +509,9 @@
         for (let i = 0; i < total_chunks; i++) {
           if (transfer_cancelled || !is_transferring.value) break;
 
-          // Pick up any live change to the dwell input
-          currentDwell = Number(dwellInput.value) || SPEED.dwell_ms;
+          // Read the dwell value fresh each chunk so live edits apply.
+          let currentDwell = Number(dwellInput.value);
+          if (!Number.isFinite(currentDwell) || currentDwell < 20) currentDwell = SPEED.dwell_ms;
 
           const start = i * chunk_size;
           const chunk = data_array.subarray(start, start + chunk_size);
@@ -560,39 +554,31 @@
         is_receiving.value = false;
         decoded_chunks.value = {};
         Object.assign(file_metadata, {});
-        user_message.value = cameraAvailable.value
-          ? 'Click receive button to start receiving'
-          : 'Camera not available';
+        // Release the camera when receiving stops.
+        stopCamera();
+        user_message.value = 'Press Start Receiver to open the camera';
       };
 
       const start_receiver = async () => {
-        if (!cameraAvailable.value) {
-          user_message.value = 'Camera not available';
+        if (is_receiving.value) return;
+        starting_camera.value = true;
+        cameraError.value = '';
+        user_message.value = 'Opening camera ...';
+
+        const ok = await openCamera();
+        starting_camera.value = false;
+
+        if (!ok) {
+          user_message.value = 'Camera could not be opened';
           return;
-        }
-
-        videoElement = document.getElementById('videoElement');
-        if (!videoElement || !videoElement.srcObject) {
-          const ok = await initCamera();
-          if (!ok) { user_message.value = 'Camera not available'; return; }
-        }
-
-        const dimsOk = await waitForVideoDimensions(videoElement, 5000);
-        if (!dimsOk) {
-          user_message.value = 'Camera not ready. Please wait and try again.';
-          return;
-        }
-
-        if (!canvas) setupCanvas();
-        else {
-          canvas.width = videoElement.videoWidth;
-          canvas.height = videoElement.videoHeight;
         }
 
         decoded_chunks.value = {};
         Object.assign(file_metadata, {});
         is_receiving.value = true;
         user_message.value = 'Scanning ...';
+
+        nextTick(() => applyZoom());
 
         let lastSeen = '';
         let lastSeenTime = 0;
@@ -678,11 +664,12 @@
         user_message,
         is_transferring,
         is_receiving,
-        cameraAvailable,
+        starting_camera,
+        cameraError,
         transfer_progress,
-        activeSettings,
         dwellInput,
         clampDwell,
+        chunk_size,
         zoomLevel,
         maxZoom,
         nativeZoomAvailable,
