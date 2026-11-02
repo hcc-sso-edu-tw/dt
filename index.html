@@ -15,7 +15,6 @@
       width: 100%;
       max-height: 320px;
       object-fit: cover;
-      transition: transform 0.2s ease;
       transform-origin: center center;
     }
     input[type="file"] { padding: 0.5rem; border-radius: 0.5rem; }
@@ -152,7 +151,6 @@
             muted
             autoplay
             playsinline
-            :style="{ transform: 'scale(' + zoomLevel + ')' }"
           ></video>
         </div>
 
@@ -165,29 +163,24 @@
           <input
             type="range"
             min="1"
-            max="4"
+            :max="maxZoom"
             step="0.1"
             v-model.number="zoomLevel"
             class="zoom-range"
             @input="applyZoom"
+            :disabled="!nativeZoomAvailable && !cropZoomAvailable"
           />
           <div class="flex justify-between mt-1">
             <button
-              @click="setZoom(1)"
-              class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
-            >1x</button>
-            <button
-              @click="setZoom(2)"
-              class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
-            >2x</button>
-            <button
-              @click="setZoom(3)"
-              class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
-            >3x</button>
-            <button
-              @click="setZoom(4)"
-              class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
-            >4x</button>
+              v-for="z in [1, 2, 3, 4]"
+              :key="z"
+              @click="setZoom(z)"
+              :class="['text-[10px] px-2 py-0.5 rounded transition-colors',
+                z <= maxZoom
+                  ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-50 text-gray-300 cursor-not-allowed']"
+              :disabled="z > maxZoom"
+            >{{ z }}x</button>
           </div>
         </div>
       </div>
@@ -219,11 +212,16 @@
 
       /* ---------- zoom state ---------- */
       const zoomLevel = ref(1);
+      const maxZoom = ref(4);
+      const nativeZoomAvailable = ref(false);
+      const cropZoomAvailable = ref(true);
       const videoRef = ref(null);
+      let videoTrack = null;
+      let nativeZoomRange = null;
 
       /* ---------- sender state ---------- */
-      const chunk_size = 80;
-      const dwell_ms = 900;
+      const chunk_size = 100;        // slightly larger chunks
+      const dwell_ms = 450;          // faster pace (was 900)
       let qrcode_object = null;
       let transfer_cancelled = false;
 
@@ -258,14 +256,30 @@
         });
       };
 
-      /* ---------- zoom helpers ---------- */
-      const applyZoom = () => {
+      /* ---------- zoom ---------- */
+      const applyZoom = async () => {
+        const z = zoomLevel.value;
+        // 1. Try native camera zoom first (no quality loss)
+        if (videoTrack && nativeZoomRange) {
+          try {
+            await videoTrack.applyConstraints({
+              advanced: [{ zoom: z }],
+            });
+            // Native zoom applied; no CSS transform needed
+            if (videoRef.value) videoRef.value.style.transform = 'none';
+            return;
+          } catch (e) {
+            // Fall through to CSS/crop zoom
+          }
+        }
+        // 2. Fallback: CSS visual zoom only (scanner crops center region)
         if (videoRef.value) {
-          videoRef.value.style.transform = `scale(${zoomLevel.value})`;
+          videoRef.value.style.transform = `scale(${z})`;
         }
       };
 
       const setZoom = (val) => {
+        if (val > maxZoom.value) return;
         zoomLevel.value = val;
         applyZoom();
       };
@@ -295,6 +309,9 @@
           mediaStream.getTracks().forEach((t) => t.stop());
           mediaStream = null;
         }
+        videoTrack = null;
+        nativeZoomRange = null;
+        nativeZoomAvailable.value = false;
         if (videoElement) {
           try { videoElement.srcObject = null; } catch (e) {}
         }
@@ -312,10 +329,18 @@
         }
         try {
           stopCamera();
-          mediaStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' },
+
+          // Request the highest reasonable resolution for crisp decoding
+          const constraints = {
+            video: {
+              facingMode: 'environment',
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+            },
             audio: false,
-          });
+          };
+          mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+
           await nextTick();
           videoElement = document.getElementById('videoElement');
           if (!videoElement) {
@@ -332,6 +357,30 @@
           await videoElement.play().catch(() => {});
           await waitForVideoDimensions(videoElement);
           setupCanvas();
+
+          // Detect native zoom capability
+          videoTrack = mediaStream.getVideoTracks()[0];
+          if (videoTrack && typeof videoTrack.getCapabilities === 'function') {
+            try {
+              const caps = videoTrack.getCapabilities();
+              if (caps.zoom) {
+                nativeZoomRange = caps.zoom;
+                nativeZoomAvailable.value = true;
+                maxZoom.value = Math.min(caps.zoom.max || 4, 10);
+                // Set initial zoom to the minimum
+                try {
+                  await videoTrack.applyConstraints({
+                    advanced: [{ zoom: Math.max(caps.zoom.min || 1, 1) }],
+                  });
+                } catch (e) { /* ignore */ }
+              }
+            } catch (e) { /* ignore */ }
+          }
+          if (!nativeZoomAvailable.value) {
+            // CSS/crop zoom still works, but quality is limited by resolution
+            maxZoom.value = 4;
+          }
+
           cameraAvailable.value = true;
           return true;
         } catch (err) {
@@ -354,6 +403,7 @@
             stopCamera();
             cameraAvailable.value = false;
             zoomLevel.value = 1;
+            nativeZoomAvailable.value = false;
           }
           user_message.value = 'Choose a file to get started';
           nextTick(() => {
@@ -407,7 +457,7 @@
 
         makeQrCode(JSON.stringify(file_metadata_obj));
         user_message.value = 'Starting data transfer in a few seconds ...';
-        await new Promise((r) => setTimeout(r, 1500));
+        await new Promise((r) => setTimeout(r, 1000));
         if (transfer_cancelled) return;
 
         for (let i = 0; i < total_chunks; i++) {
@@ -490,16 +540,18 @@
 
         let lastSeen = '';
         let lastSeenTime = 0;
-        const MIN_REPEAT_MS = 400;
+        const MIN_REPEAT_MS = 200;   // faster duplicate filter (was 400)
 
+        // Adaptive loop: scan as fast as possible, but yield to the browser
         while (is_receiving.value) {
           try {
-            await new Promise((r) => setTimeout(r, 20));
-            // Draw the full video frame to canvas for scanning.
-            // Note: zoom is a CSS visual effect only; the scanner still sees the full frame.
-            // For better results at high zoom, crop the center region:
+            // Small yield to keep UI responsive; scanner loop is otherwise fast
+            await new Promise((r) => setTimeout(r, 8));
+
+            // If native zoom is unavailable, crop the center region for
+            // software zoom while keeping full sensor resolution.
             const z = zoomLevel.value;
-            if (z > 1.05 && canvas.width > 0) {
+            if (!nativeZoomAvailable.value && z > 1.05 && canvas.width > 0) {
               const cropW = canvas.width / z;
               const cropH = canvas.height / z;
               const sx = (canvas.width - cropW) / 2;
@@ -577,6 +629,9 @@
         cameraAvailable,
         transfer_progress,
         zoomLevel,
+        maxZoom,
+        nativeZoomAvailable,
+        cropZoomAvailable,
         videoRef,
         applyZoom,
         setZoom,
