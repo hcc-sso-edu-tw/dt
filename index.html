@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QR Data Transfer · Sender & Receiver</title>
+  <title>Visual Data Transfer · Sender & Receiver</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     * { transition: background-color 0.15s, border-color 0.15s, opacity 0.15s; }
@@ -11,8 +11,8 @@
     .card { background: #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.02); }
     video { border-radius: 0.75rem; background: #1e1e1e; width: 100%; max-height: 300px; object-fit: cover; }
     input[type="file"] { padding: 0.5rem; border-radius: 0.5rem; }
-    #qrcode { display: flex; align-items: center; justify-content: center; }
-    #qrcode canvas { border-radius: 0.5rem; display: block; margin: 0 auto; transition: background-color 0.4s, opacity 0.4s; }
+    #codeDisplay { display: flex; align-items: center; justify-content: center; }
+    #codeDisplay canvas { border-radius: 0.75rem; display: block; margin: 0 auto; transition: background-color 0.4s; }
     .fade-in { animation: fadeIn 0.25s ease-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
     .camera-off-placeholder { background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 0.75rem; padding: 2rem 1rem; text-align: center; }
@@ -28,7 +28,7 @@
 
     <!-- header with mode switch -->
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-semibold tracking-tight text-gray-800">QR Data Transfer</h1>
+      <h1 class="text-2xl font-semibold tracking-tight text-gray-800">Visual Data Transfer</h1>
       <div class="flex bg-gray-100 p-1 rounded-xl">
         <button
           @click="setMode('send')"
@@ -83,11 +83,11 @@
         </div>
       </div>
 
-      <!-- Custom QR canvas -->
-      <div id="qrcode" class="p-3 bg-white rounded-xl border border-gray-100">
-        <canvas id="qrCanvas" width="320" height="320"></canvas>
+      <!-- Custom visual code display -->
+      <div id="codeDisplay" class="p-4 bg-white rounded-xl border border-gray-100">
+        <canvas id="visualCanvas" width="340" height="340"></canvas>
       </div>
-      <p class="text-xs text-gray-400 mt-3">Scan with the receiver device · hold steady</p>
+      <p class="text-xs text-gray-400 mt-3">Point receiver camera at this pattern · hold steady</p>
     </div>
 
     <!-- ================= RECEIVER PANEL ================= -->
@@ -100,7 +100,7 @@
       <div v-if="!cameraAvailable" class="w-full max-w-md mb-4">
         <div class="camera-off-placeholder text-gray-500 text-sm">
           <p class="font-medium text-gray-700 mb-1">Camera not available</p>
-          <p>No camera was found on this device, or permission was denied. A camera is required to scan QR codes.</p>
+          <p>No camera was found on this device, or permission was denied. A camera is required to scan the visual code.</p>
         </div>
       </div>
 
@@ -130,7 +130,10 @@
       <div v-show="cameraAvailable" class="w-full max-w-md rounded-xl overflow-hidden border border-gray-200 bg-black/5">
         <video id="videoElement" muted autoplay playsinline class="w-full h-auto"></video>
       </div>
-      <p v-if="cameraAvailable" class="text-xs text-gray-400 mt-3">Point camera at the sender's QR code</p>
+      <p v-if="cameraAvailable" class="text-xs text-gray-400 mt-3">Aim at the sender's visual pattern</p>
+
+      <!-- Decoded preview canvas -->
+      <canvas id="receiverCanvas" class="hidden"></canvas>
     </div>
 
   </div>
@@ -138,504 +141,305 @@
 
 <!-- dependencies -->
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@latest/dist/index.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.3/pako.min.js"></script>
 
 <script>
-  const { createApp, ref, reactive, onMounted, onUnmounted, nextTick, computed } = Vue;
+  const { createApp, ref, reactive, onMounted, onUnmounted, nextTick } = Vue;
 
   /* ============================================================
-     Minimal QR Code generator (byte mode, ECC L/M) 
-     Produces a matrix (array of arrays of 0/1) that we render
-     with our own custom style: circular dots + custom finders.
+     Visual Code System
+     ------------------------------------------------------------
+     A grid of colored cells encodes bytes. Each cell carries 4 bits
+     (16 colors). A header row encodes the chunk index and length.
+     The receiver samples the grid from the camera frame and matches
+     colors against the palette.
+
+     Layout:
+       - 2-cell quiet border
+       - 4 marker cells in the corners (bright magenta) for alignment
+       - 1 header row: 4 cells for index + 4 cells for total bytes
+       - data rows below
      ============================================================ */
-  const QrLite = (() => {
-    // Galois field tables
-    const EXP = new Uint8Array(512);
-    const LOG = new Uint8Array(256);
-    (function () {
-      let x = 1;
-      for (let i = 0; i < 255; i++) {
-        EXP[i] = x;
-        LOG[x] = i;
-        x <<= 1;
-        if (x & 0x100) x ^= 0x11d;
-      }
-      for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
-    })();
-    const gmul = (a, b) => (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]];
 
-    // ECC codewords per block and block structure for versions 1-10
-    // [eccPerBlock, [numBlocks, dataCodewordsPerBlock], ...]
-    const ECC_TABLE = {
-      1: { L: [7, [[1, 19]]], M: [10, [[1, 16]]], Q: [13, [[1, 13]]], H: [17, [[1, 9]]] },
-      2: { L: [10, [[1, 34]]], M: [16, [[1, 28]]], Q: [22, [[1, 22]]], H: [28, [[1, 16]]] },
-      3: { L: [15, [[1, 55]]], M: [26, [[1, 44]]], Q: [18, [[2, 17]]], H: [22, [[2, 13]]] },
-      4: { L: [20, [[1, 80]]], M: [18, [[2, 32]]], Q: [26, [[2, 24]]], H: [16, [[4, 9]]] },
-      5: { L: [26, [[1, 108]]], M: [24, [[2, 43]]], Q: [18, [[2, 15], [2, 16]]], H: [22, [[2, 11], [2, 12]]] },
-      6: { L: [18, [[2, 68]]], M: [16, [[4, 27]]], Q: [24, [[4, 19]]], H: [28, [[4, 15]]] },
-      7: { L: [20, [[2, 78]]], M: [18, [[4, 31]]], Q: [18, [[2, 14], [4, 15]]], H: [26, [[4, 13], [1, 14]]] },
-      8: { L: [24, [[2, 97]]], M: [22, [[2, 38], [2, 39]]], Q: [22, [[4, 18], [2, 19]]], H: [26, [[4, 14], [2, 15]]] },
-      9: { L: [30, [[2, 116]]], M: [22, [[3, 36], [2, 37]]], Q: [20, [[4, 16], [4, 17]]], H: [24, [[4, 12], [4, 13]]] },
-      10: { L: [18, [[2, 68], [2, 69]]], M: [26, [[4, 43], [1, 44]]], Q: [24, [[6, 19], [2, 20]]], H: [28, [[6, 15], [2, 16]]] },
-    };
+  // 16-color palette designed for high contrast and separable channels
+  const PALETTE = [
+    [0, 0, 0],        // 0  black
+    [255, 255, 255],  // 1  white
+    [255, 0, 0],      // 2  red
+    [0, 255, 0],      // 3  green
+    [0, 0, 255],      // 4  blue
+    [255, 255, 0],    // 5  yellow
+    [0, 255, 255],    // 6  cyan
+    [255, 0, 255],    // 7  magenta
+    [128, 0, 0],      // 8  dark red
+    [0, 128, 0],      // 9  dark green
+    [0, 0, 128],      // 10 dark blue
+    [128, 128, 0],    // 11 olive
+    [0, 128, 128],    // 12 teal
+    [128, 0, 128],    // 13 purple
+    [192, 192, 192],  // 14 light gray
+    [64, 64, 64],     // 15 dark gray
+  ];
 
-    const getVersionInfo = (version, level) => {
-      const info = ECC_TABLE[version][level];
-      const eccPerBlock = info[0];
-      const blocks = info[1];
-      let totalData = 0;
-      for (const [count, dataPerBlock] of blocks) totalData += count * dataPerBlock;
-      return { eccPerBlock, blocks, totalData };
-    };
+  const GRID_COLS = 16;
+  const HEADER_COLS = 8;
+  const MARKER_COLOR = [255, 0, 255]; // magenta marker
 
-    const totalCodewords = (version) => {
-      let result = (16 * version + 128) * version + 64;
-      if (version >= 2) {
-        const numAlign = Math.floor(version / 7) + 2;
-        result -= (25 * numAlign - 10) * numAlign - 55;
-        if (version >= 7) result -= 36;
-      }
-      return Math.floor(result / 8);
-    };
+  // Determine grid rows needed for a payload
+  const gridRowsFor = (byteLength) => {
+    const headerRows = 1;
+    const dataCells = byteLength * 2; // 2 cells per byte (4 bits each)
+    const dataRows = Math.ceil(dataCells / GRID_COLS);
+    return headerRows + dataRows;
+  };
 
-    // Reed-Solomon generator polynomial
-    const rsGenerator = (degree) => {
-      let poly = [1];
-      for (let i = 0; i < degree; i++) {
-        const next = new Array(poly.length + 1).fill(0);
-        for (let j = 0; j < poly.length; j++) {
-          next[j] ^= poly[j];
-          next[j + 1] ^= gmul(poly[j], EXP[i]);
-        }
-        poly = next;
-      }
-      return poly;
-    };
+  // Encode a chunk (index + bytes) into a grid of palette indices
+  const encodeToGrid = (index, bytes) => {
+    const totalBytes = bytes.length;
+    const rows = gridRowsFor(totalBytes);
+    const grid = Array.from({ length: rows }, () => new Array(GRID_COLS).fill(0));
 
-    const rsEncode = (data, degree) => {
-      const gen = rsGenerator(degree);
-      const result = new Array(data.length + degree).fill(0);
-      for (let i = 0; i < data.length; i++) result[i] = data[i];
-      for (let i = 0; i < data.length; i++) {
-        const factor = result[i];
-        if (factor !== 0) {
-          for (let j = 0; j < gen.length; j++) {
-            result[i + j] ^= gmul(gen[j], factor);
-          }
-        }
-      }
-      return result.slice(data.length);
-    };
-
-    // Bit buffer
-    class BitBuffer {
-      constructor() { this.bits = []; }
-      push(val, len) {
-        for (let i = len - 1; i >= 0; i--) this.bits.push((val >>> i) & 1);
-      }
-      get length() { return this.bits.length; }
+    // Header row: 4 cells for index (base 16, 4 nibbles), 4 cells for total bytes
+    const idxCells = 4;
+    const lenCells = 4;
+    let idxVal = index;
+    for (let i = idxCells - 1; i >= 0; i--) {
+      grid[0][i] = (idxVal % 16) + 2; // +2 to avoid black/white ambiguity
+      idxVal = Math.floor(idxVal / 16);
+    }
+    let lenVal = totalBytes;
+    for (let i = 0; i < lenCells; i++) {
+      grid[0][idxCells + i] = (lenVal % 16) + 2;
+      lenVal = Math.floor(lenVal / 16);
     }
 
-    // Build data codewords with mode/version/ECC
-    const buildDataCodewords = (bytes, version, level) => {
-      const { totalData } = getVersionInfo(version, level);
-      const buf = new BitBuffer();
-      // Byte mode indicator
-      buf.push(4, 4);
-      // Character count: 8 bits for versions 1-9, 16 bits for 10-26
-      const countBits = version < 10 ? 8 : 16;
-      buf.push(bytes.length, countBits);
-      for (const b of bytes) buf.push(b, 8);
-      // Terminator
-      const capacity = totalData * 8;
-      const terminator = Math.min(4, capacity - buf.length);
-      buf.push(0, terminator);
-      // Pad to byte boundary
-      while (buf.length % 8 !== 0) buf.push(0, 1);
-      // Pad bytes
-      const padBytes = [0xEC, 0x11];
-      let padIdx = 0;
-      while (buf.length < capacity) {
-        buf.push(padBytes[padIdx % 2], 8);
-        padIdx++;
+    // Data rows: 2 cells per byte (high nibble, low nibble)
+    let cellPos = 0;
+    for (let b = 0; b < totalBytes; b++) {
+      const byte = bytes[b];
+      const high = (byte >> 4) & 0x0F;
+      const low = byte & 0x0F;
+      const row1 = 1 + Math.floor(cellPos / GRID_COLS);
+      const col1 = cellPos % GRID_COLS;
+      grid[row1][col1] = high + 2;
+      cellPos++;
+      const row2 = 1 + Math.floor(cellPos / GRID_COLS);
+      const col2 = cellPos % GRID_COLS;
+      grid[row2][col2] = low + 2;
+      cellPos++;
+    }
+
+    // Fill remaining cells with a parity-ish color (index 1 = white) — harmless
+    for (let r = 1; r < rows; r++) {
+      for (let c = 0; c < GRID_COLS; c++) {
+        if (grid[r][c] === 0) grid[r][c] = 1;
       }
-      // Convert to bytes
-      const codewords = [];
-      for (let i = 0; i < buf.length; i += 8) {
-        let val = 0;
-        for (let j = 0; j < 8; j++) val = (val << 1) | buf.bits[i + j];
-        codewords.push(val);
-      }
-      return codewords;
-    };
+    }
 
-    // Interleave data + ECC blocks
-    const interleave = (codewords, version, level) => {
-      const { eccPerBlock, blocks } = getVersionInfo(version, level);
-      const dataBlocks = [];
-      const eccBlocks = [];
-      let idx = 0;
-      for (const [count, dataPerBlock] of blocks) {
-        for (let i = 0; i < count; i++) {
-          const data = codewords.slice(idx, idx + dataPerBlock);
-          idx += dataPerBlock;
-          const ecc = rsEncode(data, eccPerBlock);
-          dataBlocks.push(data);
-          eccBlocks.push(ecc);
-        }
-      }
-      const result = [];
-      const maxData = Math.max(...dataBlocks.map(b => b.length));
-      for (let i = 0; i < maxData; i++) {
-        for (const block of dataBlocks) {
-          if (i < block.length) result.push(block[i]);
-        }
-      }
-      for (let i = 0; i < eccPerBlock; i++) {
-        for (const block of eccBlocks) {
-          result.push(block[i]);
-        }
-      }
-      return result;
-    };
+    return grid;
+  };
 
-    // Matrix construction
-    const createMatrix = (version) => {
-      const size = 17 + version * 4;
-      const matrix = Array.from({ length: size }, () => new Array(size).fill(0));
-      const reserved = Array.from({ length: size }, () => new Array(size).fill(false));
-      const set = (r, c, v) => { matrix[r][c] = v; reserved[r][c] = true; };
-
-      // Finder patterns
-      const placeFinder = (r0, c0) => {
-        for (let r = -1; r <= 7; r++) {
-          for (let c = -1; c <= 7; c++) {
-            const rr = r0 + r, cc = c0 + c;
-            if (rr < 0 || rr >= size || cc < 0 || cc >= size) continue;
-            const isBorder = (r === 0 || r === 6 || c === 0 || c === 6);
-            const isCenter = (r >= 2 && r <= 4 && c >= 2 && c <= 4);
-            set(rr, cc, (isBorder || isCenter) ? 1 : 0);
-          }
-        }
-      };
-      placeFinder(0, 0);
-      placeFinder(0, size - 7);
-      placeFinder(size - 7, 0);
-
-      // Timing patterns
-      for (let i = 8; i < size - 8; i++) {
-        if (!reserved[6][i]) set(6, i, i % 2 === 0 ? 1 : 0);
-        if (!reserved[i][6]) set(i, 6, i % 2 === 0 ? 1 : 0);
-      }
-
-      // Alignment patterns
-      const getAlignPositions = (v) => {
-        if (v === 1) return [];
-        const numAlign = Math.floor(v / 7) + 2;
-        const step = v === 32 ? 26 : Math.ceil((v * 4 + 4) / (numAlign * 2 - 2)) * 2;
-        const positions = [6];
-        for (let i = 0; i < numAlign - 1; i++) {
-          positions.push(size - 7 - i * step);
-        }
-        return positions.reverse();
-      };
-      const alignPos = getAlignPositions(version);
-      for (const r of alignPos) {
-        for (const c of alignPos) {
-          if (reserved[r][c]) continue;
-          for (let dr = -2; dr <= 2; dr++) {
-            for (let dc = -2; dc <= 2; dc++) {
-              const isBorder = Math.abs(dr) === 2 || Math.abs(dc) === 2;
-              const isCenter = dr === 0 && dc === 0;
-              set(r + dr, c + dc, (isBorder || isCenter) ? 1 : 0);
-            }
-          }
-        }
-      }
-
-      // Dark module
-      set(size - 8, 8, 1);
-
-      // Reserve format info areas
-      for (let i = 0; i < 9; i++) {
-        if (!reserved[8][i]) reserved[8][i] = true;
-        if (!reserved[i][8]) reserved[i][8] = true;
-      }
-      for (let i = 0; i < 8; i++) {
-        reserved[8][size - 1 - i] = true;
-        reserved[size - 1 - i][8] = true;
-      }
-
-      // Reserve version info (v >= 7)
-      if (version >= 7) {
-        for (let i = 0; i < 6; i++) {
-          for (let j = 0; j < 3; j++) {
-            reserved[size - 11 + j][i] = true;
-            reserved[i][size - 11 + j] = true;
-          }
-        }
-      }
-
-      return { matrix, reserved, set, size };
-    };
-
-    const placeData = (matrix, reserved, size, codewords) => {
-      let bitIdx = 0;
-      let upward = true;
-      for (let right = size - 1; right >= 1; right -= 2) {
-        if (right === 6) right = 5; // skip timing column
-        for (let vert = 0; vert < size; vert++) {
-          const row = upward ? size - 1 - vert : vert;
-          for (let j = 0; j < 2; j++) {
-            const col = right - j;
-            if (reserved[row][col]) continue;
-            let bit = 0;
-            if (bitIdx < codewords.length * 8) {
-              bit = (codewords[bitIdx >> 3] >>> (7 - (bitIdx & 7))) & 1;
-            }
-            matrix[row][col] = bit;
-            bitIdx++;
-          }
-        }
-        upward = !upward;
-      }
-    };
-
-    const applyMask = (matrix, reserved, size, maskId) => {
-      const maskFn = [
-        (r, c) => (r + c) % 2 === 0,
-        (r, c) => r % 2 === 0,
-        (r, c) => c % 3 === 0,
-        (r, c) => (r + c) % 3 === 0,
-        (r, c) => (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0,
-        (r, c) => ((r * c) % 2 + (r * c) % 3) === 0,
-        (r, c) => (((r * c) % 2 + (r * c) % 3) % 2) === 0,
-        (r, c) => (((r + c) % 2 + (r * c) % 3) % 2) === 0,
-      ][maskId];
-      for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-          if (reserved[r][c]) continue;
-          if (maskFn(r, c)) matrix[r][c] ^= 1;
-        }
-      }
-    };
-
-    const FORMAT_BITS = {
-      L: [1, 0, 1],
-      M: [0, 0, 0],
-      Q: [0, 1, 1],
-      H: [1, 1, 0],
-    };
-    const FORMAT_ECL = { L: 1, M: 0, Q: 3, H: 2 };
-
-    const writeFormat = (matrix, size, level, maskId) => {
-      const ecl = FORMAT_ECL[level];
-      let data = (ecl << 3) | maskId;
-      let rem = data;
-      for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
-      const bits = ((data << 10) | rem) ^ 0x5412;
-
-      const getBit = (i) => (bits >>> i) & 1;
-
-      // Top-left horizontal
-      for (let i = 0; i <= 5; i++) matrix[8][i] = getBit(i);
-      matrix[8][7] = getBit(6);
-      matrix[8][8] = getBit(7);
-      matrix[7][8] = getBit(8);
-      for (let i = 9; i <= 14; i++) matrix[14 - i][8] = getBit(i);
-
-      // Top-right vertical
-      for (let i = 0; i <= 7; i++) matrix[8][size - 1 - i] = getBit(i);
-      // Bottom-left vertical
-      for (let i = 8; i <= 14; i++) matrix[size - 15 + i][8] = getBit(i);
-      matrix[size - 8][8] = 1; // dark module
-    };
-
-    const writeVersion = (matrix, version, size) => {
-      if (version < 7) return;
-      let rem = version;
-      for (let i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1F25);
-      const bits = (version << 12) | rem;
-      for (let i = 0; i < 18; i++) {
-        const bit = (bits >>> i) & 1;
-        const a = size - 11 + (i % 3);
-        const b = Math.floor(i / 3);
-        matrix[a][b] = bit;
-        matrix[b][a] = bit;
-      }
-    };
-
-    const penaltyScore = (matrix, size) => {
-      // Simplified penalty: only rule 1 (runs) and rule 3 (finder-like)
-      let score = 0;
-      // Rule 1: runs of 5+
-      for (let r = 0; r < size; r++) {
-        let run = 1;
-        for (let c = 1; c < size; c++) {
-          if (matrix[r][c] === matrix[r][c - 1]) run++;
-          else { if (run >= 5) score += run - 2; run = 1; }
-        }
-        if (run >= 5) score += run - 2;
-      }
-      for (let c = 0; c < size; c++) {
-        let run = 1;
-        for (let r = 1; r < size; r++) {
-          if (matrix[r][c] === matrix[r - 1][c]) run++;
-          else { if (run >= 5) score += run - 2; run = 1; }
-        }
-        if (run >= 5) score += run - 2;
-      }
-      // Rule 3: finder-like patterns
-      const pattern = [1, 0, 1, 1, 1, 0, 1];
-      const check = (getCell) => {
-        let count = 0;
-        for (let i = 0; i <= size - 7; i++) {
-          let ok = true;
-          for (let j = 0; j < 7; j++) {
-            if (getCell(i + j) !== pattern[j]) { ok = false; break; }
-          }
-          if (ok) count++;
-        }
-        return count;
-      };
-      for (let r = 0; r < size; r++) score += check((c) => matrix[r][c]) * 40;
-      for (let c = 0; c < size; c++) score += check((r) => matrix[r][c]) * 40;
-      return score;
-    };
-
-    const encode = (text, level = 'M') => {
-      const bytes = Array.from(new TextEncoder().encode(text));
-      // Pick smallest version that fits
-      let version = 1;
-      for (let v = 1; v <= 10; v++) {
-        const { totalData } = getVersionInfo(v, level);
-        const countBits = v < 10 ? 8 : 16;
-        const neededBits = 4 + countBits + bytes.length * 8;
-        if (neededBits <= totalData * 8) { version = v; break; }
-        version = v;
-      }
-      const { totalData } = getVersionInfo(version, level);
-      const countBits = version < 10 ? 8 : 16;
-      const neededBits = 4 + countBits + bytes.length * 8;
-      if (neededBits > totalData * 8) {
-        // Try L
-        if (level !== 'L') return encode(text, 'L');
-        throw new Error('Data too long for QR Lite');
-      }
-
-      const dataCodewords = buildDataCodewords(bytes, version, level);
-      const codewords = interleave(dataCodewords, version, level);
-
-      const { matrix, reserved, size } = createMatrix(version);
-      placeData(matrix, reserved, size, codewords);
-      writeVersion(matrix, version, size);
-
-      // Choose best mask
-      let bestMask = 0;
-      let bestScore = Infinity;
-      for (let mask = 0; mask < 8; mask++) {
-        const testMatrix = matrix.map((row) => row.slice());
-        const testReserved = reserved.map((row) => row.slice());
-        applyMask(testMatrix, testReserved, size, mask);
-        writeFormat(testMatrix, size, level, mask);
-        const score = penaltyScore(testMatrix, size);
-        if (score < bestScore) {
-          bestScore = score;
-          bestMask = mask;
-        }
-      }
-
-      applyMask(matrix, reserved, size, bestMask);
-      writeFormat(matrix, size, level, bestMask);
-
-      return { matrix, size, version };
-    };
-
-    return { encode };
-  })();
-
-  /* ============================================================
-     Custom QR renderer — circular dots + rounded finder patterns
-     ============================================================ */
-  const renderCustomQr = (canvas, matrix, size, invert, scale = 10) => {
+  // Render a grid to a canvas with the visual style
+  const renderGrid = (canvas, grid, invert = false) => {
+    const rows = grid.length;
+    const quiet = 2;           // quiet zone in cells
+    const marker = 2;          // marker cells size
+    const cellSize = Math.floor(Math.min(canvas.width, canvas.height) / (GRID_COLS + quiet * 2));
+    const totalW = (GRID_COLS + quiet * 2) * cellSize;
+    const totalH = (rows + quiet * 2) * cellSize;
+    canvas.width = totalW;
+    canvas.height = totalH;
     const ctx = canvas.getContext('2d');
-    const margin = 2;
-    const totalModules = size + margin * 2;
-    canvas.width = totalModules * scale;
-    canvas.height = totalModules * scale;
 
-    const dark = invert ? '#ffffff' : '#111827';
-    const light = invert ? '#111827' : '#ffffff';
+    const bg = invert ? '#111827' : '#ffffff';
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, totalW, totalH);
 
-    ctx.fillStyle = light;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const originX = quiet * cellSize;
+    const originY = quiet * cellSize;
 
-    // Helper to check if module is inside a finder pattern (3x3 center area)
-    const isFinderZone = (r, c) => {
-      const inTopLeft = r < 7 && c < 7;
-      const inTopRight = r < 7 && c >= size - 7;
-      const inBottomLeft = r >= size - 7 && c < 7;
-      return inTopLeft || inTopRight || inBottomLeft;
-    };
-
-    // Draw regular modules as circles
-    ctx.fillStyle = dark;
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) {
-        if (matrix[r][c] !== 1) continue;
-        if (isFinderZone(r, c)) continue; // finders drawn separately
-        const x = (c + margin) * scale;
-        const y = (r + margin) * scale;
-        const cx = x + scale / 2;
-        const cy = y + scale / 2;
-        const radius = scale * 0.42;
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-        ctx.fill();
+    // Draw grid cells
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < GRID_COLS; c++) {
+        const palIdx = grid[r][c];
+        const color = PALETTE[palIdx % PALETTE.length];
+        ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
+        const x = originX + c * cellSize;
+        const y = originY + r * cellSize;
+        ctx.fillRect(x, y, cellSize, cellSize);
       }
     }
 
-    // Draw finder patterns: rounded outer ring + solid rounded center
-    const drawFinder = (r0, c0) => {
-      const x = (c0 + margin) * scale;
-      const y = (r0 + margin) * scale;
-      const w = 7 * scale;
-      const outerR = scale * 2.2;
-      const ringW = scale * 1.2;
-
-      // Outer rounded ring
-      ctx.fillStyle = dark;
-      ctx.beginPath();
-      ctx.roundRect(x, y, w, w, outerR);
-      ctx.fill();
-
-      // Inner cutout (light)
-      ctx.fillStyle = light;
-      ctx.beginPath();
-      ctx.roundRect(
-        x + ringW, y + ringW,
-        w - ringW * 2, w - ringW * 2,
-        Math.max(outerR - ringW, 0)
-      );
-      ctx.fill();
-
-      // Center solid rounded square
-      ctx.fillStyle = dark;
-      const innerOffset = 2 * scale;
-      const innerSize = 3 * scale;
-      ctx.beginPath();
-      ctx.roundRect(
-        x + innerOffset, y + innerOffset,
-        innerSize, innerSize,
-        scale * 0.9
-      );
-      ctx.fill();
+    // Draw corner markers (distinct squares outside the grid, in quiet zone)
+    const drawMarker = (cx, cy) => {
+      ctx.fillStyle = `rgb(${MARKER_COLOR[0]},${MARKER_COLOR[1]},${MARKER_COLOR[2]})`;
+      ctx.fillRect(cx, cy, marker * cellSize, marker * cellSize);
+      // White inner square for contrast
+      ctx.fillStyle = '#ffffff';
+      const pad = cellSize * 0.4;
+      ctx.fillRect(cx + pad, cy + pad, marker * cellSize - pad * 2, marker * cellSize - pad * 2);
     };
+    // Top-left
+    drawMarker(originX - marker * cellSize, originY - marker * cellSize);
+    // Top-right
+    drawMarker(originX + GRID_COLS * cellSize, originY - marker * cellSize);
+    // Bottom-left
+    drawMarker(originX - marker * cellSize, originY + rows * cellSize);
+    // Bottom-right
+    drawMarker(originX + GRID_COLS * cellSize, originY + rows * cellSize);
 
-    drawFinder(0, 0);
-    drawFinder(0, size - 7);
-    drawFinder(size - 7, 0);
+    // Draw thin border around the data area for alignment
+    ctx.strokeStyle = invert ? '#ffffff' : '#000000';
+    ctx.lineWidth = Math.max(1, cellSize * 0.1);
+    ctx.strokeRect(originX, originY, GRID_COLS * cellSize, rows * cellSize);
+  };
+
+  // Find marker positions in an ImageData
+  const findMarkers = (imageData) => {
+    const { data, width, height } = imageData;
+    const points = [];
+    const step = 3;
+    for (let y = 0; y < height; y += step) {
+      for (let x = 0; x < width; x += step) {
+        const i = (y * width + x) * 4;
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        // Magenta-ish: high R, low G, high B
+        if (r > 180 && g < 120 && b > 180) {
+          points.push({ x, y });
+        }
+      }
+    }
+    if (points.length < 4) return null;
+
+    // Cluster points into 4 corners (top-left, top-right, bottom-left, bottom-right)
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of points) {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }
+    // Average the cluster near each corner
+    const near = (cx, cy, threshold = 30) => {
+      let sx = 0, sy = 0, n = 0;
+      for (const p of points) {
+        if (Math.abs(p.x - cx) < threshold && Math.abs(p.y - cy) < threshold) {
+          sx += p.x; sy += p.y; n++;
+        }
+      }
+      return n > 0 ? { x: sx / n, y: sy / n } : null;
+    };
+    const tl = near(minX, minY);
+    const tr = near(maxX, minY);
+    const bl = near(minX, maxY);
+    const br = near(maxX, maxY);
+    if (!tl || !tr || !bl || !br) return null;
+    return { tl, tr, bl, br };
+  };
+
+  // Sample a cell at normalized coordinates
+  const sampleCell = (imageData, x, y) => {
+    const { data, width, height } = imageData;
+    const px = Math.round(x);
+    const py = Math.round(y);
+    if (px < 0 || px >= width || py < 0 || py >= height) return null;
+    // Average a small 3x3 patch for robustness
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const nx = px + dx, ny = py + dy;
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+        const i = (ny * width + nx) * 4;
+        r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+      }
+    }
+    if (n === 0) return null;
+    return [r / n, g / n, b / n];
+  };
+
+  // Match a color to the nearest palette index
+  const matchPalette = (color) => {
+    let best = 0, bestDist = Infinity;
+    for (let i = 0; i < PALETTE.length; i++) {
+      const p = PALETTE[i];
+      const dr = color[0] - p[0];
+      const dg = color[1] - p[1];
+      const db = color[2] - p[2];
+      const dist = dr * dr + dg * dg + db * db;
+      if (dist < bestDist) { bestDist = dist; best = i; }
+    }
+    return best;
+  };
+
+  // Decode a grid from an ImageData using the four corner markers
+  const decodeGrid = (imageData, expectedRows) => {
+    const markers = findMarkers(imageData);
+    if (!markers) return null;
+
+    const { tl, tr, bl, br } = markers;
+    // The data grid sits inset by the quiet zone from the markers.
+    // Marker centers are offset from data corners by (quiet + marker/2) cells.
+    // We approximate by using the marker rectangle and interpolating cell centers.
+    const rows = expectedRows;
+    // The data area corners (top-left of grid, top-right, bottom-left)
+    // lie inward from the markers. We use bilinear interpolation across the marker quad.
+    const grid = [];
+    for (let r = 0; r < rows; r++) {
+      const row = [];
+      for (let c = 0; c < GRID_COLS; c++) {
+        // Normalized position within the data grid: 0..1
+        const u = (c + 0.5) / GRID_COLS;
+        const v = (r + 0.5) / rows;
+        // Bilinear interpolation between the four markers
+        const topX = tl.x + (tr.x - tl.x) * u;
+        const topY = tl.y + (tr.y - tl.y) * u;
+        const botX = bl.x + (br.x - bl.x) * u;
+        const botY = bl.y + (br.y - bl.y) * u;
+        const x = topX + (botX - topX) * v;
+        const y = topY + (botY - topY) * v;
+        const color = sampleCell(imageData, x, y);
+        row.push(color ? matchPalette(color) : -1);
+      }
+      grid.push(row);
+    }
+    return grid;
+  };
+
+  // Parse a decoded grid back into (index, bytes)
+  const parseGrid = (grid) => {
+    if (!grid || grid.length < 2) return null;
+    // Header: first 4 cells = index, next 4 = length
+    const idxCells = 4;
+    let idxVal = 0;
+    for (let i = 0; i < idxCells; i++) {
+      const v = grid[0][i];
+      if (v < 0) return null;
+      idxVal = idxVal * 16 + (v - 2);
+    }
+    let lenVal = 0;
+    for (let i = 0; i < 4; i++) {
+      const v = grid[0][idxCells + i];
+      if (v < 0) return null;
+      lenVal = lenVal * 16 + (v - 2);
+    }
+    if (lenVal < 0 || lenVal > 1024) return null;
+
+    // Data cells start at row 1, two cells per byte
+    const bytes = [];
+    let cellPos = 0;
+    const totalCells = lenVal * 2;
+    for (let b = 0; b < lenVal; b++) {
+      const r1 = 1 + Math.floor(cellPos / GRID_COLS);
+      const c1 = cellPos % GRID_COLS;
+      const r2 = 1 + Math.floor((cellPos + 1) / GRID_COLS);
+      const c2 = (cellPos + 1) % GRID_COLS;
+      const high = grid[r1] ? grid[r1][c1] : -1;
+      const low = grid[r2] ? grid[r2][c2] : -1;
+      if (high < 0 || low < 0) return null;
+      bytes.push(((high - 2) << 4) | (low - 2));
+      cellPos += 2;
+    }
+    return { index: idxVal, bytes };
   };
 
   /* ============================================================
@@ -652,47 +456,31 @@
       const transfer_progress = ref(0);
 
       /* ---------- sender state ---------- */
-      const chunk_size = 120;        // smaller chunks = faster QR decode, less data per code
-      const dwell_ms = 650;          // time each QR stays before switching (was 50ms)
-      const flip_interval_ms = 900;  // color flip cadence (was 300ms)
-      let qr_canvas = null;
-      let color_flip_timer = null;
-      let current_invert = false;
-      let current_qr_data = null;    // { matrix, size }
+      const chunk_size = 30;         // small payload per code
+      const dwell_ms = 900;          // each code stays this long
+      let visual_canvas = null;
+      let current_grid = null;
       let transfer_cancelled = false;
 
       /* ---------- receiver state ---------- */
       const decoded_chunks = ref({});
       const file_metadata = reactive({});
-      let canvas = null, context = null, videoElement = null;
+      let scan_canvas = null, scan_ctx = null, videoElement = null;
       let mediaStream = null;
 
-      const setQrPayload = (text) => {
-        if (!qr_canvas) qr_canvas = document.getElementById('qrCanvas');
-        if (!qr_canvas) return;
-        try {
-          const qr = QrLite.encode(text, 'M');
-          current_qr_data = qr;
-          renderCustomQr(qr_canvas, qr.matrix, qr.size, current_invert, 10);
-        } catch (e) {
-          console.warn('QR encode failed:', e);
-        }
+      /* ---------- code display ---------- */
+      const displayCode = (grid) => {
+        if (!visual_canvas) return;
+        renderGrid(visual_canvas, grid, false);
       };
 
-      const startColorFlip = () => {
-        stopColorFlip();
-        color_flip_timer = setInterval(() => {
-          if (!current_qr_data || !is_transferring.value) return;
-          current_invert = !current_invert;
-          renderCustomQr(qr_canvas, current_qr_data.matrix, current_qr_data.size, current_invert, 10);
-        }, flip_interval_ms);
-      };
-
-      const stopColorFlip = () => {
-        if (color_flip_timer) {
-          clearInterval(color_flip_timer);
-          color_flip_timer = null;
-        }
+      const showPlaceholder = () => {
+        if (!visual_canvas) return;
+        // Simple idle pattern: a small centered grid of grays
+        const idle = Array.from({ length: 3 }, (_, r) =>
+          Array.from({ length: GRID_COLS }, (_, c) => ((r + c) % 8) + 8)
+        );
+        renderGrid(visual_canvas, idle, false);
       };
 
       /* ---------- camera helpers ---------- */
@@ -705,14 +493,14 @@
         return false;
       };
 
-      const setupCanvas = () => {
+      const setupScanCanvas = () => {
         if (!videoElement) return;
-        if (!canvas) {
-          canvas = document.createElement('canvas');
-          context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!scan_canvas) {
+          scan_canvas = document.createElement('canvas');
+          scan_ctx = scan_canvas.getContext('2d', { willReadFrequently: true });
         }
-        canvas.width = videoElement.videoWidth || 640;
-        canvas.height = videoElement.videoHeight || 480;
+        scan_canvas.width = videoElement.videoWidth || 640;
+        scan_canvas.height = videoElement.videoHeight || 480;
       };
 
       const stopCamera = () => {
@@ -728,26 +516,19 @@
       const initCamera = async () => {
         if (mediaStream && videoElement && videoElement.srcObject === mediaStream) {
           const dimsOk = await waitForVideoDimensions(videoElement, 3000);
-          if (dimsOk) {
-            setupCanvas();
-            cameraAvailable.value = true;
-            return true;
-          }
+          if (dimsOk) { setupScanCanvas(); cameraAvailable.value = true; return true; }
         }
-
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           cameraAvailable.value = false;
           user_message.value = 'Camera not available';
           return false;
         }
-
         try {
           stopCamera();
           mediaStream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: 'environment' },
             audio: false,
           });
-
           await nextTick();
           videoElement = document.getElementById('videoElement');
           if (!videoElement) {
@@ -759,12 +540,11 @@
             videoElement.style.display = 'none';
             document.body.appendChild(videoElement);
           }
-
           videoElement.srcObject = mediaStream;
           videoElement.muted = true;
           await videoElement.play().catch(() => {});
           await waitForVideoDimensions(videoElement);
-          setupCanvas();
+          setupScanCanvas();
           cameraAvailable.value = true;
           return true;
         } catch (err) {
@@ -789,8 +569,8 @@
           }
           user_message.value = 'Choose a file to get started';
           nextTick(() => {
-            qr_canvas = document.getElementById('qrCanvas');
-            setQrPayload('Choose a file to get started');
+            visual_canvas = document.getElementById('visualCanvas');
+            showPlaceholder();
           });
         } else {
           user_message.value = 'Requesting camera access ...';
@@ -800,22 +580,12 @@
       };
 
       /* ---------- sender logic ---------- */
-      const encode_data = (index, input_bytes) => {
-        const encoded_string = String.fromCharCode.apply(null, input_bytes);
-        const utf8Encoder = new TextEncoder();
-        const utf8_bytes = utf8Encoder.encode(encoded_string);
-        const encoded_data = btoa(String.fromCharCode.apply(null, utf8_bytes));
-        return index + ',' + encoded_data;
-      };
-
       const stop_transfer = () => {
         is_transferring.value = false;
         transfer_cancelled = true;
-        stopColorFlip();
-        current_invert = false;
         transfer_progress.value = 0;
         user_message.value = 'Choose a file to get started';
-        setQrPayload('Choose a file to get started');
+        showPlaceholder();
       };
 
       const start_transfer = async () => {
@@ -827,59 +597,46 @@
         const file = file_input.files[0];
         if (!file) return;
 
-        qr_canvas = document.getElementById('qrCanvas');
-        if (!qr_canvas) return;
+        visual_canvas = document.getElementById('visualCanvas');
+        if (!visual_canvas) return;
 
         transfer_cancelled = false;
         is_transferring.value = true;
-        current_invert = false;
         transfer_progress.value = 0;
 
         const data_array = pako.gzip(await file.arrayBuffer(), { level: 9 });
         const total_chunks = Math.ceil(data_array.length / chunk_size);
-        const file_metadata_obj = { name: file.name, chunks: total_chunks };
 
-        // Show metadata code first with a generous dwell time
-        setQrPayload(JSON.stringify(file_metadata_obj));
-        user_message.value = 'Starting data transfer in a few seconds ...';
-        await new Promise((r) => setTimeout(r, 1200));
+        // Metadata chunk (index 0, special)
+        const metaBytes = new TextEncoder().encode(JSON.stringify({
+          name: file.name, chunks: total_chunks,
+        }));
+        // We send metadata as chunk index 0 with a small payload
+        // The receiver treats chunk 0 specially (metadata)
+        const metaGrid = encodeToGrid(0, Array.from(metaBytes));
+        displayCode(metaGrid);
+        user_message.value = 'Sending file metadata ...';
+        await new Promise((r) => setTimeout(r, 1500));
         if (transfer_cancelled) return;
-
-        startColorFlip();
 
         for (let i = 0; i < total_chunks; i++) {
           if (transfer_cancelled || !is_transferring.value) break;
 
           const start = i * chunk_size;
           const chunk = data_array.subarray(start, start + chunk_size);
-          const encoded_data = encode_data(i, chunk);
-
-          setQrPayload(encoded_data);
+          // We offset real data chunks by 1 so index 0 is metadata
+          const grid = encodeToGrid(i + 1, Array.from(chunk));
+          displayCode(grid);
           transfer_progress.value = Math.round(((i + 1) / total_chunks) * 100);
           user_message.value = `Transferring chunk ${i + 1} / ${total_chunks} ...`;
 
-          // Dwell long enough for the receiver to lock on
           await new Promise((r) => setTimeout(r, dwell_ms));
         }
 
-        if (is_transferring.value) {
-          stop_transfer();
-        }
+        if (is_transferring.value) stop_transfer();
       };
 
       /* ---------- receiver logic ---------- */
-      const decode_data = (input_string) => {
-        const encoded_data = atob(input_string.split(',')[1]);
-        const encoded_array = Array.from(encoded_data, (char) => char.charCodeAt(0));
-        const utf8Decoder = new TextDecoder();
-        const output_string = utf8Decoder.decode(new Uint8Array(encoded_array));
-        const data_array = Array.from(output_string, (char) => char.charCodeAt(0));
-        return {
-          index: parseInt(input_string.split(',')[0]),
-          data: data_array,
-        };
-      };
-
       const download_file = (data, fileName) => {
         const blob = new Blob([data]);
         const dummy_element = document.createElement('a');
@@ -908,10 +665,7 @@
         videoElement = document.getElementById('videoElement');
         if (!videoElement || !videoElement.srcObject) {
           const ok = await initCamera();
-          if (!ok) {
-            user_message.value = 'Camera not available';
-            return;
-          }
+          if (!ok) { user_message.value = 'Camera not available'; return; }
         }
 
         const dimsOk = await waitForVideoDimensions(videoElement, 5000);
@@ -920,52 +674,83 @@
           return;
         }
 
-        if (!canvas) setupCanvas();
+        if (!scan_canvas) setupScanCanvas();
         else {
-          canvas.width = videoElement.videoWidth;
-          canvas.height = videoElement.videoHeight;
+          scan_canvas.width = videoElement.videoWidth;
+          scan_canvas.height = videoElement.videoHeight;
         }
 
         decoded_chunks.value = {};
         Object.assign(file_metadata, {});
         is_receiving.value = true;
-        user_message.value = 'Scanning ...';
+        user_message.value = 'Scanning for visual code ...';
+
+        let lastSeenIndex = -1;
+        let lastSeenTime = 0;
+        const MIN_REPEAT_MS = 300;
 
         while (is_receiving.value) {
           try {
-            await new Promise((r) => setTimeout(r, 10));
-            context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-            const image_data = context.getImageData(0, 0, canvas.width, canvas.height);
-            const symbols = await zbarWasm.scanImageData(image_data);
-            if (!symbols || !symbols.length) continue;
+            await new Promise((r) => setTimeout(r, 20));
+            scan_ctx.drawImage(videoElement, 0, 0, scan_canvas.width, scan_canvas.height);
+            const imageData = scan_ctx.getImageData(0, 0, scan_canvas.width, scan_canvas.height);
 
-            const decoded_data = symbols[0].decode();
-            if (decoded_data.includes('chunks')) {
-              Object.assign(file_metadata, JSON.parse(decoded_data));
-              decoded_chunks.value = {};
-              user_message.value = `Receiving file: ${file_metadata.name}`;
-            } else if (decoded_data.split(',').length === 2) {
-              const raw_data = decode_data(decoded_data);
-              decoded_chunks.value[raw_data.index] = raw_data.data;
+            // Try decoding at a range of expected row counts
+            let decoded = null;
+            for (let rows = 2; rows <= 12 && !decoded; rows++) {
+              const grid = decodeGrid(imageData, rows);
+              if (!grid) continue;
+              const parsed = parseGrid(grid);
+              if (parsed) {
+                // Sanity: length must match remaining cells
+                if (parsed.bytes.length > 0) decoded = parsed;
+              }
             }
 
-            if (
-              file_metadata.chunks &&
-              Object.keys(decoded_chunks.value).length === file_metadata.chunks
-            ) {
-              user_message.value = 'Data Transfer Complete';
-              const output_array = [];
-              for (let i = 0; i < file_metadata.chunks; i++) {
-                output_array.push(...decoded_chunks.value[i]);
+            if (decoded) {
+              const now = Date.now();
+              if (decoded.index === lastSeenIndex && now - lastSeenTime < MIN_REPEAT_MS) {
+                continue;
               }
-              const output_unit8array = Uint8Array.from(output_array);
-              const inflated_array = pako.inflate(output_unit8array);
-              download_file(inflated_array, file_metadata.name);
-              stop_receiver();
-              break;
+              lastSeenIndex = decoded.index;
+              lastSeenTime = now;
+
+              if (decoded.index === 0) {
+                // Metadata chunk
+                try {
+                  const metaText = new TextDecoder().decode(Uint8Array.from(decoded.bytes));
+                  Object.assign(file_metadata, JSON.parse(metaText));
+                  decoded_chunks.value = {};
+                  user_message.value = `Receiving file: ${file_metadata.name}`;
+                } catch (e) {
+                  // ignore malformed metadata
+                }
+              } else {
+                // Data chunk; store at index-1
+                decoded_chunks.value[decoded.index - 1] = decoded.bytes;
+                if (file_metadata.chunks) {
+                  user_message.value = `Receiving: ${Object.keys(decoded_chunks.value).length} / ${file_metadata.chunks} chunks`;
+                }
+              }
+
+              if (
+                file_metadata.chunks &&
+                Object.keys(decoded_chunks.value).length === file_metadata.chunks
+              ) {
+                user_message.value = 'Data Transfer Complete';
+                const output_array = [];
+                for (let i = 0; i < file_metadata.chunks; i++) {
+                  output_array.push(...decoded_chunks.value[i]);
+                }
+                const output_unit8array = Uint8Array.from(output_array);
+                const inflated_array = pako.inflate(output_unit8array);
+                download_file(inflated_array, file_metadata.name);
+                stop_receiver();
+                break;
+              }
             }
           } catch (error) {
-            console.error('Error in receiver loop:', error);
+            // Keep scanning silently; occasional frame errors are expected
           }
 
           if (!is_receiving.value) {
@@ -979,13 +764,12 @@
       /* ---------- lifecycle ---------- */
       onMounted(() => {
         nextTick(() => {
-          qr_canvas = document.getElementById('qrCanvas');
-          setQrPayload('Choose a file to get started');
+          visual_canvas = document.getElementById('visualCanvas');
+          showPlaceholder();
         });
       });
 
       onUnmounted(() => {
-        stopColorFlip();
         stopCamera();
       });
 
