@@ -9,7 +9,15 @@
     * { transition: background-color 0.15s, border-color 0.15s, opacity 0.15s; }
     body { background: #f3f4f6; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
     .card { background: #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.02); }
-    video { border-radius: 0.75rem; background: #1e1e1e; width: 100%; max-height: 300px; object-fit: cover; }
+    .video-wrapper { position: relative; overflow: hidden; border-radius: 0.75rem; background: #1e1e1e; }
+    .video-wrapper video {
+      display: block;
+      width: 100%;
+      max-height: 320px;
+      object-fit: cover;
+      transition: transform 0.2s ease;
+      transform-origin: center center;
+    }
     input[type="file"] { padding: 0.5rem; border-radius: 0.5rem; }
     #qrcode { display: flex; align-items: center; justify-content: center; }
     #qrcode canvas, #qrcode img { border-radius: 0.5rem; display: block; margin: 0 auto; }
@@ -18,6 +26,16 @@
     .camera-off-placeholder { background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 0.75rem; padding: 2rem 1rem; text-align: center; }
     .progress-bar { height: 6px; background: #e5e7eb; border-radius: 9999px; overflow: hidden; }
     .progress-fill { height: 100%; background: #111827; border-radius: 9999px; transition: width 0.2s ease; }
+    .zoom-range { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 9999px; background: #e5e7eb; outline: none; }
+    .zoom-range::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+      border-radius: 50%; background: #111827; cursor: pointer; border: 2px solid #ffffff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .zoom-range::-moz-range-thumb {
+      width: 18px; height: 18px; border-radius: 50%; background: #111827;
+      cursor: pointer; border: 2px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
   </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4 antialiased">
@@ -125,10 +143,56 @@
         >Stop Receiver</button>
       </div>
 
-      <div v-show="cameraAvailable" class="w-full max-w-md rounded-xl overflow-hidden border border-gray-200 bg-black/5">
-        <video id="videoElement" muted autoplay playsinline class="w-full h-auto"></video>
+      <!-- Camera view with zoom -->
+      <div v-show="cameraAvailable" class="w-full max-w-md">
+        <div class="video-wrapper border border-gray-200">
+          <video
+            id="videoElement"
+            ref="videoRef"
+            muted
+            autoplay
+            playsinline
+            :style="{ transform: 'scale(' + zoomLevel + ')' }"
+          ></video>
+        </div>
+
+        <!-- Zoom controls -->
+        <div class="mt-3 px-1">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-medium text-gray-500">Zoom</span>
+            <span class="text-xs tabular-nums text-gray-400">{{ zoomLevel.toFixed(1) }}x</span>
+          </div>
+          <input
+            type="range"
+            min="1"
+            max="4"
+            step="0.1"
+            v-model.number="zoomLevel"
+            class="zoom-range"
+            @input="applyZoom"
+          />
+          <div class="flex justify-between mt-1">
+            <button
+              @click="setZoom(1)"
+              class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+            >1x</button>
+            <button
+              @click="setZoom(2)"
+              class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+            >2x</button>
+            <button
+              @click="setZoom(3)"
+              class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+            >3x</button>
+            <button
+              @click="setZoom(4)"
+              class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+            >4x</button>
+          </div>
+        </div>
       </div>
-      <p v-if="cameraAvailable" class="text-xs text-gray-400 mt-3">Point camera at the sender's QR code</p>
+
+      <p v-if="cameraAvailable" class="text-xs text-gray-400 mt-2">Point camera at the sender's QR code</p>
     </div>
 
   </div>
@@ -153,9 +217,13 @@
       const cameraAvailable = ref(false);
       const transfer_progress = ref(0);
 
+      /* ---------- zoom state ---------- */
+      const zoomLevel = ref(1);
+      const videoRef = ref(null);
+
       /* ---------- sender state ---------- */
-      const chunk_size = 80;         // small payload per QR
-      const dwell_ms = 900;          // each QR stays this long
+      const chunk_size = 80;
+      const dwell_ms = 900;
       let qrcode_object = null;
       let transfer_cancelled = false;
 
@@ -188,6 +256,18 @@
           colorLight: '#ffffff',
           correctLevel: QRCode.CorrectLevel.M,
         });
+      };
+
+      /* ---------- zoom helpers ---------- */
+      const applyZoom = () => {
+        if (videoRef.value) {
+          videoRef.value.style.transform = `scale(${zoomLevel.value})`;
+        }
+      };
+
+      const setZoom = (val) => {
+        zoomLevel.value = val;
+        applyZoom();
       };
 
       /* ---------- camera helpers ---------- */
@@ -273,6 +353,7 @@
           if (previousMode === 'receive') {
             stopCamera();
             cameraAvailable.value = false;
+            zoomLevel.value = 1;
           }
           user_message.value = 'Choose a file to get started';
           nextTick(() => {
@@ -281,7 +362,10 @@
         } else {
           user_message.value = 'Requesting camera access ...';
           const ok = await initCamera();
-          if (ok) user_message.value = 'Click receive button to start receiving';
+          if (ok) {
+            user_message.value = 'Click receive button to start receiving';
+            nextTick(() => applyZoom());
+          }
         }
       };
 
@@ -411,7 +495,19 @@
         while (is_receiving.value) {
           try {
             await new Promise((r) => setTimeout(r, 20));
-            context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            // Draw the full video frame to canvas for scanning.
+            // Note: zoom is a CSS visual effect only; the scanner still sees the full frame.
+            // For better results at high zoom, crop the center region:
+            const z = zoomLevel.value;
+            if (z > 1.05 && canvas.width > 0) {
+              const cropW = canvas.width / z;
+              const cropH = canvas.height / z;
+              const sx = (canvas.width - cropW) / 2;
+              const sy = (canvas.height - cropH) / 2;
+              context.drawImage(videoElement, sx, sy, cropW, cropH, 0, 0, canvas.width, canvas.height);
+            } else {
+              context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            }
             const image_data = context.getImageData(0, 0, canvas.width, canvas.height);
             const symbols = await zbarWasm.scanImageData(image_data);
             if (!symbols || !symbols.length) continue;
@@ -480,6 +576,10 @@
         is_receiving,
         cameraAvailable,
         transfer_progress,
+        zoomLevel,
+        videoRef,
+        applyZoom,
+        setZoom,
         start_transfer,
         stop_transfer,
         start_receiver,
