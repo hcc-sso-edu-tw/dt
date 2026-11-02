@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Data Transfer · Sender & Receiver</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { transition: background-color 0.15s, border-color 0.15s, opacity 0.15s; }
+    body { background: #f3f4f6; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    .card { background: #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.02); }
+    video { border-radius: 0.75rem; background: #1e1e1e; width: 100%; max-height: 300px; object-fit: cover; }
+    input[type="file"] { padding: 0.5rem; border-radius: 0.5rem; }
+    #qrcode canvas, #qrcode img { border-radius: 0.5rem; display: block; margin: 0 auto; }
+    .fade-in { animation: fadeIn 0.25s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .camera-off-placeholder { background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 0.75rem; padding: 2rem 1rem; text-align: center; }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 antialiased">
+
+<div id="app" class="w-full max-w-4xl mx-auto">
+
+  <div class="card rounded-2xl p-6 md:p-8">
+
+    <!-- header with mode switch -->
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-semibold tracking-tight text-gray-800">QR Data Transfer</h1>
+      <div class="flex bg-gray-100 p-1 rounded-xl">
+        <button
+          @click="setMode('send')"
+          :class="mode === 'send' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-800'"
+          class="px-5 py-2 text-sm font-medium rounded-lg transition-all"
+        >Send</button>
+        <button
+          @click="setMode('receive')"
+          :class="mode === 'receive' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-800'"
+          class="px-5 py-2 text-sm font-medium rounded-lg transition-all"
+        >Receive</button>
+      </div>
+    </div>
+
+    <!-- ================= SENDER PANEL ================= -->
+    <!-- Always kept in DOM, visibility toggled with v-show to preserve QR container -->
+    <div v-show="mode === 'send'" class="flex flex-col items-center">
+
+      <div class="w-full mb-4 text-center">
+        <p class="text-sm text-gray-500">{{ user_message }}</p>
+      </div>
+
+      <div class="w-full max-w-md mb-6">
+        <label class="block text-sm font-medium text-gray-600 mb-1">Select file</label>
+        <input
+          id="file_input"
+          type="file"
+          class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300"
+        />
+      </div>
+
+      <div class="flex gap-3 mb-8">
+        <button
+          v-if="!is_transferring"
+          @click="start_transfer"
+          class="px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 focus:ring-2 focus:ring-gray-400 focus:outline-none"
+        >Start Transfer</button>
+        <button
+          v-else
+          @click="stop_transfer"
+          class="px-6 py-2.5 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 focus:ring-2 focus:ring-red-400 focus:outline-none"
+        >Stop Transfer</button>
+      </div>
+
+      <!-- QR container: always present in DOM while in send mode -->
+      <div id="qrcode" class="p-3 bg-white rounded-xl border border-gray-100"></div>
+      <p class="text-xs text-gray-400 mt-3">Scan with the receiver device</p>
+    </div>
+
+    <!-- ================= RECEIVER PANEL ================= -->
+    <div v-if="mode === 'receive'" class="fade-in flex flex-col items-center">
+
+      <div class="w-full mb-4 text-center">
+        <p class="text-sm text-gray-500">{{ user_message }}</p>
+      </div>
+
+      <!-- Camera error / unavailable notice -->
+      <div v-if="!cameraAvailable" class="w-full max-w-md mb-4">
+        <div class="camera-off-placeholder text-gray-500 text-sm">
+          <p class="font-medium text-gray-700 mb-1">Camera not available</p>
+          <p>No camera was found on this device. A camera is required to scan QR codes.</p>
+        </div>
+      </div>
+
+      <!-- Progress (only when camera is available) -->
+      <div v-if="cameraAvailable" class="w-full max-w-md mb-5 flex items-center justify-between text-sm text-gray-600">
+        <span class="font-medium">Progress</span>
+        <span class="tabular-nums font-mono bg-gray-100 px-3 py-1 rounded-full text-gray-800 text-xs">
+          {{ Object.keys(decoded_chunks).length }} / {{ file_metadata.chunks || 0 }}
+        </span>
+      </div>
+
+      <div class="flex gap-3 mb-6">
+        <button
+          v-if="!is_receiving"
+          @click="start_receiver"
+          :disabled="!cameraAvailable"
+          :class="cameraAvailable
+            ? 'px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 focus:ring-2 focus:ring-gray-400 focus:outline-none'
+            : 'px-6 py-2.5 bg-gray-300 text-gray-500 text-sm font-medium rounded-xl cursor-not-allowed'"
+        >Start Receiver</button>
+        <button
+          v-else
+          @click="stop_receiver"
+          class="px-6 py-2.5 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 focus:ring-2 focus:ring-red-400 focus:outline-none"
+        >Stop Receiver</button>
+      </div>
+
+      <div v-if="cameraAvailable" class="w-full max-w-md rounded-xl overflow-hidden border border-gray-200 bg-black/5">
+        <video id="videoElement" muted autoplay playsinline class="w-full h-auto"></video>
+      </div>
+      <p v-if="cameraAvailable" class="text-xs text-gray-400 mt-3">Point camera at the sender's QR code</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- dependencies -->
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@latest/dist/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.3/pako.min.js"></script>
+
+<script>
+  const { createApp, ref, reactive, onMounted, nextTick, watch } = Vue;
+
+  createApp({
+    setup() {
+      /* ---------- shared state ---------- */
+      const mode = ref('send');
+      const user_message = ref('Choose a file to get started');
+      const is_transferring = ref(false);
+      const is_receiving = ref(false);
+      const cameraAvailable = ref(true);
+      const cameraChecked = ref(false);
+
+      /* ---------- sender state ---------- */
+      let qrcode_object = null;
+      const chunk_size = 250;
+
+      /* ---------- receiver state ---------- */
+      const decoded_chunks = ref({});
+      const file_metadata = reactive({});
+      let canvas = null, context = null, videoElement = null;
+
+      /* ---------- QR code helpers ---------- */
+      const destroyQrCode = () => {
+        if (qrcode_object) {
+          try { qrcode_object.clear(); } catch (e) {}
+          qrcode_object = null;
+        }
+        const container = document.getElementById('qrcode');
+        if (container) {
+          container.innerHTML = '';
+        }
+      };
+
+      const initQrCode = () => {
+        const container = document.getElementById('qrcode');
+        if (!container) return;
+        // Always clear old content first so a new QRCode instance can mount
+        container.innerHTML = '';
+        qrcode_object = null;
+
+        const size = Math.min(window.innerWidth, window.innerHeight) / 1.8;
+        qrcode_object = new QRCode(container, {
+          text: 'Choose a file to get started',
+          width: Math.min(size, 360),
+          height: Math.min(size, 360),
+          typeNumber: 40,
+          colorDark: '#111827',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M,
+        });
+      };
+
+      /* ---------- helpers ---------- */
+      const setMode = (newMode) => {
+        if (is_transferring.value) stop_transfer();
+        if (is_receiving.value) stop_receiver();
+        mode.value = newMode;
+
+        if (newMode === 'send') {
+          user_message.value = 'Choose a file to get started';
+          // Re-create the QR code in its container after the DOM updates
+          nextTick(() => {
+            initQrCode();
+          });
+        } else {
+          user_message.value = cameraAvailable.value
+            ? 'Click receive button to start receiving'
+            : 'Camera not available';
+        }
+      };
+
+      /* ---------- SENDER logic ---------- */
+      const encode_data = (index, input_bytes) => {
+        const encoded_string = String.fromCharCode.apply(null, input_bytes);
+        const utf8Encoder = new TextEncoder();
+        const utf8_bytes = utf8Encoder.encode(encoded_string);
+        const encoded_data = btoa(String.fromCharCode.apply(null, utf8_bytes));
+        return index + ',' + encoded_data;
+      };
+
+      const stop_transfer = () => {
+        is_transferring.value = false;
+        user_message.value = 'Choose a file to get started';
+        if (qrcode_object) {
+          qrcode_object.clear();
+          qrcode_object.makeCode('Choose a file to get started');
+        }
+      };
+
+      const start_transfer = async () => {
+        const file_input = document.getElementById('file_input');
+        if (!file_input.files.length) {
+          user_message.value = 'Please select a file first';
+          return;
+        }
+        const file = file_input.files[0];
+        if (!file) return;
+
+        // Make sure QR object exists
+        if (!qrcode_object) {
+          initQrCode();
+        }
+
+        is_transferring.value = true;
+        const data_array = pako.gzip(await file.arrayBuffer(), { level: 9 });
+        const total_chunks = Math.ceil(data_array.length / chunk_size);
+        const file_metadata_obj = { name: file.name, chunks: total_chunks };
+
+        qrcode_object.clear();
+        qrcode_object.makeCode(JSON.stringify(file_metadata_obj));
+        user_message.value = 'Starting data transfer in a few seconds ...';
+        await new Promise((r) => setTimeout(r, 1000));
+
+        for (let i = 0; i < total_chunks; i++) {
+          await new Promise((r) => setTimeout(r, 50));
+          const start = i * chunk_size;
+          const chunk = data_array.subarray(start, start + chunk_size);
+          const encoded_data = encode_data(i, chunk);
+
+          qrcode_object.clear();
+          qrcode_object.makeCode(encoded_data);
+          user_message.value = `Transferring chunk ${i + 1} / ${total_chunks} ...`;
+
+          if (!is_transferring.value) {
+            user_message.value = 'Choose a file to get started';
+            qrcode_object.clear();
+            qrcode_object.makeCode('Choose a file to get started');
+            break;
+          }
+        }
+        if (is_transferring.value) {
+          stop_transfer();
+        }
+      };
+
+      /* ---------- RECEIVER logic ---------- */
+      const decode_data = (input_string) => {
+        const encoded_data = atob(input_string.split(',')[1]);
+        const encoded_array = Array.from(encoded_data, (char) => char.charCodeAt(0));
+        const utf8Decoder = new TextDecoder();
+        const output_string = utf8Decoder.decode(new Uint8Array(encoded_array));
+        const data_array = Array.from(output_string, (char) => char.charCodeAt(0));
+        return {
+          index: parseInt(input_string.split(',')[0]),
+          data: data_array,
+        };
+      };
+
+      const download_file = (data, fileName) => {
+        const blob = new Blob([data]);
+        const dummy_element = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        dummy_element.href = url;
+        dummy_element.download = fileName;
+        dummy_element.click();
+        URL.revokeObjectURL(url);
+      };
+
+      const stop_receiver = () => {
+        is_receiving.value = false;
+        decoded_chunks.value = {};
+        Object.assign(file_metadata, {});
+        user_message.value = cameraAvailable.value
+          ? 'Click receive button to start receiving'
+          : 'Camera not available';
+      };
+
+      const start_receiver = async () => {
+        if (!cameraAvailable.value) {
+          user_message.value = 'Camera not available';
+          return;
+        }
+        if (!videoElement) {
+          videoElement = document.getElementById('videoElement');
+        }
+        if (!videoElement) {
+          user_message.value = 'Camera not available';
+          cameraAvailable.value = false;
+          return;
+        }
+        if (!canvas) {
+          canvas = document.createElement('canvas');
+          context = canvas.getContext('2d');
+          await new Promise((r) => setTimeout(r, 500));
+          canvas.width = videoElement.videoWidth || 640;
+          canvas.height = videoElement.videoHeight || 480;
+        }
+
+        decoded_chunks.value = {};
+        Object.assign(file_metadata, {});
+        is_receiving.value = true;
+        user_message.value = 'Scanning ...';
+
+        while (is_receiving.value) {
+          try {
+            await new Promise((r) => setTimeout(r, 10));
+            context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            const image_data = context.getImageData(0, 0, canvas.width, canvas.height);
+            const symbols = await zbarWasm.scanImageData(image_data);
+            if (!symbols || !symbols.length) {
+              continue;
+            }
+            const decoded_data = symbols[0].decode();
+
+            if (decoded_data.includes('chunks')) {
+              Object.assign(file_metadata, JSON.parse(decoded_data));
+              decoded_chunks.value = {};
+              user_message.value = `Receiving file: ${file_metadata.name}`;
+            } else if (decoded_data.split(',').length === 2) {
+              const raw_data = decode_data(decoded_data);
+              decoded_chunks.value[raw_data.index] = raw_data.data;
+            }
+
+            if (
+              file_metadata.chunks &&
+              Object.keys(decoded_chunks.value).length === file_metadata.chunks
+            ) {
+              user_message.value = 'Data Transfer Complete';
+              const output_array = [];
+              for (let i = 0; i < file_metadata.chunks; i++) {
+                output_array.push(...decoded_chunks.value[i]);
+              }
+              const output_unit8array = Uint8Array.from(output_array);
+              const inflated_array = pako.inflate(output_unit8array);
+              download_file(inflated_array, file_metadata.name);
+              stop_receiver();
+              break;
+            }
+          } catch (error) {
+            console.error('Error in receiver loop:', error);
+          }
+
+          if (!is_receiving.value) {
+            user_message.value = cameraAvailable.value
+              ? 'Click receive button to start receiving'
+              : 'Camera not available';
+            Object.assign(file_metadata, {});
+            decoded_chunks.value = {};
+            return;
+          }
+        }
+      };
+
+      /* ---------- lifecycle ---------- */
+      onMounted(async () => {
+        // init sender QR code
+        nextTick(() => {
+          initQrCode();
+        });
+
+        // Check for camera availability
+        videoElement = document.getElementById('videoElement');
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          cameraAvailable.value = false;
+          cameraChecked.value = true;
+          user_message.value = 'Camera not available';
+          return;
+        }
+
+        try {
+          videoElement.srcObject = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' },
+          });
+          cameraAvailable.value = true;
+          canvas = document.createElement('canvas');
+          context = canvas.getContext('2d');
+          await new Promise((r) => setTimeout(r, 500));
+          canvas.width = videoElement.videoWidth || 640;
+          canvas.height = videoElement.videoHeight || 480;
+        } catch (err) {
+          console.warn('Camera init error:', err);
+          cameraAvailable.value = false;
+          user_message.value = 'Camera not available';
+        } finally {
+          cameraChecked.value = true;
+        }
+      });
+
+      return {
+        mode,
+        setMode,
+        user_message,
+        is_transferring,
+        is_receiving,
+        cameraAvailable,
+        cameraChecked,
+        start_transfer,
+        stop_transfer,
+        start_receiver,
+        stop_receiver,
+        decoded_chunks,
+        file_metadata,
+      };
+    },
+  }).mount('#app');
+</script>
+</body>
+</html>
