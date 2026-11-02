@@ -11,7 +11,7 @@
     .card { background: #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.02); }
     video { border-radius: 0.75rem; background: #1e1e1e; width: 100%; max-height: 300px; object-fit: cover; }
     input[type="file"] { padding: 0.5rem; border-radius: 0.5rem; }
-    #qrcode canvas, #qrcode img { border-radius: 0.5rem; display: block; margin: 0 auto; }
+    #qrcode canvas, #qrcode img { border-radius: 0.5rem; display: block; margin: 0 auto; transition: background-color 0.3s, opacity 0.3s; }
     .fade-in { animation: fadeIn 0.25s ease-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
     .camera-off-placeholder { background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 0.75rem; padding: 2rem 1rem; text-align: center; }
@@ -41,7 +41,6 @@
     </div>
 
     <!-- ================= SENDER PANEL ================= -->
-    <!-- Always kept in DOM, visibility toggled with v-show to preserve QR container -->
     <div v-show="mode === 'send'" class="flex flex-col items-center">
 
       <div class="w-full mb-4 text-center">
@@ -70,7 +69,6 @@
         >Stop Transfer</button>
       </div>
 
-      <!-- QR container: always present in DOM while in send mode -->
       <div id="qrcode" class="p-3 bg-white rounded-xl border border-gray-100"></div>
       <p class="text-xs text-gray-400 mt-3">Scan with the receiver device</p>
     </div>
@@ -82,15 +80,13 @@
         <p class="text-sm text-gray-500">{{ user_message }}</p>
       </div>
 
-      <!-- Camera error / unavailable notice -->
       <div v-if="!cameraAvailable" class="w-full max-w-md mb-4">
         <div class="camera-off-placeholder text-gray-500 text-sm">
           <p class="font-medium text-gray-700 mb-1">Camera not available</p>
-          <p>No camera was found on this device. A camera is required to scan QR codes.</p>
+          <p>No camera was found on this device, or permission was denied. A camera is required to scan QR codes.</p>
         </div>
       </div>
 
-      <!-- Progress (only when camera is available) -->
       <div v-if="cameraAvailable" class="w-full max-w-md mb-5 flex items-center justify-between text-sm text-gray-600">
         <span class="font-medium">Progress</span>
         <span class="tabular-nums font-mono bg-gray-100 px-3 py-1 rounded-full text-gray-800 text-xs">
@@ -114,7 +110,7 @@
         >Stop Receiver</button>
       </div>
 
-      <div v-if="cameraAvailable" class="w-full max-w-md rounded-xl overflow-hidden border border-gray-200 bg-black/5">
+      <div v-show="cameraAvailable" class="w-full max-w-md rounded-xl overflow-hidden border border-gray-200 bg-black/5">
         <video id="videoElement" muted autoplay playsinline class="w-full h-auto"></video>
       </div>
       <p v-if="cameraAvailable" class="text-xs text-gray-400 mt-3">Point camera at the sender's QR code</p>
@@ -130,7 +126,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.3/pako.min.js"></script>
 
 <script>
-  const { createApp, ref, reactive, onMounted, nextTick, watch } = Vue;
+  const { createApp, ref, reactive, onMounted, onUnmounted, nextTick } = Vue;
 
   createApp({
     setup() {
@@ -140,35 +136,63 @@
       const is_transferring = ref(false);
       const is_receiving = ref(false);
       const cameraAvailable = ref(true);
-      const cameraChecked = ref(false);
+      const cameraReady = ref(false);
 
       /* ---------- sender state ---------- */
       let qrcode_object = null;
       const chunk_size = 250;
+      let color_flip_timer = null;
+      let current_invert = false;
 
       /* ---------- receiver state ---------- */
       const decoded_chunks = ref({});
       const file_metadata = reactive({});
       let canvas = null, context = null, videoElement = null;
+      let mediaStream = null;
 
       /* ---------- QR code helpers ---------- */
-      const destroyQrCode = () => {
-        if (qrcode_object) {
-          try { qrcode_object.clear(); } catch (e) {}
-          qrcode_object = null;
-        }
+      const makeQrCode = (text) => {
+        if (!qrcode_object) return;
+        qrcode_object._lastText = text;
+        const dark = current_invert ? '#ffffff' : '#111827';
+        const light = current_invert ? '#111827' : '#ffffff';
+        qrcode_object._oColorDark = dark;
+        qrcode_object._oColorLight = light;
+        qrcode_object.clear();
+        qrcode_object.makeCode(text);
         const container = document.getElementById('qrcode');
         if (container) {
-          container.innerHTML = '';
+          container.style.backgroundColor = light;
+          container.style.transition = 'background-color 0.3s';
+        }
+      };
+
+      const startColorFlip = () => {
+        stopColorFlip();
+        color_flip_timer = setInterval(() => {
+          if (!qrcode_object || !is_transferring.value) {
+            stopColorFlip();
+            return;
+          }
+          current_invert = !current_invert;
+          makeQrCode(qrcode_object._lastText || 'Choose a file to get started');
+        }, 300);
+      };
+
+      const stopColorFlip = () => {
+        if (color_flip_timer) {
+          clearInterval(color_flip_timer);
+          color_flip_timer = null;
         }
       };
 
       const initQrCode = () => {
         const container = document.getElementById('qrcode');
         if (!container) return;
-        // Always clear old content first so a new QRCode instance can mount
         container.innerHTML = '';
         qrcode_object = null;
+        current_invert = false;
+        stopColorFlip();
 
         const size = Math.min(window.innerWidth, window.innerHeight) / 1.8;
         qrcode_object = new QRCode(container, {
@@ -180,24 +204,115 @@
           colorLight: '#ffffff',
           correctLevel: QRCode.CorrectLevel.M,
         });
+        qrcode_object._lastText = 'Choose a file to get started';
+        container.style.backgroundColor = '#ffffff';
+        container.style.transition = 'background-color 0.3s';
+      };
+
+      /* ---------- camera helpers ---------- */
+      const waitForVideoDimensions = async (video, timeoutMs = 5000) => {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+            return true;
+          }
+          await new Promise((r) => setTimeout(r, 100));
+        }
+        return false;
+      };
+
+      const setupCanvas = () => {
+        if (!videoElement) return;
+        if (!canvas) {
+          canvas = document.createElement('canvas');
+          context = canvas.getContext('2d', { willReadFrequently: true });
+        }
+        canvas.width = videoElement.videoWidth || 640;
+        canvas.height = videoElement.videoHeight || 480;
+      };
+
+      const initCamera = async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          cameraAvailable.value = false;
+          user_message.value = 'Camera not available';
+          return false;
+        }
+
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' },
+            audio: false,
+          });
+
+          // Find or create the video element
+          videoElement = document.getElementById('videoElement');
+          if (!videoElement) {
+            // If not in DOM yet (e.g. still in send mode), create a hidden one
+            videoElement = document.createElement('video');
+            videoElement.id = 'videoElement';
+            videoElement.muted = true;
+            videoElement.autoplay = true;
+            videoElement.playsInline = true;
+            videoElement.style.display = 'none';
+            document.body.appendChild(videoElement);
+          }
+
+          videoElement.srcObject = mediaStream;
+          videoElement.muted = true;
+
+          // Wait for the video to actually start playing
+          await videoElement.play().catch(() => {});
+
+          // Wait until dimensions are known
+          const dimsOk = await waitForVideoDimensions(videoElement);
+          if (!dimsOk) {
+            console.warn('Video dimensions not available, using fallback size');
+          }
+
+          setupCanvas();
+          cameraAvailable.value = true;
+          cameraReady.value = true;
+          return true;
+        } catch (err) {
+          console.warn('Camera init error:', err);
+          cameraAvailable.value = false;
+          cameraReady.value = false;
+          user_message.value = 'Camera not available';
+          return false;
+        }
       };
 
       /* ---------- helpers ---------- */
-      const setMode = (newMode) => {
+      const setMode = async (newMode) => {
         if (is_transferring.value) stop_transfer();
         if (is_receiving.value) stop_receiver();
         mode.value = newMode;
 
         if (newMode === 'send') {
           user_message.value = 'Choose a file to get started';
-          // Re-create the QR code in its container after the DOM updates
           nextTick(() => {
             initQrCode();
           });
         } else {
+          stopColorFlip();
           user_message.value = cameraAvailable.value
             ? 'Click receive button to start receiving'
             : 'Camera not available';
+
+          // If camera stream exists but the video element got recreated, rebind it
+          if (mediaStream) {
+            await nextTick();
+            const vid = document.getElementById('videoElement');
+            if (vid && vid.srcObject !== mediaStream) {
+              vid.srcObject = mediaStream;
+              vid.muted = true;
+              vid.play().catch(() => {});
+              videoElement = vid;
+              await waitForVideoDimensions(vid, 3000);
+              setupCanvas();
+              cameraReady.value = true;
+            }
+          }
         }
       };
 
@@ -212,10 +327,11 @@
 
       const stop_transfer = () => {
         is_transferring.value = false;
+        stopColorFlip();
+        current_invert = false;
         user_message.value = 'Choose a file to get started';
         if (qrcode_object) {
-          qrcode_object.clear();
-          qrcode_object.makeCode('Choose a file to get started');
+          makeQrCode('Choose a file to get started');
         }
       };
 
@@ -228,20 +344,21 @@
         const file = file_input.files[0];
         if (!file) return;
 
-        // Make sure QR object exists
         if (!qrcode_object) {
           initQrCode();
         }
 
         is_transferring.value = true;
+        current_invert = false;
         const data_array = pako.gzip(await file.arrayBuffer(), { level: 9 });
         const total_chunks = Math.ceil(data_array.length / chunk_size);
         const file_metadata_obj = { name: file.name, chunks: total_chunks };
 
-        qrcode_object.clear();
-        qrcode_object.makeCode(JSON.stringify(file_metadata_obj));
+        makeQrCode(JSON.stringify(file_metadata_obj));
         user_message.value = 'Starting data transfer in a few seconds ...';
         await new Promise((r) => setTimeout(r, 1000));
+
+        startColorFlip();
 
         for (let i = 0; i < total_chunks; i++) {
           await new Promise((r) => setTimeout(r, 50));
@@ -249,14 +366,12 @@
           const chunk = data_array.subarray(start, start + chunk_size);
           const encoded_data = encode_data(i, chunk);
 
-          qrcode_object.clear();
-          qrcode_object.makeCode(encoded_data);
+          makeQrCode(encoded_data);
           user_message.value = `Transferring chunk ${i + 1} / ${total_chunks} ...`;
 
           if (!is_transferring.value) {
             user_message.value = 'Choose a file to get started';
-            qrcode_object.clear();
-            qrcode_object.makeCode('Choose a file to get started');
+            makeQrCode('Choose a file to get started');
             break;
           }
         }
@@ -302,20 +417,36 @@
           user_message.value = 'Camera not available';
           return;
         }
-        if (!videoElement) {
-          videoElement = document.getElementById('videoElement');
-        }
+
+        // Make sure the video element is bound
+        videoElement = document.getElementById('videoElement');
         if (!videoElement) {
           user_message.value = 'Camera not available';
           cameraAvailable.value = false;
           return;
         }
+
+        // If the video has no stream, try to init again
+        if (!videoElement.srcObject) {
+          const ok = await initCamera();
+          if (!ok) {
+            user_message.value = 'Camera not available';
+            return;
+          }
+        }
+
+        // Wait until the video has dimensions
+        const dimsOk = await waitForVideoDimensions(videoElement, 5000);
+        if (!dimsOk) {
+          user_message.value = 'Camera not ready. Please wait and try again.';
+          return;
+        }
+
         if (!canvas) {
-          canvas = document.createElement('canvas');
-          context = canvas.getContext('2d');
-          await new Promise((r) => setTimeout(r, 500));
-          canvas.width = videoElement.videoWidth || 640;
-          canvas.height = videoElement.videoHeight || 480;
+          setupCanvas();
+        } else {
+          canvas.width = videoElement.videoWidth;
+          canvas.height = videoElement.videoHeight;
         }
 
         decoded_chunks.value = {};
@@ -375,36 +506,18 @@
 
       /* ---------- lifecycle ---------- */
       onMounted(async () => {
-        // init sender QR code
         nextTick(() => {
           initQrCode();
         });
 
-        // Check for camera availability
-        videoElement = document.getElementById('videoElement');
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          cameraAvailable.value = false;
-          cameraChecked.value = true;
-          user_message.value = 'Camera not available';
-          return;
-        }
+        // Initialize camera asynchronously (permission prompt will appear)
+        await initCamera();
+      });
 
-        try {
-          videoElement.srcObject = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' },
-          });
-          cameraAvailable.value = true;
-          canvas = document.createElement('canvas');
-          context = canvas.getContext('2d');
-          await new Promise((r) => setTimeout(r, 500));
-          canvas.width = videoElement.videoWidth || 640;
-          canvas.height = videoElement.videoHeight || 480;
-        } catch (err) {
-          console.warn('Camera init error:', err);
-          cameraAvailable.value = false;
-          user_message.value = 'Camera not available';
-        } finally {
-          cameraChecked.value = true;
+      onUnmounted(() => {
+        stopColorFlip();
+        if (mediaStream) {
+          mediaStream.getTracks().forEach((t) => t.stop());
         }
       });
 
@@ -415,7 +528,7 @@
         is_transferring,
         is_receiving,
         cameraAvailable,
-        cameraChecked,
+        cameraReady,
         start_transfer,
         stop_transfer,
         start_receiver,
