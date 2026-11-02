@@ -20,7 +20,6 @@
 <body class="min-h-screen flex items-center justify-center p-4 antialiased">
 <div id="app" class="w-full max-w-2xl mx-auto">
 
-  <!-- Header -->
   <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-semibold text-gray-800">P2P File Transfer</h1>
     <div class="flex bg-gray-100 p-1 rounded-xl">
@@ -39,7 +38,6 @@
     <div v-show="mode==='send'" class="flex flex-col items-center">
       <p class="text-sm text-gray-500 mb-4 text-center">{{ sendStatus }}</p>
 
-      <!-- Step 1: create session -->
       <div v-if="!senderPeerId" class="w-full flex justify-center">
         <button @click="startSender"
           class="px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800">
@@ -47,10 +45,18 @@
         </button>
       </div>
 
-      <!-- Step 2: show QR + wait -->
       <div v-else class="w-full flex flex-col items-center">
-        <div id="qrcode" class="p-3 bg-white rounded-xl border border-gray-100 mb-3"></div>
-        <p class="text-xs text-gray-400 mb-4">Scan with the receiver device</p>
+        <!-- 加大 QR 尺寸，並在下方顯示純文字 ID 以便手動輸入 -->
+        <div id="qrcode" class="p-4 bg-white rounded-xl border border-gray-100 mb-3"></div>
+        <p class="text-xs text-gray-400 mb-2">Scan with the receiver device</p>
+        <div class="w-full max-w-md mb-4">
+          <p class="text-[10px] text-gray-400 mb-1">Or copy this ID to the receiver:</p>
+          <div class="flex items-center gap-2">
+            <input type="text" readonly :value="senderPeerId"
+              class="flex-1 text-xs font-mono bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700" />
+            <button @click="copyId" class="text-xs px-3 py-1.5 bg-gray-100 rounded-lg hover:bg-gray-200">Copy</button>
+          </div>
+        </div>
 
         <div v-if="peerConnected" class="w-full max-w-md">
           <p class="text-sm text-green-600 mb-2 text-center">Connected! Select a file to send.</p>
@@ -73,13 +79,24 @@
       <p class="text-sm text-gray-500 mb-4 text-center">{{ receiveStatus }}</p>
 
       <div v-if="!receivePeerId" class="w-full flex flex-col items-center">
-        <button v-if="!scanning" @click="startScanner"
-          class="px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 mb-4">
-          Start Scanner
-        </button>
+        <div v-if="!scanning" class="flex flex-col items-center gap-3 mb-4">
+          <button @click="startScanner"
+            class="px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800">
+            Start Scanner
+          </button>
+          <div class="w-full max-w-md">
+            <p class="text-[10px] text-gray-400 mb-1">Or paste the sender's ID manually:</p>
+            <div class="flex items-center gap-2">
+              <input type="text" v-model="manualId" placeholder="Paste peer ID"
+                class="flex-1 text-xs font-mono bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700" />
+              <button @click="connectManual" class="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800">Connect</button>
+            </div>
+          </div>
+        </div>
         <div v-show="scanning" class="w-full max-w-md">
           <video id="scannerVideo" muted autoplay playsinline class="w-full"></video>
           <p class="text-xs text-gray-400 mt-2 text-center">Point at the sender's QR code</p>
+          <button @click="stopScanner" class="mt-2 text-xs px-3 py-1.5 bg-gray-100 rounded-lg">Stop</button>
         </div>
       </div>
 
@@ -114,6 +131,7 @@ createApp({
     const sendProgress = ref(0);
     const receiveProgress = ref(0);
     const scanning = ref(false);
+    const manualId = ref('');
 
     let peer = null;
     let conn = null;
@@ -123,14 +141,10 @@ createApp({
     let fileChunks = [];
     let receivedBytes = 0;
     let totalBytes = 0;
-    let qrObject = null;
 
     // ---------- PeerJS setup ----------
     function createPeer() {
-      // Free public PeerJS cloud signaling server
-      return new Peer({
-        debug: 0,
-      });
+      return new Peer({ debug: 0 });
     }
 
     function setupConnection(c) {
@@ -143,7 +157,6 @@ createApp({
       conn.on('close', () => { peerConnected.value = false; });
       conn.on('error', (err) => { console.warn('Connection error', err); });
 
-      // Receiver side: handle incoming data
       conn.on('data', (data) => {
         if (typeof data === 'string') {
           try {
@@ -167,7 +180,6 @@ createApp({
             }
           } catch (e) { /* not JSON */ }
         } else {
-          // Binary chunk
           fileChunks.push(data);
           receivedBytes += data.byteLength || data.size || 0;
           if (totalBytes > 0) {
@@ -188,6 +200,7 @@ createApp({
       receivePeerId.value = '';
       sendProgress.value = 0;
       receiveProgress.value = 0;
+      manualId.value = '';
       mode.value = newMode;
       if (newMode === 'send') {
         sendStatus.value = 'Create a session to get started';
@@ -207,12 +220,14 @@ createApp({
         nextTick(() => {
           const container = document.getElementById('qrcode');
           container.innerHTML = '';
-          qrObject = new QRCode(container, {
+          // 加大 QR 尺寸到 280，留白更充足，更容易掃到
+          new QRCode(container, {
             text: id,
-            width: 220,
-            height: 220,
-            colorDark: '#111827',
+            width: 280,
+            height: 280,
+            colorDark: '#000000',
             colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.L, // L = 最低密度，最容易掃
           });
         });
       });
@@ -228,6 +243,14 @@ createApp({
       });
     }
 
+    function copyId() {
+      if (!senderPeerId.value) return;
+      navigator.clipboard.writeText(senderPeerId.value).then(() => {
+        sendStatus.value = 'ID copied!';
+        setTimeout(() => { sendStatus.value = 'Waiting for receiver to join...'; }, 1500);
+      });
+    }
+
     async function sendFile(e) {
       const file = e.target.files[0];
       if (!file || !conn || !conn.open) return;
@@ -235,7 +258,6 @@ createApp({
       sendStatus.value = `Sending ${file.name}...`;
       sendProgress.value = 0;
 
-      // Send metadata first
       conn.send(JSON.stringify({
         type: 'meta',
         name: file.name,
@@ -254,7 +276,6 @@ createApp({
 
       reader.onload = () => {
         if (reader.result.byteLength > 0) {
-          // Simple backpressure check
           if (conn.dataChannel && conn.dataChannel.bufferedAmount > 1024 * 1024) {
             setTimeout(readNext, 50);
             return;
@@ -280,7 +301,7 @@ createApp({
 
       try {
         scannerStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
         });
         const video = document.getElementById('scannerVideo');
         video.srcObject = scannerStream;
@@ -291,11 +312,25 @@ createApp({
 
         scanInterval = setInterval(() => {
           if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          ctx.drawImage(video, 0, 0);
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+          // 關鍵修正：把畫面降採樣到最大 640px 寬再交給 jsQR
+          // jsQR 對這個解析度附近的影像解碼成功率最高
+          const vw = video.videoWidth;
+          const vh = video.videoHeight;
+          if (!vw || !vh) return;
+
+          const targetW = 640;
+          const scale = Math.min(1, targetW / vw);
+          const w = Math.round(vw * scale);
+          const h = Math.round(vh * scale);
+
+          canvas.width = w;
+          canvas.height = h;
+          ctx.drawImage(video, 0, 0, w, h);
+
+          const imageData = ctx.getImageData(0, 0, w, h);
+          const code = jsQR(imageData.data, w, h, { inversionAttempts: 'dontInvert' });
+
           if (code && code.data) {
             const id = code.data.trim();
             if (id.length > 3) {
@@ -317,6 +352,11 @@ createApp({
         scannerStream.getTracks().forEach(t => t.stop());
         scannerStream = null;
       }
+    }
+
+    function connectManual() {
+      const id = manualId.value.trim();
+      if (id.length > 3) connectToSender(id);
     }
 
     function connectToSender(remoteId) {
@@ -346,8 +386,9 @@ createApp({
       senderPeerId, receivePeerId,
       peerConnected,
       sendProgress, receiveProgress,
-      scanning,
-      startSender, sendFile, startScanner,
+      scanning, manualId,
+      startSender, sendFile, startScanner, stopScanner,
+      connectManual, copyId,
     };
   },
 }).mount('#app');
