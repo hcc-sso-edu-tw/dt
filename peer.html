@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>P2P File Transfer · No Install</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    body { background: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
+    .card { background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+    video { border-radius: 0.75rem; background: #1e1e1e; }
+    #qrcode canvas { border-radius: 0.5rem; }
+    .progress-bar { height: 6px; background: #e5e7eb; border-radius: 9999px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #111827; border-radius: 9999px; transition: width 0.2s; }
+
+    .scanner-wrap { position: relative; }
+    .scanner-frame {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .scanner-frame .box {
+      width: 65%; aspect-ratio: 1 / 1;
+      border: 2px solid rgba(255,255,255,0.9);
+      border-radius: 12px;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.25);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 antialiased">
+<div id="app" class="w-full max-w-2xl mx-auto">
+
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold text-gray-800">P2P File Transfer</h1>
+    <div class="flex bg-gray-100 p-1 rounded-xl">
+      <button @click="switchMode('send')"
+        :class="mode==='send' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'"
+        class="px-5 py-2 text-sm font-medium rounded-lg transition-all">Send</button>
+      <button @click="switchMode('receive')"
+        :class="mode==='receive' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'"
+        class="px-5 py-2 text-sm font-medium rounded-lg transition-all">Receive</button>
+    </div>
+  </div>
+
+  <div class="card rounded-2xl p-6">
+
+    <!-- ================= SENDER ================= -->
+    <div v-show="mode==='send'" class="flex flex-col items-center">
+      <p class="text-sm text-gray-500 mb-4 text-center">{{ sendStatus }}</p>
+
+      <div v-if="!senderPeerId" class="w-full flex justify-center">
+        <button @click="startSender"
+          class="px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800">
+          Create Session & Show QR
+        </button>
+      </div>
+
+      <div v-else class="w-full flex flex-col items-center">
+        <div id="qrcode" class="p-4 bg-white rounded-xl border border-gray-100 mb-4"></div>
+        <div class="h-4"></div>
+        <p class="text-xs text-gray-400 mb-3">Scan with the receiver device</p>
+        <div class="w-full max-w-md mb-4">
+          <p class="text-[10px] text-gray-400 mb-1">Or copy this ID to the receiver:</p>
+          <div class="flex items-center gap-2">
+            <input type="text" readonly :value="senderPeerId"
+              class="flex-1 text-xs font-mono bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700" />
+            <button @click="copyId" class="text-xs px-3 py-1.5 bg-gray-100 rounded-lg hover:bg-gray-200">Copy</button>
+          </div>
+        </div>
+
+        <div v-if="peerConnected" class="w-full max-w-md">
+          <p class="text-sm text-green-600 mb-2 text-center">Connected! Select a file to send.</p>
+          <input type="file" @change="sendFile"
+            class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700" />
+        </div>
+        <p v-else class="text-sm text-gray-400">Waiting for receiver to join...</p>
+
+        <div v-if="sendProgress > 0" class="w-full max-w-md mt-4">
+          <div class="flex justify-between text-xs text-gray-500 mb-1">
+            <span>Sending</span><span>{{ sendProgress }}%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" :style="{ width: sendProgress + '%' }"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= RECEIVER ================= -->
+    <div v-show="mode==='receive'" class="flex flex-col items-center">
+      <p class="text-sm text-gray-500 mb-4 text-center">{{ receiveStatus }}</p>
+
+      <div v-if="!receivePeerId" class="w-full flex flex-col items-center">
+        <div v-if="!scanning" class="flex flex-col items-center gap-3 mb-4">
+          <button @click="startScanner"
+            class="px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800">
+            Start Scanner
+          </button>
+          <div class="w-full max-w-md">
+            <p class="text-[10px] text-gray-400 mb-1">Or paste the sender's ID manually:</p>
+            <div class="flex items-center gap-2">
+              <input type="text" v-model="manualId" placeholder="Paste peer ID"
+                class="flex-1 text-xs font-mono bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-gray-700" />
+              <button @click="connectManual" class="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800">Connect</button>
+            </div>
+          </div>
+        </div>
+
+        <div v-show="scanning" class="w-full max-w-md">
+          <div class="scanner-wrap">
+            <video id="scannerVideo" muted autoplay playsinline class="w-full"></video>
+            <div class="scanner-frame"><div class="box"></div></div>
+          </div>
+          <p class="text-xs text-gray-400 mt-2 text-center">
+            Point at the sender's QR code and fill the frame
+          </p>
+          <div class="flex justify-center mt-2">
+            <button @click="stopScanner" class="text-xs px-3 py-1.5 bg-gray-100 rounded-lg">Stop</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="w-full flex flex-col items-center">
+        <p v-if="!peerConnected" class="text-sm text-gray-400">Connecting to sender...</p>
+        <p v-else class="text-sm text-green-600">Connected! Waiting for file...</p>
+
+        <div v-if="receiveProgress > 0" class="w-full max-w-md mt-4">
+          <div class="flex justify-between text-xs text-gray-500 mb-1">
+            <span>Receiving</span><span>{{ receiveProgress }}%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" :style="{ width: receiveProgress + '%' }"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script>
+const { createApp, ref, onUnmounted, nextTick } = Vue;
+
+createApp({
+  setup() {
+    const mode = ref('send');
+    const sendStatus = ref('Create a session to get started');
+    const receiveStatus = ref('Scan the sender\'s QR code');
+    const senderPeerId = ref('');
+    const receivePeerId = ref('');
+    const peerConnected = ref(false);
+    const sendProgress = ref(0);
+    const receiveProgress = ref(0);
+    const scanning = ref(false);
+    const manualId = ref('');
+
+    let peer = null;
+    let conn = null;
+    let scannerStream = null;
+    let scanInterval = null;
+    let connectTimeout = null;
+    let fileMeta = null;
+    let fileChunks = [];
+    let receivedBytes = 0;
+    let totalBytes = 0;
+
+    // ---------- PeerJS setup ----------
+    // 加入 STUN + 公共 TURN，應對對稱型 NAT；debug:2 方便看信令層日誌
+    function createPeer() {
+      return new Peer({
+        debug: 2,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            {
+              urls: 'turn:openrelay.metered.ca:80',
+              username: 'openrelayproject',
+              credential: 'openrelayproject',
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443',
+              username: 'openrelayproject',
+              credential: 'openrelayproject',
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+              username: 'openrelayproject',
+              credential: 'openrelayproject',
+            },
+          ],
+        },
+      });
+    }
+
+    function clearConnectTimeout() {
+      if (connectTimeout) { clearTimeout(connectTimeout); connectTimeout = null; }
+    }
+
+    function setupConnection(c) {
+      conn = c;
+      conn.on('open', () => {
+        clearConnectTimeout();
+        peerConnected.value = true;
+        sendStatus.value = 'Connected! Ready to send.';
+        receiveStatus.value = 'Connected! Waiting for file...';
+      });
+      conn.on('close', () => { peerConnected.value = false; });
+      conn.on('error', (err) => { console.warn('Connection error', err); });
+
+      conn.on('data', (data) => {
+        if (typeof data === 'string') {
+          try {
+            const msg = JSON.parse(data);
+            if (msg.type === 'meta') {
+              fileMeta = msg;
+              totalBytes = msg.size;
+              receivedBytes = 0;
+              fileChunks = [];
+              receiveProgress.value = 0;
+            } else if (msg.type === 'done') {
+              const blob = new Blob(fileChunks, { type: fileMeta.mime || 'application/octet-stream' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = fileMeta.name || 'file';
+              a.click();
+              URL.revokeObjectURL(url);
+              receiveProgress.value = 100;
+              receiveStatus.value = 'File received!';
+            }
+          } catch (e) { /* not JSON */ }
+        } else {
+          fileChunks.push(data);
+          receivedBytes += data.byteLength || data.size || 0;
+          if (totalBytes > 0) {
+            receiveProgress.value = Math.round((receivedBytes / totalBytes) * 100);
+          }
+        }
+      });
+    }
+
+    // ---------- Mode switch ----------
+    function switchMode(newMode) {
+      if (newMode === mode.value) return;
+      stopScanner();
+      clearConnectTimeout();
+      if (peer) { peer.destroy(); peer = null; }
+      conn = null;
+      peerConnected.value = false;
+      senderPeerId.value = '';
+      receivePeerId.value = '';
+      sendProgress.value = 0;
+      receiveProgress.value = 0;
+      manualId.value = '';
+      mode.value = newMode;
+      if (newMode === 'send') {
+        sendStatus.value = 'Create a session to get started';
+      } else {
+        receiveStatus.value = 'Scan the sender\'s QR code';
+      }
+    }
+
+    // ---------- Sender ----------
+    function startSender() {
+      sendStatus.value = 'Starting session (connecting to signaling server)...';
+      peer = createPeer();
+
+      peer.on('open', (id) => {
+        senderPeerId.value = id;
+        sendStatus.value = 'Waiting for receiver to join...';
+        nextTick(() => {
+          const container = document.getElementById('qrcode');
+          container.innerHTML = '';
+          new QRCode(container, {
+            text: id,
+            width: 280,
+            height: 280,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.L,
+          });
+        });
+      });
+
+      peer.on('connection', (c) => {
+        setupConnection(c);
+        sendStatus.value = 'Receiver connected!';
+      });
+
+      peer.on('error', (err) => {
+        console.warn('Peer error', err);
+        // 信令層失敗時給出明確提示
+        if (err && err.type) {
+          sendStatus.value = 'Signaling error: ' + err.type + '. Check console / network.';
+        } else {
+          sendStatus.value = 'Connection error. Try again.';
+        }
+      });
+    }
+
+    function copyId() {
+      if (!senderPeerId.value) return;
+      navigator.clipboard.writeText(senderPeerId.value).then(() => {
+        sendStatus.value = 'ID copied!';
+        setTimeout(() => { sendStatus.value = 'Waiting for receiver to join...'; }, 1500);
+      });
+    }
+
+    async function sendFile(e) {
+      const file = e.target.files[0];
+      if (!file || !conn || !conn.open) return;
+
+      sendStatus.value = `Sending ${file.name}...`;
+      sendProgress.value = 0;
+
+      conn.send(JSON.stringify({
+        type: 'meta',
+        name: file.name,
+        size: file.size,
+        mime: file.type,
+      }));
+
+      const CHUNK = 16 * 1024;
+      let offset = 0;
+      const reader = new FileReader();
+
+      const readNext = () => {
+        const slice = file.slice(offset, offset + CHUNK);
+        reader.readAsArrayBuffer(slice);
+      };
+
+      reader.onload = () => {
+        if (reader.result.byteLength > 0) {
+          if (conn.dataChannel && conn.dataChannel.bufferedAmount > 1024 * 1024) {
+            setTimeout(readNext, 50);
+            return;
+          }
+          conn.send(reader.result);
+          offset += reader.result.byteLength;
+          sendProgress.value = Math.round((offset / file.size) * 100);
+          readNext();
+        } else {
+          conn.send(JSON.stringify({ type: 'done' }));
+          sendStatus.value = 'File sent!';
+          sendProgress.value = 100;
+        }
+      };
+
+      readNext();
+    }
+
+    // ---------- Receiver ----------
+    async function startScanner() {
+      scanning.value = true;
+      receiveStatus.value = 'Scanning...';
+
+      try {
+        scannerStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        });
+        const video = document.getElementById('scannerVideo');
+        video.srcObject = scannerStream;
+        await video.play();
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        scanInterval = setInterval(() => {
+          if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+          const vw = video.videoWidth;
+          const vh = video.videoHeight;
+          if (!vw || !vh) return;
+
+          const targetW = 1024;
+          const scale = Math.min(1, targetW / vw);
+          const w = Math.round(vw * scale);
+          const h = Math.round(vh * scale);
+
+          canvas.width = w;
+          canvas.height = h;
+          ctx.drawImage(video, 0, 0, w, h);
+
+          const imageData = ctx.getImageData(0, 0, w, h);
+          const code = jsQR(imageData.data, w, h, { inversionAttempts: 'dontInvert' });
+
+          if (code && code.data) {
+            const id = code.data.trim();
+            if (id.length > 3) {
+              stopScanner();
+              connectToSender(id);
+            }
+          }
+        }, 250);
+      } catch (err) {
+        receiveStatus.value = 'Camera not available: ' + err.message;
+        scanning.value = false;
+      }
+    }
+
+    function stopScanner() {
+      scanning.value = false;
+      if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+      if (scannerStream) {
+        scannerStream.getTracks().forEach(t => t.stop());
+        scannerStream = null;
+      }
+    }
+
+    function connectManual() {
+      const id = manualId.value.trim();
+      if (id.length > 3) connectToSender(id);
+    }
+
+    function connectToSender(remoteId) {
+      receivePeerId.value = remoteId;
+      receiveStatus.value = 'Connecting to sender...';
+      clearConnectTimeout();
+
+      // 20 秒內未連上就給明確提示，避免一直轉圈
+      connectTimeout = setTimeout(() => {
+        if (!peerConnected.value) {
+          receiveStatus.value = 'Connection timed out. PeerJS signaling or NAT traversal failed — check console.';
+        }
+      }, 20000);
+
+      peer = createPeer();
+      peer.on('open', () => {
+        const c = peer.connect(remoteId, { reliable: true });
+        setupConnection(c);
+      });
+      peer.on('error', (err) => {
+        console.warn('Peer error', err);
+        clearConnectTimeout();
+        receiveStatus.value = 'Connection failed: ' + (err.type || 'unknown') + '. Make sure sender is still waiting.';
+      });
+    }
+
+    // ---------- Cleanup ----------
+    onUnmounted(() => {
+      stopScanner();
+      clearConnectTimeout();
+      if (peer) peer.destroy();
+    });
+
+    return {
+      mode, switchMode,
+      sendStatus, receiveStatus,
+      senderPeerId, receivePeerId,
+      peerConnected,
+      sendProgress, receiveProgress,
+      scanning, manualId,
+      startSender, sendFile, startScanner, stopScanner,
+      connectManual, copyId,
+    };
+  },
+}).mount('#app');
+</script>
+</body>
+</html>
