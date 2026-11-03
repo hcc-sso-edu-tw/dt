@@ -1,690 +1,830 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QR Data Transfer · Sender & Receiver</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    * { transition: background-color 0.15s, border-color 0.15s, opacity 0.15s; }
-    body { background: #f3f4f6; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
-    .card { background: #ffffff; box-shadow: 0 8px 24px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.02); }
-    .video-wrapper { position: relative; overflow: hidden; border-radius: 0.75rem; background: #1e1e1e; }
-    .video-wrapper video {
-      display: block;
-      width: 100%;
-      max-height: 320px;
-      object-fit: cover;
-      transform-origin: center center;
-    }
-    input[type="file"] { padding: 0.5rem; border-radius: 0.5rem; }
-    #qrcode { display: flex; align-items: center; justify-content: center; }
-    #qrcode canvas, #qrcode img { border-radius: 0.5rem; display: block; margin: 0 auto; }
-    .fade-in { animation: fadeIn 0.25s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-    .camera-off-placeholder { background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 0.75rem; padding: 2rem 1rem; text-align: center; }
-    .progress-bar { height: 6px; background: #e5e7eb; border-radius: 9999px; overflow: hidden; }
-    .progress-fill { height: 100%; background: #111827; border-radius: 9999px; transition: width 0.2s ease; }
-    .zoom-range { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 9999px; background: #e5e7eb; outline: none; }
-    .zoom-range::-webkit-slider-thumb {
-      -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
-      border-radius: 50%; background: #111827; cursor: pointer; border: 2px solid #ffffff;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    }
-    .zoom-range::-moz-range-thumb {
-      width: 18px; height: 18px; border-radius: 50%; background: #111827;
-      cursor: pointer; border: 2px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    }
-    .dwell-input {
-      width: 64px; padding: 2px 6px; font-size: 11px; border: 1px solid #d1d5db;
-      border-radius: 6px; text-align: center; color: #111827; background: #ffffff;
-    }
-    .dwell-input:focus { outline: none; border-color: #6b7280; box-shadow: 0 0 0 2px rgba(107,114,128,0.15); }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>QR Toolkit</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.3/pako.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.9.15/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:#fff;color:#000;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#loader{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#fff;z-index:50}
+.spin{width:36px;height:36px;border:4px solid #ddd;border-top-color:#000;border-radius:50%;animation:r .8s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}
+header{border-bottom:2px solid #000;padding:14px 16px}
+.wrap{max-width:980px;margin:0 auto}
+h1{margin:0 0 10px;font-size:22px;letter-spacing:-.3px}
+h2{margin:0 0 8px;font-size:17px}
+nav,.sub{display:flex;gap:0;border:2px solid #000;width:100%}
+nav button,.sub button{flex:1;padding:10px 6px;border:0;border-right:2px solid #000;background:#fff;color:#000;font:inherit;font-weight:600;cursor:pointer}
+nav button:last-child,.sub button:last-child{border-right:0}
+nav button.on,.sub button.on{background:#000;color:#fff}
+main{padding:18px 16px 60px}
+.panel{display:none}
+.panel.on{display:block}
+.sub{max-width:320px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.box{border:2px solid #000;padding:14px;margin-bottom:14px}
+.steps{margin:0 0 14px;padding-left:20px}
+.steps li{margin:2px 0}
+label{display:block;font-size:13px;font-weight:600;margin:10px 0 4px}
+input,select,textarea{width:100%;padding:8px 10px;border:2px solid #000;border-radius:0;background:#fff;color:#000;font:inherit}
+input[type=checkbox]{width:auto;margin-right:8px;transform:scale(1.2)}
+input[type=file]{padding:6px}
+textarea{min-height:96px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:3px solid #888;outline-offset:1px}
+.chk{display:flex;align-items:center;font-weight:600;font-size:13px;margin:12px 0 4px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;align-items:center}
+.row>*{flex:1}
+.row .btn{flex:0 1 auto}
+.btn{padding:9px 16px;border:2px solid #000;background:#fff;color:#000;font:inherit;font-weight:600;cursor:pointer}
+.btn.pri{background:#000;color:#fff}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn:hover:not(:disabled){background:#000;color:#fff}
+.btn.pri:hover:not(:disabled){background:#333}
+.status{font-weight:600;margin:6px 0 10px;min-height:22px}
+.muted{color:#555;font-size:13px}
+.bar{height:14px;border:2px solid #000;background:#fff;margin:6px 0}
+.bar i{display:block;height:100%;width:0;background:#000}
+.pv{display:flex;justify-content:center;align-items:center;border:2px solid #000;padding:12px;min-height:200px;background:#fff}
+canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
+.vid{position:relative;overflow:hidden;border:2px solid #000;background:#000;min-height:180px}
+.vid video{display:block;width:100%;max-height:360px;object-fit:cover;transform-origin:center}
+.vid .idle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#fff;color:#000;font-weight:600}
+.cam.on .idle{display:none}
+.cam .zoom{display:flex;gap:10px;align-items:center;margin-top:8px}
+.cam .zoom input{padding:0;border:0}
+.res{border:2px solid #000;padding:10px;margin-bottom:8px}
+.res pre{margin:0 0 8px;white-space:pre-wrap;word-break:break-all;font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;max-height:160px;overflow:auto}
+.code{font:700 34px/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:4px;text-align:center;border:2px solid #000;padding:8px;margin:10px 0}
+.item{border:2px solid #000;padding:8px 10px;margin-bottom:8px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.item .nm{word-break:break-all;font-weight:600}
+.item .bar{flex-basis:100%;height:10px;margin:0}
+.map{display:block;width:100%;height:56px;border:2px solid #000;image-rendering:pixelated;background:#fff}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#000;color:#fff;padding:9px 16px;font-weight:600;z-index:40}
+</style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4 antialiased">
+<body>
 
-<div id="app" class="w-full max-w-4xl mx-auto">
+<div id="loader"><div class="spin"></div><div style="font-weight:600">Loading</div><div id="loadErr" class="muted" hidden></div><button id="reload" class="btn" hidden>Reload</button></div>
 
-  <div class="card rounded-2xl p-6 md:p-8">
+<div id="app" hidden>
+<header><div class="wrap">
+  <h1>QR Toolkit</h1>
+  <nav id="nav">
+    <button data-tab="create" class="on">Create QR</button>
+    <button data-tab="scan">Scan QR</button>
+    <button data-tab="qrtx">QR Transfer</button>
+    <button data-tab="p2p">P2P Transfer</button>
+  </nav>
+</div></header>
 
-    <!-- header with mode switch -->
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-semibold tracking-tight text-gray-800">QR Data Transfer</h1>
-      <div class="flex bg-gray-100 p-1 rounded-xl">
-        <button
-          @click="setMode('send')"
-          :class="mode === 'send' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-800'"
-          class="px-5 py-2 text-sm font-medium rounded-lg transition-all"
-        >Send</button>
-        <button
-          @click="setMode('receive')"
-          :class="mode === 'receive' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-800'"
-          class="px-5 py-2 text-sm font-medium rounded-lg transition-all"
-        >Receive</button>
+<main><div class="wrap">
+
+<!-- ===================== CREATE ===================== -->
+<section id="tab-create" class="panel on">
+  <ol class="steps"><li>Pick a type and fill in the content.</li><li>Check the preview on the right.</li><li>Download or copy the QR code.</li></ol>
+  <div class="grid">
+    <div>
+      <div class="box">
+        <label for="c-type" style="margin-top:0">Type</label>
+        <select id="c-type"></select>
+        <div id="c-fields"></div>
       </div>
-    </div>
-
-    <!-- ================= SENDER PANEL ================= -->
-    <div v-show="mode === 'send'" class="flex flex-col items-center">
-
-      <div class="w-full mb-4 text-center">
-        <p class="text-sm text-gray-500">{{ user_message }}</p>
-      </div>
-
-      <div class="w-full max-w-md mb-6">
-        <label class="block text-sm font-medium text-gray-600 mb-1">Select file</label>
-        <input
-          id="file_input"
-          type="file"
-          class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300"
-        />
-      </div>
-
-      <!-- Dwell control, visible before starting -->
-      <div class="w-full max-w-md mb-5 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <label for="dwellInput" class="text-xs text-gray-500">Dwell per QR</label>
-          <input
-            id="dwellInput"
-            type="number"
-            v-model.number="dwellInput"
-            min="20"
-            max="2000"
-            step="10"
-            class="dwell-input"
-            @change="clampDwell"
-          />
-          <span class="text-xs text-gray-400">ms</span>
-        </div>
-        <span class="text-xs text-gray-400 tabular-nums">{{ chunk_size }}B per QR</span>
-      </div>
-
-      <div class="flex gap-3 mb-6">
-        <button
-          v-if="!is_transferring"
-          @click="start_transfer"
-          class="px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 focus:ring-2 focus:ring-gray-400 focus:outline-none"
-        >Start Transfer</button>
-        <button
-          v-else
-          @click="stop_transfer"
-          class="px-6 py-2.5 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 focus:ring-2 focus:ring-red-400 focus:outline-none"
-        >Stop Transfer</button>
-      </div>
-
-      <!-- Transfer progress bar -->
-      <div v-if="is_transferring" class="w-full max-w-md mb-4">
-        <div class="flex justify-between text-xs text-gray-500 mb-1">
-          <span>Transfer progress</span>
-          <span class="tabular-nums">{{ transfer_progress }}%</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" :style="{ width: transfer_progress + '%' }"></div>
-        </div>
-      </div>
-
-      <!-- QR code container -->
-      <div id="qrcode" class="p-3 bg-white rounded-xl border border-gray-100"></div>
-      <p class="text-xs text-gray-400 mt-3">Scan with the receiver device · hold steady</p>
-    </div>
-
-    <!-- ================= RECEIVER PANEL ================= -->
-    <div v-if="mode === 'receive'" class="fade-in flex flex-col items-center">
-
-      <div class="w-full mb-4 text-center">
-        <p class="text-sm text-gray-500">{{ user_message }}</p>
-      </div>
-
-      <div v-if="cameraError" class="w-full max-w-md mb-4">
-        <div class="camera-off-placeholder text-gray-500 text-sm">
-          <p class="font-medium text-gray-700 mb-1">Camera not available</p>
-          <p>{{ cameraError }}</p>
-        </div>
-      </div>
-
-      <div v-if="is_receiving" class="w-full max-w-md mb-5 flex items-center justify-between text-sm text-gray-600">
-        <span class="font-medium">Progress</span>
-        <span class="tabular-nums font-mono bg-gray-100 px-3 py-1 rounded-full text-gray-800 text-xs">
-          {{ Object.keys(decoded_chunks).length }} / {{ file_metadata.chunks || 0 }}
-        </span>
-      </div>
-
-      <div class="flex gap-3 mb-6">
-        <button
-          v-if="!is_receiving"
-          @click="start_receiver"
-          :disabled="starting_camera"
-          :class="starting_camera
-            ? 'px-6 py-2.5 bg-gray-300 text-gray-500 text-sm font-medium rounded-xl cursor-wait'
-            : 'px-6 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 focus:ring-2 focus:ring-gray-400 focus:outline-none'"
-        >{{ starting_camera ? 'Opening camera ...' : 'Start Receiver' }}</button>
-        <button
-          v-else
-          @click="stop_receiver"
-          class="px-6 py-2.5 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 focus:ring-2 focus:ring-red-400 focus:outline-none"
-        >Stop Receiver</button>
-      </div>
-
-      <!-- Camera view with zoom (only shown while receiving) -->
-      <div v-show="is_receiving" class="w-full max-w-md">
-        <div class="video-wrapper border border-gray-200">
-          <video
-            id="videoElement"
-            ref="videoRef"
-            muted
-            autoplay
-            playsinline
-          ></video>
-        </div>
-
-        <!-- Zoom controls -->
-        <div class="mt-3 px-1">
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-xs font-medium text-gray-500">Zoom</span>
-            <span class="text-xs tabular-nums text-gray-400">{{ zoomLevel.toFixed(1) }}x</span>
-          </div>
-          <input
-            type="range"
-            min="1"
-            :max="maxZoom"
-            step="0.1"
-            v-model.number="zoomLevel"
-            class="zoom-range"
-            @input="applyZoom"
-          />
-          <div class="flex justify-between mt-1">
-            <button
-              v-for="z in [1, 2, 3, 4]"
-              :key="z"
-              @click="setZoom(z)"
-              :class="['text-[10px] px-2 py-0.5 rounded transition-colors',
-                z <= maxZoom
-                  ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  : 'bg-gray-50 text-gray-300 cursor-not-allowed']"
-              :disabled="z > maxZoom"
-            >{{ z }}x</button>
-          </div>
-        </div>
-        <p class="text-xs text-gray-400 mt-2">Point camera at the sender's QR code</p>
-      </div>
-
-      <!-- Idle placeholder before starting -->
-      <div v-if="!is_receiving && !starting_camera && !cameraError" class="w-full max-w-md">
-        <div class="camera-off-placeholder text-gray-500 text-sm">
-          <p class="font-medium text-gray-700 mb-1">Camera is off</p>
-          <p>Press Start Receiver to open the camera and begin scanning.</p>
+      <div class="box">
+        <h2>Options</h2>
+        <div class="row">
+          <div><label for="c-ec">Error correction</label>
+            <select id="c-ec"><option value="L">L - 7%</option><option value="M" selected>M - 15%</option><option value="Q">Q - 25%</option><option value="H">H - 30%</option></select></div>
+          <div><label for="c-size">Size (px)</label><input id="c-size" type="number" min="128" max="2048" step="32" value="512" /></div>
+          <div><label for="c-margin">Margin (modules)</label><input id="c-margin" type="number" min="0" max="16" value="4" /></div>
         </div>
       </div>
     </div>
-
+    <div>
+      <div class="pv"><canvas id="c-canvas" class="qr" width="10" height="10" hidden></canvas><span id="c-empty" class="muted">Enter content to see the QR code</span></div>
+      <p id="c-info" class="muted"></p>
+      <div class="row">
+        <button class="btn pri" id="c-png">Download PNG</button>
+        <button class="btn" id="c-svg">Download SVG</button>
+        <button class="btn" id="c-cimg">Copy image</button>
+        <button class="btn" id="c-ctxt">Copy content</button>
+      </div>
+    </div>
   </div>
+</section>
+
+<!-- ===================== SCAN ===================== -->
+<section id="tab-scan" class="panel">
+  <ol class="steps"><li>Press Start Camera, or choose an image file.</li><li>Point the camera at any QR code.</li><li>Copy or open the result.</li></ol>
+  <div class="grid">
+    <div>
+      <div class="cam" id="scan-cam"></div>
+      <div class="row">
+        <button class="btn pri" id="scan-start">Start Camera</button>
+        <button class="btn" id="scan-stop" hidden>Stop Camera</button>
+      </div>
+      <label for="scan-file">Or scan from an image</label>
+      <input id="scan-file" type="file" accept="image/*" />
+      <div id="scan-status" class="status" aria-live="polite"></div>
+    </div>
+    <div>
+      <div class="row" style="margin-top:0"><h2 style="flex:1;margin:0">Results</h2><button class="btn" id="scan-clear">Clear</button></div>
+      <div id="scan-list"><p class="muted">No results yet</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== QR TRANSFER ===================== -->
+<section id="tab-qrtx" class="panel">
+  <p class="muted" style="margin-top:0">Works offline. Sends a file as a stream of QR codes that another device reads with its camera.</p>
+  <div class="sub" id="qrtx-sub"><button data-sub="send" class="on">Send</button><button data-sub="recv">Receive</button></div>
+
+  <div id="qrtx-send">
+    <ol class="steps"><li>Choose a file.</li><li>Press Start.</li><li>On the other device open Receive and scan this screen.</li></ol>
+    <div class="grid">
+      <div>
+        <div class="box">
+          <label for="tx-file" style="margin-top:0">File</label>
+          <input id="tx-file" type="file" />
+          <div class="row">
+            <div><label for="tx-chunk">Bytes per QR</label>
+              <select id="tx-chunk"><option>100</option><option selected>200</option><option>300</option><option>400</option><option>600</option><option>800</option></select></div>
+            <div><label for="tx-dwell">Time per QR (ms)</label><input id="tx-dwell" type="number" min="20" max="2000" step="10" value="150" /></div>
+            <div><label for="tx-ec">Error correction</label>
+              <select id="tx-ec"><option value="L">L</option><option value="M" selected>M</option><option value="Q">Q</option></select></div>
+          </div>
+          <label class="chk"><input id="tx-loop" type="checkbox" checked />Repeat until stopped (recommended)</label>
+          <p class="muted" style="margin:6px 0 0">Smaller bytes per QR and longer time per QR are more reliable. Larger and shorter are faster.</p>
+        </div>
+        <div class="row">
+          <button class="btn pri" id="tx-start">Start</button>
+          <button class="btn" id="tx-pause" hidden>Pause</button>
+          <button class="btn" id="tx-stop" hidden>Stop</button>
+        </div>
+      </div>
+      <div>
+        <div class="pv"><canvas id="tx-canvas" class="qr" width="10" height="10" hidden></canvas><span id="tx-empty" class="muted">The QR stream appears here</span></div>
+        <div id="tx-status" class="status" aria-live="polite">Choose a file to get started</div>
+        <div class="bar"><i id="tx-bar"></i></div>
+        <div id="tx-info" class="muted"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="qrtx-recv" hidden>
+    <ol class="steps"><li>Press Start Camera.</li><li>Point at the sender's screen and hold steady.</li><li>The file downloads automatically when complete.</li></ol>
+    <div class="grid">
+      <div>
+        <div class="cam" id="rx-cam"></div>
+        <div class="row">
+          <button class="btn pri" id="rx-start">Start Camera</button>
+          <button class="btn" id="rx-stop" hidden>Stop Camera</button>
+          <button class="btn" id="rx-reset">Reset</button>
+        </div>
+      </div>
+      <div>
+        <div id="rx-status" class="status" aria-live="polite">Press Start Camera</div>
+        <div class="bar"><i id="rx-bar"></i></div>
+        <div id="rx-count" class="muted"></div>
+        <p class="muted" style="margin:10px 0 4px">Received pieces (black = received)</p>
+        <canvas id="rx-map" class="map" width="400" height="56"></canvas>
+        <div id="rx-done" hidden class="box" style="margin-top:14px">
+          <div id="rx-name" style="font-weight:700;word-break:break-all"></div>
+          <div class="row"><button class="btn pri" id="rx-save">Download again</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== P2P ===================== -->
+<section id="tab-p2p" class="panel">
+  <p class="muted" style="margin-top:0">Direct device-to-device transfer over the internet. Scan a QR code once, then send any number of files or text.</p>
+  <div class="sub" id="p2p-sub"><button data-sub="send" class="on">Send</button><button data-sub="recv">Receive</button></div>
+
+  <div id="p2p-send">
+    <ol class="steps"><li>Press Create Session.</li><li>On the other device open Receive and scan the QR code or type the code.</li><li>Once connected, choose files or type text to send.</li></ol>
+    <div id="ps-status" class="status" aria-live="polite">No session yet</div>
+    <div class="row"><button class="btn pri" id="ps-create">Create Session</button><button class="btn" id="ps-end" hidden>End Session</button></div>
+    <div id="ps-session" hidden class="grid">
+      <div>
+        <div class="code" id="ps-code"></div>
+        <div class="row"><button class="btn" id="ps-copy">Copy code</button></div>
+        <div class="pv"><canvas id="ps-qr" class="qr" width="10" height="10"></canvas></div>
+      </div>
+      <div id="ps-tools" hidden>
+        <div class="box">
+          <label for="ps-files" style="margin-top:0">Files</label>
+          <input id="ps-files" type="file" multiple />
+          <div class="row"><button class="btn" id="ps-cancel">Stop sending</button></div>
+          <div id="ps-list"></div>
+        </div>
+        <div class="box">
+          <label for="ps-text" style="margin-top:0">Text</label>
+          <textarea id="ps-text" placeholder="Type or paste text to send"></textarea>
+          <div class="row"><button class="btn pri" id="ps-sendtxt">Send text</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="p2p-recv" hidden>
+    <ol class="steps"><li>Press Start Camera and scan the sender's QR code, or type the code.</li><li>Wait for Connected.</li><li>Save the files that appear below.</li></ol>
+    <div id="pr-status" class="status" aria-live="polite">Not connected</div>
+    <div id="pr-connect" class="grid">
+      <div>
+        <div class="cam" id="pr-cam"></div>
+        <div class="row"><button class="btn pri" id="pr-start">Start Camera</button><button class="btn" id="pr-stop" hidden>Stop Camera</button></div>
+      </div>
+      <div>
+        <label for="pr-code" style="margin-top:0">Or type the code</label>
+        <div class="row" style="margin-top:0"><input id="pr-code" placeholder="e.g. ABC123" maxlength="16" autocomplete="off" style="font-family:monospace;text-transform:uppercase" /><button class="btn pri" id="pr-go">Connect</button></div>
+      </div>
+    </div>
+    <div id="pr-live" hidden>
+      <div class="row"><label class="chk" style="margin:0"><input id="pr-auto" type="checkbox" />Save files automatically</label><button class="btn" id="pr-end">Disconnect</button></div>
+      <div class="grid">
+        <div><h2>Files</h2><div id="pr-list"><p class="muted">Nothing received yet</p></div></div>
+        <div><h2>Text</h2><div id="pr-texts"><p class="muted">Nothing received yet</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div></main>
 </div>
 
-<!-- dependencies -->
-<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@latest/dist/index.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.3/pako.min.js"></script>
+<div id="toast" hidden></div>
 
 <script>
-  const { createApp, ref, reactive, computed, onMounted, onUnmounted, nextTick } = Vue;
+"use strict";
+/* ============================== helpers ============================== */
+const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const fmt = (n) => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(2) + ' MB';
+const toB64 = (u) => btoa(String.fromCharCode.apply(null, u));
+const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+const CRC = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return (b) => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+})();
+let toastTimer = null;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2000);
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); toast('Copied'); }
+  catch (e) {
+    const a = document.createElement('textarea'); a.value = text; document.body.appendChild(a); a.select();
+    try { document.execCommand('copy'); toast('Copied'); } catch (e2) { toast('Copy failed'); }
+    a.remove();
+  }
+}
+function saveBlob(blob, name) {
+  const u = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 15000);
+}
+function mk(tag, props, kids) {
+  const e = document.createElement(tag);
+  if (props) Object.assign(e, props);
+  (kids || []).forEach((k) => e.appendChild(typeof k === 'string' ? document.createTextNode(k) : k));
+  return e;
+}
 
-  /* ============================================================
-     SPEED TUNING — adjust these values to change speed.
-     ============================================================ */
-  const SPEED = {
-    // Bytes per QR code. Larger = fewer codes = faster,
-    // but each code is denser and harder to scan.
-    chunk_size: 200,
+/* ============================== QR rendering ============================== */
+function qrMatrix(text, ec) {
+  const d = document.createElement('div');
+  const q = new QRCode(d, { text, width: 8, height: 8, correctLevel: QRCode.CorrectLevel[ec] });
+  const m = q._oQRCode;
+  return { n: m.getModuleCount(), dark: (r, c) => m.isDark(r, c) };
+}
+function drawQR(cv, text, ec, size, margin) {
+  const m = qrMatrix(text, ec), tot = m.n + margin * 2, s = Math.max(1, Math.floor(size / tot)), px = s * tot;
+  if (cv.width !== px) { cv.width = px; cv.height = px; }
+  const x = cv.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, px, px); x.fillStyle = '#000';
+  for (let r = 0; r < m.n; r++) for (let c = 0; c < m.n; c++) if (m.dark(r, c)) x.fillRect((c + margin) * s, (r + margin) * s, s, s);
+  return m;
+}
+function qrSvg(text, ec, margin, size) {
+  const m = qrMatrix(text, ec), tot = m.n + margin * 2;
+  let p = '';
+  for (let r = 0; r < m.n; r++) for (let c = 0; c < m.n; c++) if (m.dark(r, c)) p += 'M' + (c + margin) + ' ' + (r + margin) + 'h1v1h-1z';
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 ' + tot + ' ' + tot + '" shape-rendering="crispEdges"><rect width="' + tot + '" height="' + tot + '" fill="#fff"/><path d="' + p + '" fill="#000"/></svg>';
+}
 
-    // Milliseconds each QR stays on screen. Default is 100.
-    // Editable live via the input box on the sender panel.
-    dwell_ms: 100,
-
-    // Milliseconds before the receiver accepts the same QR again.
-    min_repeat_ms: 120,
-
-    // Milliseconds the scanner yields per iteration.
-    scan_yield_ms: 4,
-  };
-  /* ============================================================ */
-
-  createApp({
-    setup() {
-      /* ---------- shared state ---------- */
-      const mode = ref('send');
-      const user_message = ref('Choose a file to get started');
-      const is_transferring = ref(false);
-      const is_receiving = ref(false);
-      const starting_camera = ref(false);
-      const cameraError = ref('');
-      const transfer_progress = ref(0);
-
-      /* ---------- dwell input (editable before and during) ---------- */
-      const dwellInput = ref(SPEED.dwell_ms);
-
-      const clampDwell = () => {
-        let v = Number(dwellInput.value);
-        if (!Number.isFinite(v)) v = SPEED.dwell_ms;
-        v = Math.round(v);
-        if (v < 20) v = 20;
-        if (v > 2000) v = 2000;
-        dwellInput.value = v;
-      };
-
-      /* ---------- zoom state ---------- */
-      const zoomLevel = ref(1);
-      const maxZoom = ref(4);
-      const nativeZoomAvailable = ref(false);
-      const videoRef = ref(null);
-      let videoTrack = null;
-      let nativeZoomRange = null;
-
-      /* ---------- sender state ---------- */
-      const chunk_size = SPEED.chunk_size;
-      let qrcode_object = null;
-      let transfer_cancelled = false;
-
-      /* ---------- receiver state ---------- */
-      const decoded_chunks = ref({});
-      const file_metadata = reactive({});
-      let canvas = null, context = null, videoElement = null;
-      let mediaStream = null;
-
-      /* ---------- QR helpers ---------- */
-      const makeQrCode = (text) => {
-        if (!qrcode_object) return;
-        qrcode_object.clear();
-        qrcode_object.makeCode(text);
-      };
-
-      const initQrCode = () => {
-        const container = document.getElementById('qrcode');
-        if (!container) return;
-        container.innerHTML = '';
-        qrcode_object = null;
-
-        const size = Math.min(window.innerWidth, window.innerHeight) / 1.8;
-        qrcode_object = new QRCode(container, {
-          text: 'Choose a file to get started',
-          width: Math.min(size, 340),
-          height: Math.min(size, 340),
-          typeNumber: 0,
-          colorDark: '#111827',
-          colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.M,
-        });
-      };
-
-      /* ---------- zoom ---------- */
-      const applyZoom = async () => {
-        const z = zoomLevel.value;
-        if (videoTrack && nativeZoomRange) {
-          try {
-            await videoTrack.applyConstraints({
-              advanced: [{ zoom: z }],
-            });
-            if (videoRef.value) videoRef.value.style.transform = 'none';
-            return;
-          } catch (e) { /* fall through */ }
+/* ============================== Camera ============================== */
+function mountCam(host) {
+  host.classList.add('cam');
+  host.innerHTML = '<div class="vid"><video playsinline muted autoplay></video><div class="idle">Camera is off</div></div>' +
+    '<div class="zoom"><span>Zoom</span><input type="range" min="1" max="4" step="0.1" value="1" /><span class="zv">1.0x</span></div>' +
+    '<div class="row"><button class="btn" data-z="1">1x</button><button class="btn" data-z="2">2x</button><button class="btn" data-z="3">3x</button><button class="btn" data-z="4">4x</button><button class="btn tq" hidden>Torch</button></div>';
+  host.video = host.querySelector('video');
+  host.zr = host.querySelector('input[type=range]');
+  host.zv = host.querySelector('.zv');
+  host.zr.addEventListener('input', () => { if (Cam.host === host) Cam.setZoom(+host.zr.value); });
+  host.querySelectorAll('[data-z]').forEach((b) => b.addEventListener('click', () => { if (Cam.host === host) Cam.setZoom(Math.min(+b.dataset.z, Cam.max)); }));
+  host.querySelector('.tq').addEventListener('click', () => { if (Cam.host === host) Cam.toggleTorch(); });
+}
+const Cam = {
+  host: null, owner: '', stream: null, track: null, run: false, native: false, z: 1, max: 4, torch: false, id: 0,
+  cv: document.createElement('canvas'),
+  async start(host, owner, onText) {
+    this.stop();
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Camera API unavailable. Open this page over HTTPS or localhost.');
+    this.host = host; this.owner = owner;
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    } catch (e) {
+      this.host = null; this.owner = '';
+      throw new Error(e && e.name === 'NotAllowedError' ? 'Camera permission was denied.' : e && e.name === 'NotFoundError' ? 'No camera was found.' : 'The camera could not be opened.');
+    }
+    const v = host.video;
+    v.srcObject = this.stream; await v.play().catch(() => {});
+    for (let i = 0; i < 50 && !v.videoWidth; i++) await sleep(100);
+    if (!v.videoWidth) { this.stop(); throw new Error('Camera opened but returned no frames.'); }
+    this.track = this.stream.getVideoTracks()[0];
+    const caps = this.track.getCapabilities ? this.track.getCapabilities() : {};
+    this.native = !!caps.zoom;
+    this.max = this.native ? Math.min(caps.zoom.max || 4, 10) : 4;
+    host.zr.max = this.max;
+    host.querySelector('.tq').hidden = !caps.torch;
+    host.classList.add('on');
+    this.torch = false; this.setZoom(1);
+    this.run = true; this.loop(onText);
+    camUI();
+  },
+  stop() {
+    this.run = false; this.id++;
+    if (this.stream) this.stream.getTracks().forEach((t) => t.stop());
+    if (this.host) { try { this.host.video.srcObject = null; } catch (e) {} this.host.classList.remove('on'); }
+    this.stream = null; this.track = null; this.host = null; this.owner = '';
+    camUI();
+  },
+  setZoom(z) {
+    this.z = z; this.host.zr.value = z; this.host.zv.textContent = z.toFixed(1) + 'x';
+    if (this.native && this.track) {
+      this.track.applyConstraints({ advanced: [{ zoom: z }] }).catch(() => {});
+      this.host.video.style.transform = 'none';
+    } else this.host.video.style.transform = 'scale(' + z + ')';
+  },
+  toggleTorch() {
+    if (!this.track) return;
+    this.torch = !this.torch;
+    this.track.applyConstraints({ advanced: [{ torch: this.torch }] }).catch(() => { toast('Torch not supported'); });
+  },
+  async loop(onText) {
+    const my = ++this.id, v = this.host.video, cv = this.cv, cx = cv.getContext('2d', { willReadFrequently: true });
+    while (this.run && my === this.id) {
+      try {
+        const vw = v.videoWidth, vh = v.videoHeight;
+        if (vw) {
+          const z = this.native ? 1 : this.z, sw = vw / z, sh = vh / z, sc = Math.min(1, 1280 / sw);
+          const w = Math.round(sw * sc), h = Math.round(sh * sc);
+          if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+          cx.drawImage(v, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, w, h);
+          const syms = await zbarWasm.scanImageData(cx.getImageData(0, 0, w, h));
+          if (my !== this.id) break;
+          for (const s of syms) onText(s.decode());
         }
-        if (videoRef.value) {
-          videoRef.value.style.transform = `scale(${z})`;
+      } catch (e) { console.warn('scan error', e); }
+      await sleep(4);
+    }
+  }
+};
+function camUI() {
+  [['scan', 'scan-start', 'scan-stop'], ['rx', 'rx-start', 'rx-stop'], ['pr', 'pr-start', 'pr-stop']].forEach(([o, s, p]) => {
+    const on = Cam.run && Cam.owner === o;
+    $(s).hidden = on; $(p).hidden = !on;
+  });
+}
+
+/* ============================== Tabs ============================== */
+let curTab = 'create';
+function setTab(t) {
+  stopTx(); Cam.stop(); curTab = t;
+  document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('on', p.id === 'tab-' + t));
+}
+function wireSub(id, prefix, onChange) {
+  document.querySelectorAll('#' + id + ' button').forEach((b) => b.addEventListener('click', () => {
+    stopTx(); Cam.stop();
+    document.querySelectorAll('#' + id + ' button').forEach((x) => x.classList.toggle('on', x === b));
+    $(prefix + '-send').hidden = b.dataset.sub !== 'send';
+    $(prefix + '-recv').hidden = b.dataset.sub !== 'recv';
+    if (onChange) onChange(b.dataset.sub);
+  }));
+}
+
+/* ============================== CREATE ============================== */
+const TYPES = {
+  text: { l: 'Text', f: [['text', 'Text', 'area']], b: (v) => v.text },
+  url: { l: 'Website URL', f: [['url', 'URL', 'text', 'https://example.com']], b: (v) => v.url },
+  wifi: {
+    l: 'Wi-Fi', f: [['ssid', 'Network name'], ['pass', 'Password'], ['sec', 'Security', 'sel', ['WPA', 'WEP', 'nopass']], ['hid', 'Hidden network', 'chk']],
+    b: (v) => { if (!v.ssid) return ''; const e = (s) => (s || '').replace(/([\\;,:"])/g, '\\$1'); return 'WIFI:T:' + v.sec + ';S:' + e(v.ssid) + ';P:' + e(v.pass) + ';H:' + (v.hid ? 'true' : 'false') + ';;'; }
+  },
+  email: {
+    l: 'Email', f: [['to', 'To', 'text', 'name@example.com'], ['subject', 'Subject'], ['body', 'Message', 'area']],
+    b: (v) => v.to ? 'mailto:' + v.to + '?subject=' + encodeURIComponent(v.subject || '') + '&body=' + encodeURIComponent(v.body || '') : ''
+  },
+  sms: { l: 'SMS', f: [['num', 'Phone number'], ['msg', 'Message', 'area']], b: (v) => v.num ? 'SMSTO:' + v.num + ':' + (v.msg || '') : '' },
+  phone: { l: 'Phone call', f: [['num', 'Phone number']], b: (v) => v.num ? 'tel:' + v.num : '' },
+  geo: { l: 'Location', f: [['lat', 'Latitude', 'text', '25.0330'], ['lng', 'Longitude', 'text', '121.5654']], b: (v) => v.lat && v.lng ? 'geo:' + v.lat + ',' + v.lng : '' },
+  vcard: {
+    l: 'Contact (vCard)', f: [['fn', 'First name'], ['ln', 'Last name'], ['org', 'Organization'], ['title', 'Job title'], ['tel', 'Phone'], ['mail', 'Email'], ['web', 'Website'], ['adr', 'Address']],
+    b: (v) => {
+      if (!v.fn && !v.ln) return '';
+      const L = ['BEGIN:VCARD', 'VERSION:3.0', 'N:' + (v.ln || '') + ';' + (v.fn || '') + ';;;', 'FN:' + ((v.fn || '') + ' ' + (v.ln || '')).trim()];
+      if (v.org) L.push('ORG:' + v.org); if (v.title) L.push('TITLE:' + v.title); if (v.tel) L.push('TEL:' + v.tel);
+      if (v.mail) L.push('EMAIL:' + v.mail); if (v.web) L.push('URL:' + v.web); if (v.adr) L.push('ADR:;;' + v.adr + ';;;;');
+      L.push('END:VCARD'); return L.join('\n');
+    }
+  }
+};
+let cText = '', cTimer = null;
+function buildFields() {
+  const t = TYPES[$('c-type').value], box = $('c-fields'); box.innerHTML = '';
+  t.f.forEach(([k, label, kind, extra]) => {
+    const id = 'cf-' + k;
+    if (kind === 'chk') {
+      const l = mk('label', { className: 'chk' }); l.appendChild(mk('input', { type: 'checkbox', id })); l.appendChild(document.createTextNode(label)); box.appendChild(l);
+    } else {
+      box.appendChild(mk('label', { htmlFor: id, textContent: label }));
+      let e;
+      if (kind === 'area') e = mk('textarea', { id });
+      else if (kind === 'sel') { e = mk('select', { id }); extra.forEach((o) => e.appendChild(mk('option', { value: o, textContent: o }))); }
+      else { e = mk('input', { id, type: 'text', placeholder: kind === 'text' && extra ? extra : '' }); }
+      box.appendChild(e);
+    }
+    const el = $(id); el.dataset.k = k;
+    el.addEventListener('input', schedule); el.addEventListener('change', schedule);
+  });
+  renderCreate();
+}
+function schedule() { clearTimeout(cTimer); cTimer = setTimeout(renderCreate, 120); }
+function getVals() {
+  const v = {}; $('c-fields').querySelectorAll('[data-k]').forEach((e) => { v[e.dataset.k] = e.type === 'checkbox' ? e.checked : e.value.trim(); }); return v;
+}
+function clampNum(el, lo, hi, def) { let n = Math.round(Number(el.value)); if (!Number.isFinite(n)) n = def; return Math.max(lo, Math.min(hi, n)); }
+function renderCreate() {
+  const text = TYPES[$('c-type').value].b(getVals()), cv = $('c-canvas');
+  const ok = !!text; cText = text;
+  cv.hidden = !ok; $('c-empty').hidden = ok;
+  ['c-png', 'c-svg', 'c-cimg', 'c-ctxt'].forEach((id) => { $(id).disabled = !ok; });
+  if (!ok) { $('c-info').textContent = ''; return; }
+  try {
+    const m = drawQR(cv, text, $('c-ec').value, clampNum($('c-size'), 128, 2048, 512), clampNum($('c-margin'), 0, 16, 4));
+    $('c-info').textContent = 'Content: ' + new TextEncoder().encode(text).length + ' bytes. Version ' + ((m.n - 17) / 4) + ' (' + m.n + 'x' + m.n + ' modules). Image: ' + cv.width + 'x' + cv.height + ' px.';
+  } catch (e) {
+    cv.hidden = true; $('c-empty').hidden = false; $('c-empty').textContent = 'Too much data for one QR code. Shorten the content or lower the error correction.';
+    ['c-png', 'c-svg', 'c-cimg', 'c-ctxt'].forEach((id) => { $(id).disabled = true; }); $('c-info').textContent = ''; return;
+  }
+  $('c-empty').textContent = 'Enter content to see the QR code';
+}
+function initCreate() {
+  Object.keys(TYPES).forEach((k) => $('c-type').appendChild(mk('option', { value: k, textContent: TYPES[k].l })));
+  $('c-type').addEventListener('change', buildFields);
+  ['c-ec', 'c-size', 'c-margin'].forEach((id) => { $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule); });
+  $('c-png').addEventListener('click', () => $('c-canvas').toBlob((b) => saveBlob(b, 'qrcode.png'), 'image/png'));
+  $('c-svg').addEventListener('click', () => saveBlob(new Blob([qrSvg(cText, $('c-ec').value, clampNum($('c-margin'), 0, 16, 4), clampNum($('c-size'), 128, 2048, 512))], { type: 'image/svg+xml' }), 'qrcode.svg'));
+  $('c-cimg').addEventListener('click', () => $('c-canvas').toBlob(async (b) => {
+    try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': b })]); toast('Image copied'); } catch (e) { toast('Copy image is not supported here'); }
+  }, 'image/png'));
+  $('c-ctxt').addEventListener('click', () => copyText(cText));
+  buildFields();
+}
+
+/* ============================== SCAN ============================== */
+let lastScan = '';
+const OPENABLE = /^(https?:|mailto:|tel:|sms:|smsto:|geo:)/i;
+function addScanResult(text) {
+  const list = $('scan-list');
+  if (!list.querySelector('.res')) list.innerHTML = '';
+  const url = OPENABLE.test(text) && /^https?:|^mailto:|^tel:|^sms:|^geo:/i.test(text);
+  const row = mk('div', { className: 'res' }, [mk('pre', { textContent: text })]);
+  const b = mk('div', { className: 'row', style: 'margin:0' });
+  const cp = mk('button', { className: 'btn', textContent: 'Copy' }); cp.addEventListener('click', () => copyText(text)); b.appendChild(cp);
+  if (url) { const o = mk('a', { className: 'btn', textContent: 'Open', href: text, target: '_blank', rel: 'noopener noreferrer', style: 'text-decoration:none' }); b.appendChild(o); }
+  row.appendChild(b); list.insertBefore(row, list.firstChild);
+  $('scan-status').textContent = 'Found a QR code';
+}
+function onScan(text) { if (text === lastScan) return; lastScan = text; addScanResult(text); }
+function initScan() {
+  mountCam($('scan-cam'));
+  $('scan-start').addEventListener('click', async () => {
+    $('scan-status').textContent = 'Opening camera...'; lastScan = '';
+    try { await Cam.start($('scan-cam'), 'scan', onScan); $('scan-status').textContent = 'Scanning...'; }
+    catch (e) { $('scan-status').textContent = e.message; camUI(); }
+  });
+  $('scan-stop').addEventListener('click', () => { Cam.stop(); $('scan-status').textContent = 'Camera stopped'; });
+  $('scan-clear').addEventListener('click', () => { $('scan-list').innerHTML = '<p class="muted">No results yet</p>'; lastScan = ''; });
+  $('scan-file').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    $('scan-status').textContent = 'Reading image...';
+    try {
+      const bmp = await createImageBitmap(f), cv = document.createElement('canvas');
+      const sc = Math.min(1, 2000 / Math.max(bmp.width, bmp.height)); cv.width = Math.round(bmp.width * sc); cv.height = Math.round(bmp.height * sc);
+      const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+      const syms = await zbarWasm.scanImageData(cx.getImageData(0, 0, cv.width, cv.height));
+      if (!syms.length) $('scan-status').textContent = 'No QR code found in this image';
+      else syms.forEach((s) => addScanResult(s.decode()));
+    } catch (err) { $('scan-status').textContent = 'Could not read this image'; }
+    e.target.value = '';
+  });
+}
+
+/* ============================== QR TRANSFER ============================== */
+const tx = { run: false, paused: false, id: 0 };
+function txUI(running) {
+  $('tx-start').hidden = running; $('tx-pause').hidden = !running; $('tx-stop').hidden = !running;
+  ['tx-file', 'tx-chunk', 'tx-ec'].forEach((id) => { $(id).disabled = running; });
+}
+function stopTx(msg) {
+  if (!tx.run) return;
+  tx.run = false; tx.id++; tx.paused = false; txUI(false);
+  $('tx-pause').textContent = 'Pause'; $('tx-canvas').hidden = true; $('tx-empty').hidden = false;
+  $('tx-bar').style.width = '0'; $('tx-status').textContent = msg || 'Stopped';
+}
+async function startTx() {
+  const f = $('tx-file').files[0];
+  if (!f) { $('tx-status').textContent = 'Please choose a file first'; return; }
+  const my = ++tx.id; tx.run = true; tx.paused = false; txUI(true);
+  $('tx-status').textContent = 'Preparing file...';
+  const raw = new Uint8Array(await f.arrayBuffer());
+  const gz = pako.gzip(raw, { level: 9 });
+  const cs = +$('tx-chunk').value, ec = $('tx-ec').value, total = Math.ceil(gz.length / cs) || 1;
+  const meta = JSON.stringify({ v: 1, n: f.name, s: raw.length, c: total, k: CRC(gz), z: gz.length });
+  if (my !== tx.id) return;
+  const cv = $('tx-canvas'), size = Math.min(520, Math.max(240, Math.min(window.innerWidth - 80, 520)));
+  $('tx-canvas').hidden = false; $('tx-empty').hidden = true;
+  $('tx-info').textContent = f.name + ': ' + fmt(raw.length) + ' (compressed ' + fmt(gz.length) + '), ' + total + ' pieces.';
+  let pass = 0;
+  try {
+    do {
+      pass++;
+      for (let i = -1; i < total; i++) {
+        while (tx.paused && my === tx.id) await sleep(100);
+        if (my !== tx.id) return;
+        const dwell = Math.max(20, Math.min(2000, Number($('tx-dwell').value) || 150));
+        if (i < 0) { drawQR(cv, meta, ec, size, 2); $('tx-status').textContent = 'Pass ' + pass + ': header'; await sleep(Math.max(dwell, 400)); }
+        else {
+          drawQR(cv, i + ',' + toB64(gz.subarray(i * cs, i * cs + cs)), ec, size, 2);
+          $('tx-bar').style.width = Math.round(((i + 1) / total) * 100) + '%';
+          $('tx-status').textContent = 'Pass ' + pass + ': piece ' + (i + 1) + ' / ' + total;
+          await sleep(dwell);
         }
-      };
+      }
+    } while ($('tx-loop').checked && my === tx.id);
+  } catch (e) { stopTx('Error: could not build a QR code. Try fewer bytes per QR.'); return; }
+  if (my === tx.id) stopTx('Finished one pass');
+}
+const rx = { meta: null, chunks: new Map(), blob: null, name: '' };
+function rxReset() {
+  rx.meta = null; rx.chunks = new Map(); rx.blob = null; $('rx-done').hidden = true;
+  $('rx-bar').style.width = '0'; $('rx-count').textContent = ''; drawMap();
+  $('rx-status').textContent = Cam.run && Cam.owner === 'rx' ? 'Scanning...' : 'Press Start Camera';
+}
+function drawMap() {
+  const cv = $('rx-map'), cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+  const n = rx.meta ? rx.meta.c : 0; if (!n) return;
+  const cols = Math.ceil(Math.sqrt(n * cv.width / cv.height)), rows = Math.ceil(n / cols), w = cv.width / cols, h = cv.height / rows;
+  cx.fillStyle = '#000';
+  for (let i = 0; i < n; i++) if (rx.chunks.has(i)) cx.fillRect((i % cols) * w, Math.floor(i / cols) * h, Math.ceil(w), Math.ceil(h));
+}
+function rxProgress() {
+  const n = rx.meta ? rx.meta.c : 0, got = rx.chunks.size;
+  $('rx-bar').style.width = n ? Math.round((Math.min(got, n) / n) * 100) + '%' : '0';
+  $('rx-count').textContent = n ? got + ' / ' + n + ' pieces' + (rx.meta.n ? ' - ' + rx.meta.n : '') : (got ? got + ' pieces buffered, waiting for header' : '');
+  if (n) $('rx-status').textContent = 'Receiving: ' + rx.meta.n;
+  drawMap();
+}
+function onRxText(t) {
+  if (t.charAt(0) === '{') {
+    let m; try { m = JSON.parse(t); } catch (e) { return; }
+    if (!m || !m.c || !m.n) return;
+    if (rx.meta && rx.meta.k === m.k && rx.meta.n === m.n) return;
+    if (rx.meta) rx.chunks = new Map();
+    rx.meta = m; rxProgress(); rxCheck(); return;
+  }
+  const i = t.indexOf(','); if (i < 1) return;
+  const idx = +t.slice(0, i); if (!Number.isInteger(idx) || idx < 0 || rx.chunks.has(idx)) return;
+  if (rx.meta && idx >= rx.meta.c) return;
+  try { rx.chunks.set(idx, fromB64(t.slice(i + 1))); } catch (e) { return; }
+  rxProgress(); rxCheck();
+}
+function rxCheck() {
+  const m = rx.meta; if (!m || rx.chunks.size < m.c) return;
+  const parts = []; let len = 0;
+  for (let i = 0; i < m.c; i++) { const p = rx.chunks.get(i); if (!p) return; parts.push(p); len += p.length; }
+  const all = new Uint8Array(len); let o = 0; parts.forEach((p) => { all.set(p, o); o += p.length; });
+  if (CRC(all) !== m.k) { $('rx-status').textContent = 'Checksum failed. Collecting again...'; rx.chunks = new Map(); rxProgress(); return; }
+  let out; try { out = pako.inflate(all); } catch (e) { $('rx-status').textContent = 'Could not decompress. Collecting again...'; rx.chunks = new Map(); rxProgress(); return; }
+  rx.blob = new Blob([out]); rx.name = m.n;
+  Cam.stop(); $('rx-status').textContent = 'Transfer complete'; $('rx-name').textContent = m.n + ' (' + fmt(out.length) + ')'; $('rx-done').hidden = false;
+  saveBlob(rx.blob, rx.name);
+}
+function initQrTx() {
+  wireSub('qrtx-sub', 'qrtx');
+  $('tx-start').addEventListener('click', startTx);
+  $('tx-stop').addEventListener('click', () => stopTx('Stopped'));
+  $('tx-pause').addEventListener('click', () => { tx.paused = !tx.paused; $('tx-pause').textContent = tx.paused ? 'Resume' : 'Pause'; });
+  $('tx-dwell').addEventListener('change', () => { $('tx-dwell').value = clampNum($('tx-dwell'), 20, 2000, 150); });
+  mountCam($('rx-cam'));
+  $('rx-start').addEventListener('click', async () => {
+    $('rx-status').textContent = 'Opening camera...';
+    try { await Cam.start($('rx-cam'), 'rx', onRxText); $('rx-status').textContent = rx.meta ? 'Receiving: ' + rx.meta.n : 'Scanning...'; }
+    catch (e) { $('rx-status').textContent = e.message; camUI(); }
+  });
+  $('rx-stop').addEventListener('click', () => { Cam.stop(); $('rx-status').textContent = 'Camera stopped'; });
+  $('rx-reset').addEventListener('click', rxReset);
+  $('rx-save').addEventListener('click', () => { if (rx.blob) saveBlob(rx.blob, rx.name); });
+  drawMap();
+}
 
-      const setZoom = (val) => {
-        if (val > maxZoom.value) return;
-        zoomLevel.value = val;
-        applyZoom();
-      };
-
-      /* ---------- camera helpers ---------- */
-      const waitForVideoDimensions = async (video, timeoutMs = 5000) => {
-        const start = Date.now();
-        while (Date.now() - start < timeoutMs) {
-          if (video.videoWidth > 0 && video.videoHeight > 0) return true;
-          await new Promise((r) => setTimeout(r, 100));
+/* ============================== P2P ============================== */
+const ICE = [
+  { urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+];
+const PREFIX = 'qrx-', ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const P = { peer: null, conn: null, queue: [], sending: false, cancel: false, cur: null, timer: null };
+const newCode = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => ALPHA[b % ALPHA.length]).join('');
+const mkPeer = (id) => new Peer(id, { debug: 1, config: { iceServers: ICE } });
+function p2pReset() {
+  clearTimeout(P.timer);
+  if (P.conn) { try { P.conn.close(); } catch (e) {} }
+  if (P.peer) { try { P.peer.destroy(); } catch (e) {} }
+  P.peer = null; P.conn = null; P.queue = []; P.sending = false; P.cancel = true; P.cur = null;
+}
+/* ---- sender ---- */
+function psCreate(tries) {
+  p2pReset(); P.cancel = false;
+  const code = newCode(); $('ps-status').textContent = 'Starting session...';
+  $('ps-create').hidden = true; $('ps-end').hidden = false; $('ps-list').innerHTML = '';
+  const peer = mkPeer(PREFIX + code); P.peer = peer;
+  peer.on('open', () => {
+    $('ps-code').textContent = code; $('ps-session').hidden = false; $('ps-tools').hidden = true;
+    drawQR($('ps-qr'), PREFIX + code, 'L', 300, 3);
+    $('ps-status').textContent = 'Waiting for the receiver to join...';
+  });
+  peer.on('connection', (c) => {
+    if (P.conn && P.conn.open) { c.on('open', () => c.close()); return; }
+    P.conn = c;
+    c.on('open', () => { $('ps-status').textContent = 'Connected. Choose files or send text.'; $('ps-tools').hidden = false; });
+    c.on('close', () => { $('ps-status').textContent = 'Receiver disconnected. Waiting for a new receiver...'; $('ps-tools').hidden = true; P.conn = null; P.cancel = true; });
+    c.on('error', () => { $('ps-status').textContent = 'Connection error'; });
+  });
+  peer.on('error', (e) => {
+    if (e.type === 'unavailable-id' && (tries || 0) < 5) { psCreate((tries || 0) + 1); return; }
+    $('ps-status').textContent = 'Error: ' + (e.type || 'unknown') + '. Check your internet connection.';
+  });
+  peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) {} });
+}
+function psEnd() {
+  p2pReset(); $('ps-session').hidden = true; $('ps-create').hidden = false; $('ps-end').hidden = true; $('ps-status').textContent = 'No session yet';
+}
+function psAdd(files) {
+  for (const f of files) {
+    const bar = mk('i'), st = mk('span', { className: 'muted', textContent: 'Queued' });
+    const el = mk('div', { className: 'item' }, [mk('span', { className: 'nm', textContent: f.name + ' (' + fmt(f.size) + ')' }), st, mk('div', { className: 'bar' }, [bar])]);
+    $('ps-list').appendChild(el); P.queue.push({ f, bar, st });
+  }
+  psRun();
+}
+async function psRun() {
+  if (P.sending) return; P.sending = true; P.cancel = false;
+  while (P.queue.length && P.conn && P.conn.open) {
+    const it = P.queue.shift(), f = it.f, id = Math.random().toString(36).slice(2);
+    it.st.textContent = 'Sending'; const t0 = Date.now(); let off = 0;
+    P.conn.send(JSON.stringify({ t: 'meta', id, name: f.name, size: f.size, mime: f.type }));
+    while (off < f.size) {
+      if (P.cancel || !P.conn || !P.conn.open) break;
+      const buf = await f.slice(off, off + 16384).arrayBuffer();
+      while (P.conn && P.conn.dataChannel && P.conn.dataChannel.bufferedAmount > 2097152) await sleep(30);
+      if (!P.conn || !P.conn.open) break;
+      P.conn.send(buf); off += buf.byteLength;
+      it.bar.style.width = Math.round((off / f.size) * 100) + '%';
+      it.st.textContent = Math.round((off / f.size) * 100) + '% - ' + fmt(off / Math.max(0.2, (Date.now() - t0) / 1000)) + '/s';
+    }
+    if (P.cancel || !P.conn || !P.conn.open) { it.st.textContent = 'Cancelled'; break; }
+    P.conn.send(JSON.stringify({ t: 'end', id })); it.bar.style.width = '100%'; it.st.textContent = 'Sent';
+  }
+  if (P.cancel) {
+    P.queue.forEach((q) => { q.st.textContent = 'Cancelled'; }); P.queue = [];
+    if (P.conn && P.conn.open) P.conn.send(JSON.stringify({ t: 'cancel' }));
+  } else $('ps-status').textContent = 'All files sent. Choose more or send text.';
+  P.sending = false;
+}
+/* ---- receiver ---- */
+function normCode(s) { s = (s || '').trim(); if (s.toLowerCase().startsWith(PREFIX)) s = s.slice(PREFIX.length); return s.toUpperCase(); }
+function prConnect(raw) {
+  const code = normCode(raw);
+  if (!/^[A-Z0-9]{4,12}$/.test(code)) { $('pr-status').textContent = 'That code does not look valid'; return; }
+  Cam.stop(); p2pReset(); P.cancel = false;
+  $('pr-status').textContent = 'Connecting...';
+  P.timer = setTimeout(() => { if (!P.conn || !P.conn.open) $('pr-status').textContent = 'Timed out. Make sure the sender is waiting, then try again.'; }, 20000);
+  const peer = mkPeer(undefined); P.peer = peer;
+  peer.on('open', () => {
+    const c = peer.connect(PREFIX + code, { reliable: true }); P.conn = c; let cur = null;
+    c.on('open', () => { clearTimeout(P.timer); $('pr-status').textContent = 'Connected. Waiting for files...'; $('pr-connect').hidden = true; $('pr-live').hidden = false; });
+    c.on('close', () => { $('pr-status').textContent = 'Sender disconnected'; });
+    c.on('error', () => { $('pr-status').textContent = 'Connection error'; });
+    c.on('data', (d) => {
+      if (typeof d === 'string') {
+        let m; try { m = JSON.parse(d); } catch (e) { return; }
+        if (m.t === 'meta') {
+          const bar = mk('i'), st = mk('span', { className: 'muted', textContent: 'Receiving' });
+          const el = mk('div', { className: 'item' }, [mk('span', { className: 'nm', textContent: m.name + ' (' + fmt(m.size) + ')' }), st, mk('div', { className: 'bar' }, [bar])]);
+          if (!$('pr-list').querySelector('.item')) $('pr-list').innerHTML = '';
+          $('pr-list').appendChild(el); cur = { m, parts: [], got: 0, bar, st, el, t0: Date.now() };
+          $('pr-status').textContent = 'Receiving ' + m.name;
+        } else if (m.t === 'end' && cur) {
+          const blob = new Blob(cur.parts, { type: cur.m.mime || 'application/octet-stream' }), name = cur.m.name;
+          cur.bar.style.width = '100%'; cur.st.textContent = 'Received';
+          const b = mk('button', { className: 'btn', textContent: 'Save' }); b.addEventListener('click', () => saveBlob(blob, name)); cur.el.insertBefore(b, cur.bar);
+          if ($('pr-auto').checked) saveBlob(blob, name);
+          $('pr-status').textContent = 'Received ' + name; cur = null;
+        } else if (m.t === 'cancel' && cur) { cur.st.textContent = 'Cancelled by sender'; cur = null; }
+        else if (m.t === 'text') {
+          if (!$('pr-texts').querySelector('.res')) $('pr-texts').innerHTML = '';
+          const row = mk('div', { className: 'res' }, [mk('pre', { textContent: m.text })]);
+          const b = mk('button', { className: 'btn', textContent: 'Copy' }); b.addEventListener('click', () => copyText(m.text)); row.appendChild(b);
+          $('pr-texts').insertBefore(row, $('pr-texts').firstChild);
         }
-        return false;
-      };
+      } else if (cur) {
+        const len = d.byteLength !== undefined ? d.byteLength : d.size || 0;
+        cur.parts.push(d); cur.got += len;
+        const pc = cur.m.size ? Math.min(100, Math.round((cur.got / cur.m.size) * 100)) : 100;
+        cur.bar.style.width = pc + '%'; cur.st.textContent = pc + '% - ' + fmt(cur.got / Math.max(0.2, (Date.now() - cur.t0) / 1000)) + '/s';
+      }
+    });
+  });
+  peer.on('error', (e) => { clearTimeout(P.timer); $('pr-status').textContent = e.type === 'peer-unavailable' ? 'Sender not found. Check the code.' : 'Connection failed: ' + (e.type || 'unknown'); });
+}
+function prDisconnect() {
+  p2pReset(); $('pr-live').hidden = true; $('pr-connect').hidden = false; $('pr-status').textContent = 'Not connected';
+  $('pr-list').innerHTML = '<p class="muted">Nothing received yet</p>'; $('pr-texts').innerHTML = '<p class="muted">Nothing received yet</p>';
+}
+function initP2P() {
+  wireSub('p2p-sub', 'p2p');
+  $('ps-create').addEventListener('click', () => psCreate(0));
+  $('ps-end').addEventListener('click', psEnd);
+  $('ps-copy').addEventListener('click', () => copyText($('ps-code').textContent));
+  $('ps-files').addEventListener('change', (e) => { psAdd(Array.from(e.target.files)); e.target.value = ''; });
+  $('ps-cancel').addEventListener('click', () => { P.cancel = true; });
+  $('ps-sendtxt').addEventListener('click', () => {
+    const t = $('ps-text').value; if (!t.trim() || !P.conn || !P.conn.open) return;
+    P.conn.send(JSON.stringify({ t: 'text', text: t })); $('ps-text').value = ''; toast('Text sent');
+  });
+  mountCam($('pr-cam'));
+  $('pr-start').addEventListener('click', async () => {
+    $('pr-status').textContent = 'Opening camera...';
+    try {
+      await Cam.start($('pr-cam'), 'pr', (t) => { const c = normCode(t); if (t.toLowerCase().startsWith(PREFIX) && /^[A-Z0-9]{4,12}$/.test(c)) prConnect(t); });
+      $('pr-status').textContent = 'Scanning for the sender code...';
+    } catch (e) { $('pr-status').textContent = e.message; camUI(); }
+  });
+  $('pr-stop').addEventListener('click', () => { Cam.stop(); $('pr-status').textContent = 'Camera stopped'; });
+  $('pr-go').addEventListener('click', () => prConnect($('pr-code').value));
+  $('pr-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') prConnect($('pr-code').value); });
+  $('pr-end').addEventListener('click', prDisconnect);
+}
 
-      const setupCanvas = () => {
-        if (!videoElement) return;
-        if (!canvas) {
-          canvas = document.createElement('canvas');
-          context = canvas.getContext('2d', { willReadFrequently: true });
-        }
-        canvas.width = videoElement.videoWidth || 640;
-        canvas.height = videoElement.videoHeight || 480;
-      };
-
-      const stopCamera = () => {
-        if (mediaStream) {
-          mediaStream.getTracks().forEach((t) => t.stop());
-          mediaStream = null;
-        }
-        videoTrack = null;
-        nativeZoomRange = null;
-        nativeZoomAvailable.value = false;
-        if (videoElement) {
-          try { videoElement.srcObject = null; } catch (e) {}
-        }
-      };
-
-      // Opens the camera. Only called from start_receiver.
-      const openCamera = async () => {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          cameraError.value = 'This browser does not expose a camera API.';
-          return false;
-        }
-        try {
-          stopCamera();
-          const constraints = {
-            video: {
-              facingMode: 'environment',
-              width: { ideal: 1920 },
-              height: { ideal: 1080 },
-            },
-            audio: false,
-          };
-          mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-
-          await nextTick();
-          videoElement = document.getElementById('videoElement');
-          if (!videoElement) {
-            cameraError.value = 'Video element could not be created.';
-            return false;
-          }
-          videoElement.srcObject = mediaStream;
-          videoElement.muted = true;
-          await videoElement.play().catch(() => {});
-          const dimsOk = await waitForVideoDimensions(videoElement);
-          if (!dimsOk) {
-            cameraError.value = 'Camera opened but did not deliver frames.';
-            return false;
-          }
-          setupCanvas();
-
-          videoTrack = mediaStream.getVideoTracks()[0];
-          if (videoTrack && typeof videoTrack.getCapabilities === 'function') {
-            try {
-              const caps = videoTrack.getCapabilities();
-              if (caps.zoom) {
-                nativeZoomRange = caps.zoom;
-                nativeZoomAvailable.value = true;
-                maxZoom.value = Math.min(caps.zoom.max || 4, 10);
-                try {
-                  await videoTrack.applyConstraints({
-                    advanced: [{ zoom: Math.max(caps.zoom.min || 1, 1) }],
-                  });
-                } catch (e) { /* ignore */ }
-              }
-            } catch (e) { /* ignore */ }
-          }
-          if (!nativeZoomAvailable.value) maxZoom.value = 4;
-
-          cameraError.value = '';
-          return true;
-        } catch (err) {
-          console.warn('Camera init error:', err);
-          if (err && err.name === 'NotAllowedError') {
-            cameraError.value = 'Camera permission was denied.';
-          } else if (err && err.name === 'NotFoundError') {
-            cameraError.value = 'No camera device was found.';
-          } else {
-            cameraError.value = 'The camera could not be opened.';
-          }
-          return false;
-        }
-      };
-
-      /* ---------- mode switch ---------- */
-      const setMode = async (newMode) => {
-        if (is_transferring.value) stop_transfer();
-        if (is_receiving.value) stop_receiver();
-        const previousMode = mode.value;
-        mode.value = newMode;
-
-        if (newMode === 'send') {
-          if (previousMode === 'receive') {
-            stopCamera();
-            cameraError.value = '';
-            zoomLevel.value = 1;
-            nativeZoomAvailable.value = false;
-          }
-          user_message.value = 'Choose a file to get started';
-          nextTick(() => {
-            initQrCode();
-          });
-        } else {
-          // Do NOT open the camera here. Wait for Start Receiver.
-          user_message.value = 'Press Start Receiver to open the camera';
-        }
-      };
-
-      /* ---------- sender logic ---------- */
-      const encode_data = (index, input_bytes) => {
-        const encoded_string = String.fromCharCode.apply(null, input_bytes);
-        const utf8Encoder = new TextEncoder();
-        const utf8_bytes = utf8Encoder.encode(encoded_string);
-        const encoded_data = btoa(String.fromCharCode.apply(null, utf8_bytes));
-        return index + ',' + encoded_data;
-      };
-
-      const stop_transfer = () => {
-        is_transferring.value = false;
-        transfer_cancelled = true;
-        transfer_progress.value = 0;
-        user_message.value = 'Choose a file to get started';
-        makeQrCode('Choose a file to get started');
-      };
-
-      const start_transfer = async () => {
-        const file_input = document.getElementById('file_input');
-        if (!file_input.files.length) {
-          user_message.value = 'Please select a file first';
-          return;
-        }
-        const file = file_input.files[0];
-        if (!file) return;
-
-        clampDwell();
-        if (!qrcode_object) initQrCode();
-
-        transfer_cancelled = false;
-        is_transferring.value = true;
-        transfer_progress.value = 0;
-
-        const data_array = pako.gzip(await file.arrayBuffer(), { level: 9 });
-        const total_chunks = Math.ceil(data_array.length / chunk_size);
-        const file_metadata_obj = { name: file.name, chunks: total_chunks };
-
-        makeQrCode(JSON.stringify(file_metadata_obj));
-        user_message.value = 'Starting data transfer ...';
-        await new Promise((r) => setTimeout(r, 700));
-        if (transfer_cancelled) return;
-
-        for (let i = 0; i < total_chunks; i++) {
-          if (transfer_cancelled || !is_transferring.value) break;
-
-          // Read the dwell value fresh each chunk so live edits apply.
-          let currentDwell = Number(dwellInput.value);
-          if (!Number.isFinite(currentDwell) || currentDwell < 20) currentDwell = SPEED.dwell_ms;
-
-          const start = i * chunk_size;
-          const chunk = data_array.subarray(start, start + chunk_size);
-          const encoded_data = encode_data(i, chunk);
-
-          makeQrCode(encoded_data);
-          transfer_progress.value = Math.round(((i + 1) / total_chunks) * 100);
-          user_message.value = `Transferring chunk ${i + 1} / ${total_chunks} ...`;
-
-          await new Promise((r) => setTimeout(r, currentDwell));
-        }
-
-        if (is_transferring.value) stop_transfer();
-      };
-
-      /* ---------- receiver logic ---------- */
-      const decode_data = (input_string) => {
-        const encoded_data = atob(input_string.split(',')[1]);
-        const encoded_array = Array.from(encoded_data, (char) => char.charCodeAt(0));
-        const utf8Decoder = new TextDecoder();
-        const output_string = utf8Decoder.decode(new Uint8Array(encoded_array));
-        const data_array = Array.from(output_string, (char) => char.charCodeAt(0));
-        return {
-          index: parseInt(input_string.split(',')[0]),
-          data: data_array,
-        };
-      };
-
-      const download_file = (data, fileName) => {
-        const blob = new Blob([data]);
-        const dummy_element = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        dummy_element.href = url;
-        dummy_element.download = fileName;
-        dummy_element.click();
-        URL.revokeObjectURL(url);
-      };
-
-      const stop_receiver = () => {
-        is_receiving.value = false;
-        decoded_chunks.value = {};
-        Object.assign(file_metadata, {});
-        // Release the camera when receiving stops.
-        stopCamera();
-        user_message.value = 'Press Start Receiver to open the camera';
-      };
-
-      const start_receiver = async () => {
-        if (is_receiving.value) return;
-        starting_camera.value = true;
-        cameraError.value = '';
-        user_message.value = 'Opening camera ...';
-
-        const ok = await openCamera();
-        starting_camera.value = false;
-
-        if (!ok) {
-          user_message.value = 'Camera could not be opened';
-          return;
-        }
-
-        decoded_chunks.value = {};
-        Object.assign(file_metadata, {});
-        is_receiving.value = true;
-        user_message.value = 'Scanning ...';
-
-        nextTick(() => applyZoom());
-
-        let lastSeen = '';
-        let lastSeenTime = 0;
-        const MIN_REPEAT_MS = SPEED.min_repeat_ms;
-
-        while (is_receiving.value) {
-          try {
-            await new Promise((r) => setTimeout(r, SPEED.scan_yield_ms));
-
-            const z = zoomLevel.value;
-            if (!nativeZoomAvailable.value && z > 1.05 && canvas.width > 0) {
-              const cropW = canvas.width / z;
-              const cropH = canvas.height / z;
-              const sx = (canvas.width - cropW) / 2;
-              const sy = (canvas.height - cropH) / 2;
-              context.drawImage(videoElement, sx, sy, cropW, cropH, 0, 0, canvas.width, canvas.height);
-            } else {
-              context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-            }
-            const image_data = context.getImageData(0, 0, canvas.width, canvas.height);
-            const symbols = await zbarWasm.scanImageData(image_data);
-            if (!symbols || !symbols.length) continue;
-
-            const decoded_text = symbols[0].decode();
-            const now = Date.now();
-            if (decoded_text === lastSeen && now - lastSeenTime < MIN_REPEAT_MS) continue;
-            lastSeen = decoded_text;
-            lastSeenTime = now;
-
-            if (decoded_text.includes('chunks')) {
-              Object.assign(file_metadata, JSON.parse(decoded_text));
-              decoded_chunks.value = {};
-              user_message.value = `Receiving file: ${file_metadata.name}`;
-            } else if (decoded_text.split(',').length === 2) {
-              const raw_data = decode_data(decoded_text);
-              decoded_chunks.value[raw_data.index] = raw_data.data;
-              if (file_metadata.chunks) {
-                user_message.value = `Receiving: ${Object.keys(decoded_chunks.value).length} / ${file_metadata.chunks} chunks`;
-              }
-            }
-
-            if (
-              file_metadata.chunks &&
-              Object.keys(decoded_chunks.value).length === file_metadata.chunks
-            ) {
-              user_message.value = 'Data Transfer Complete';
-              const output_array = [];
-              for (let i = 0; i < file_metadata.chunks; i++) {
-                output_array.push(...decoded_chunks.value[i]);
-              }
-              const output_unit8array = Uint8Array.from(output_array);
-              const inflated_array = pako.inflate(output_unit8array);
-              download_file(inflated_array, file_metadata.name);
-              stop_receiver();
-              break;
-            }
-          } catch (error) {
-            console.error('Error in receiver loop:', error);
-          }
-
-          if (!is_receiving.value) {
-            Object.assign(file_metadata, {});
-            decoded_chunks.value = {};
-            return;
-          }
-        }
-      };
-
-      /* ---------- lifecycle ---------- */
-      onMounted(() => {
-        nextTick(() => {
-          initQrCode();
-        });
-      });
-
-      onUnmounted(() => {
-        stopCamera();
-      });
-
-      return {
-        mode,
-        setMode,
-        user_message,
-        is_transferring,
-        is_receiving,
-        starting_camera,
-        cameraError,
-        transfer_progress,
-        dwellInput,
-        clampDwell,
-        chunk_size,
-        zoomLevel,
-        maxZoom,
-        nativeZoomAvailable,
-        videoRef,
-        applyZoom,
-        setZoom,
-        start_transfer,
-        stop_transfer,
-        start_receiver,
-        stop_receiver,
-        decoded_chunks,
-        file_metadata,
-      };
-    },
-  }).mount('#app');
+/* ============================== boot ============================== */
+function init() {
+  document.querySelectorAll('#nav button').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
+  initCreate(); initScan(); initQrTx(); initP2P(); camUI();
+  window.addEventListener('beforeunload', () => { Cam.stop(); p2pReset(); });
+}
+async function boot() {
+  const libs = { QRCode: () => window.QRCode, pako: () => window.pako, 'zbar-wasm': () => window.zbarWasm, PeerJS: () => window.Peer };
+  const missing = () => Object.keys(libs).filter((k) => !libs[k]());
+  const t0 = Date.now();
+  while (missing().length && Date.now() - t0 < 20000) await sleep(100);
+  if (missing().length) {
+    document.querySelector('#loader .spin').hidden = true;
+    $('loadErr').textContent = 'Could not load: ' + missing().join(', ') + '. Check your internet connection.';
+    $('loadErr').hidden = false; $('reload').hidden = false;
+    $('reload').addEventListener('click', () => location.reload());
+    return;
+  }
+  try { await zbarWasm.scanImageData(new ImageData(2, 2)); } catch (e) { /* warm-up only */ }
+  init();
+  $('loader').hidden = true; $('app').hidden = false;
+}
+window.addEventListener('load', boot);
 </script>
 </body>
 </html>
