@@ -756,7 +756,7 @@ function prConnect(raw) {
         } else if (m.t === 'end' && cur) {
           const blob = new Blob(cur.parts, { type: cur.m.mime || 'application/octet-stream' }), name = cur.m.name;
           cur.bar.style.width = '100%'; cur.st.textContent = 'Received';
-          const b = mk('button', { className: 'btn pri dl-btn', textContent: '⬇️ Save File' });
+          const b = mk('button', { className: 'btn pri dl-btn', textContent: 'Save File' });
           b.addEventListener('click', () => saveBlob(blob, name));
           // 下載按鈕放在檔案列的最下方
           cur.el.appendChild(b);
