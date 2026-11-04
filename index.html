@@ -62,11 +62,13 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
 .res{border:2px solid #000;padding:10px;margin-bottom:8px}
 .res pre{margin:0 0 8px;white-space:pre-wrap;word-break:break-all;font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;max-height:160px;overflow:auto}
 .code{font:700 34px/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:4px;text-align:center;border:2px solid #000;padding:8px;margin:10px 0}
-.item{border:2px solid #000;padding:8px 10px;margin-bottom:8px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.item .nm{word-break:break-all;font-weight:600}
+.item{border:2px solid #000;padding:10px;margin-bottom:8px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.item .nm{word-break:break-all;font-weight:600;font-size:15px}
 .item .bar{flex-basis:100%;height:10px;margin:0}
 .map{display:block;width:100%;height:56px;border:2px solid #000;image-rendering:pixelated;background:#fff}
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#000;color:#fff;padding:9px 16px;font-weight:600;z-index:40}
+/* 大下載按鈕 */
+.dl-btn{background:#000!important;color:#fff!important;padding:12px 20px!important;font-size:16px!important;margin-top:10px;width:100%;text-align:center;border-radius:4px;display:block;}
 </style>
 </head>
 <body>
@@ -196,7 +198,7 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
         <canvas id="rx-map" class="map" width="400" height="56"></canvas>
         <div id="rx-done" hidden class="box" style="margin-top:14px">
           <div id="rx-name" style="font-weight:700;word-break:break-all"></div>
-          <div class="row"><button class="btn pri" id="rx-save">Download again</button></div>
+          <div class="row"><button class="btn pri dl-btn" id="rx-save">⬇ Download File ⬇</button></div>
         </div>
       </div>
     </div>
@@ -631,7 +633,7 @@ function rxCheck() {
   let out; try { out = pako.inflate(all); } catch (e) { $('rx-status').textContent = 'Could not decompress. Collecting again...'; rx.chunks = new Map(); rxProgress(); return; }
   rx.blob = new Blob([out]); rx.name = m.n;
   Cam.stop(); $('rx-status').textContent = 'Transfer complete'; $('rx-name').textContent = m.n + ' (' + fmt(out.length) + ')'; $('rx-done').hidden = false;
-  saveBlob(rx.blob, rx.name);
+  try { saveBlob(rx.blob, rx.name); } catch (e) { /* the button below is the fallback */ }
 }
 function initQrTx() {
   wireSub('qrtx-sub', 'qrtx');
@@ -753,9 +755,20 @@ function prConnect(raw) {
         } else if (m.t === 'end' && cur) {
           const blob = new Blob(cur.parts, { type: cur.m.mime || 'application/octet-stream' }), name = cur.m.name;
           cur.bar.style.width = '100%'; cur.st.textContent = 'Received';
-          const b = mk('button', { className: 'btn', textContent: 'Save' }); b.addEventListener('click', () => saveBlob(blob, name)); cur.el.insertBefore(b, cur.bar);
-          if ($('pr-auto').checked) saveBlob(blob, name);
-          $('pr-status').textContent = 'Received ' + name; cur = null;
+          const b = mk('button', { className: 'btn pri dl-btn', textContent: '⬇️ Save File' });
+          b.addEventListener('click', () => saveBlob(blob, name));
+          // 下載按鈕放在檔案列的最下方
+          cur.el.appendChild(b);
+          if ($('pr-auto').checked) {
+            setTimeout(() => {
+              saveBlob(blob, name);
+              toast('Download triggered!');
+            }, 150);
+            $('pr-status').textContent = 'Received ' + name + ' (Auto-save triggered)';
+          } else {
+            $('pr-status').textContent = 'Received ' + name;
+          }
+          cur = null;
         } else if (m.t === 'cancel' && cur) { cur.st.textContent = 'Cancelled by sender'; cur = null; }
         else if (m.t === 'text') {
           if (!$('pr-texts').querySelector('.res')) $('pr-texts').innerHTML = '';
