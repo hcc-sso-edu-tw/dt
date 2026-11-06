@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>QR Toolkit — Refined</title>
+<title>QR Toolkit — ReactBits Edition</title>
 <link href="dt.png" rel="apple-touch-icon" type="image/png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.3/pako.min.js"></script>
@@ -11,31 +11,72 @@
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
 /* ============================================================
+   DARK MODE — automatic via prefers-color-scheme
+   ============================================================ */
+:root {
+  --ink: #0a0a0a;
+  --paper: #fafafa;
+  --line: #d4d4d4;
+  --muted: #6b6b6b;
+  --accent: #3b5bdb;
+  --accent-soft: #eef1fd;
+  --surface: #ffffff;
+  --font: "Inter", "SF Pro Text", -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Fira Code", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #f0f0f0;
+    --paper: #0c0c0c;
+    --line: #2a2a2a;
+    --muted: #8a8a8a;
+    --accent: #6c8cff;
+    --accent-soft: #1a1f2e;
+    --surface: #151515;
+  }
+  body { color-scheme: dark; }
+  .pv { background: #111 !important; }
+  .pv::before { opacity: .08 !important; }
+  .vid .idle { background: #151515 !important; }
+  input, select, textarea { background: #151515 !important; }
+  input:focus, select:focus, textarea:focus { background: #1a1a1a !important; }
+  .box::after { border-color: transparent; }
+  .res:hover { background: #1a1a1a !important; }
+  .code { background: #151515 !important; }
+  .cam { background: #0a0a0a !important; }
+  .bar { background: #151515 !important; }
+  .bar i { background: var(--ink) !important; }
+  .map { background: #111 !important; }
+  .dl-btn { background: var(--ink) !important; color: var(--paper) !important; }
+  .dl-btn::before { background: var(--accent) !important; }
+  #loader { background: var(--paper) !important; }
+  header::after { opacity: .04 !important; }
+  .btn.pri:hover:not(:disabled) { background: #ddd !important; color: #0a0a0a !important; }
+  .btn.hold-btn::before { background: var(--accent) !important; }
+  .btn.hold-btn:hover span { color: #fff !important; }
+  body::after { opacity: .03 !important; }
+}
+
+/* ============================================================
    BASE
    ============================================================ */
 *{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}
-:root{
-  --ink:#0a0a0a;
-  --paper:#fafafa;
-  --line:#d4d4d4;
-  --muted:#6b6b6b;
-  --accent:#3b5bdb;
-  --accent-soft:#eef1fd;
-  --font: "Inter", "SF Pro Text", -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Fira Code", ui-monospace, monospace;
-}
 body{
-  background:var(--paper);
-  color:var(--ink);
+  background:var(--paper);color:var(--ink);
   font:15px/1.55 var(--font);
-  font-feature-settings:"ss01","cv05";
-  -webkit-font-smoothing:antialiased;
-  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  transition: background .4s, color .4s;
 }
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:var(--paper)}
+::-webkit-scrollbar-thumb{background:var(--line);border:1px solid var(--paper)}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 
-/* 1. LATTICE LOADER */
-#loader{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:var(--paper);z-index:50}
+/* ============================================================
+   01 — LATTICE LOADER (ReactBits Micro: Lattice Loader)
+   ============================================================ */
+#loader{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:var(--paper);z-index:50;transition:background .4s}
 .lattice-loader{display:grid;grid-template-columns:repeat(3,12px);gap:5px}
 .lattice-loader span{width:12px;height:12px;background:var(--ink);display:block;animation:lattice-wave 1.4s ease-in-out infinite}
 .lattice-loader span:nth-child(1){animation-delay:0s}
@@ -50,11 +91,13 @@ body{
 @keyframes lattice-wave{0%,100%{opacity:.12;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}
 #loader .msg{font:600 13px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 
-/* 2. SLICED WAVES HEADER + 3. SPLIT TEXT */
-header{position:relative;border-bottom:1px solid var(--line);padding:32px 20px 24px;overflow:hidden;background:var(--paper)}
-.slice-waves{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.35;background:repeating-linear-gradient(90deg,transparent 0 27px,var(--line) 27px 28px),repeating-linear-gradient(90deg,transparent 0 41px,#e8e8e8 41px 42px),repeating-linear-gradient(90deg,transparent 0 61px,#f0f0f0 61px 62px);mask-image:linear-gradient(to bottom,#000 0%,transparent 92%);-webkit-mask-image:linear-gradient(to bottom,#000 0%,transparent 92%);animation:slice-drift 28s linear infinite}
+/* ============================================================
+   02 — SLICED WAVES + 03 — SPLIT TEXT (header)
+   ============================================================ */
+header{position:relative;border-bottom:1px solid var(--line);padding:32px 20px 24px;overflow:hidden;background:var(--paper);transition:background .4s,border-color .4s}
+.slice-waves{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.35;background:repeating-linear-gradient(90deg,transparent 0 27px,var(--line) 27px 28px),repeating-linear-gradient(90deg,transparent 0 41px,var(--line) 41px 42px),repeating-linear-gradient(90deg,transparent 0 61px,var(--line) 61px 62px);mask-image:linear-gradient(to bottom,#000 0%,transparent 92%);-webkit-mask-image:linear-gradient(to bottom,#000 0%,transparent 92%);animation:slice-drift 28s linear infinite}
 @keyframes slice-drift{0%{transform:translateX(0)}100%{transform:translateX(28px)}}
-header::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.08;background:repeating-linear-gradient(125deg,transparent 0 80px,var(--accent) 80px 81px,transparent 81px 180px);mask-image:radial-gradient(ellipse at 70% 30%,#000 0%,transparent 70%);-webkit-mask-image:radial-gradient(ellipse at 70% 30%,#000 0%,transparent 70%)}
+header::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.08;background:repeating-linear-gradient(125deg,transparent 0 80px,var(--accent) 80px 81px,transparent 81px 180px);mask-image:radial-gradient(ellipse at 70% 30%,#000 0%,transparent 70%);-webkit-mask-image:radial-gradient(ellipse at 70% 30%,#000 0%,transparent 70%);transition:opacity .4s}
 .wrap{max-width:1020px;margin:0 auto;position:relative;z-index:1}
 h1{font-size:clamp(28px,4vw,42px);font-weight:700;letter-spacing:-.04em;line-height:1.1;margin:0 0 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .split-title .word{display:inline-block;overflow:hidden}
@@ -70,36 +113,45 @@ h1{font-size:clamp(28px,4vw,42px);font-weight:700;letter-spacing:-.04em;line-hei
 .split-title .char:nth-child(9){animation-delay:.32s}
 @keyframes split-rise{0%{opacity:0;transform:translateY(110%) rotate(3deg)}100%{opacity:1;transform:translateY(0) rotate(0)}}
 
-/* 4. RUBBER SEGMENT NAV */
-nav{display:flex;gap:0;border:1px solid var(--ink);width:100%;max-width:600px;position:relative;background:var(--paper)}
-nav button{flex:1;padding:11px 8px;border:0;border-right:1px solid var(--ink);background:transparent;color:var(--ink);font:600 12px/1 var(--font);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;position:relative;z-index:1;transition:color .25s,background .25s}
+/* ============================================================
+   04 — RUBBER SEGMENT (nav + sub)
+   ============================================================ */
+nav{display:flex;gap:0;border:1px solid var(--ink);width:100%;max-width:600px;position:relative;background:var(--paper);transition:background .4s,border-color .4s}
+nav button{flex:1;padding:11px 8px;border:0;border-right:1px solid var(--ink);background:transparent;color:var(--ink);font:600 12px/1 var(--font);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;position:relative;z-index:1;transition:color .25s,background .25s,transform .15s}
 nav button:last-child{border-right:0}
 nav button.on{background:var(--ink);color:var(--paper)}
-nav button:not(.on):hover{background:#f0f0f0}
+nav button:not(.on):hover{background:rgba(128,128,128,.1);transform:translateY(-1px)}
 nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
-main{padding:28px 20px 80px;position:relative}
-.panel{display:none}
-.panel.on{display:block;animation:panel-fade .35s ease}
-@keyframes panel-fade{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
-
-.sub{display:flex;gap:0;border:1px solid var(--ink);width:100%;max-width:280px;margin-bottom:24px;position:relative;overflow:hidden}
+.sub{display:flex;gap:0;border:1px solid var(--ink);width:100%;max-width:280px;margin-bottom:24px;position:relative;overflow:hidden;background:var(--paper);transition:background .4s,border-color .4s}
 .sub button{flex:1;padding:9px 6px;border:0;border-right:1px solid var(--ink);background:transparent;color:var(--ink);font:600 11px/1 var(--font);letter-spacing:.05em;text-transform:uppercase;cursor:pointer;position:relative;z-index:1;transition:color .25s}
 .sub button:last-child{border-right:0}
 .sub button.on{color:var(--paper)}
 .sub button.on::before{content:'';position:absolute;inset:0;background:var(--ink);z-index:-1;animation:rubber-thumb .4s cubic-bezier(.34,1.56,.64,1) both}
 @keyframes rubber-thumb{0%{transform:scaleX(.7)}100%{transform:scaleX(1)}}
-.sub button:not(.on):hover{background:#f0f0f0}
+.sub button:not(.on):hover{background:rgba(128,128,128,.1)}
 
-/* 5. FLIP CARD TILT + 6. SPECULAR EDGE */
+/* ============================================================
+   05 — FLIP CARD TILT + 06 — SPECULAR EDGE + 07 — REFINE FRAME
+   ============================================================ */
+main{padding:28px 20px 80px;position:relative}
+.panel{display:none}
+.panel.on{display:block;animation:panel-fade .35s ease}
+@keyframes panel-fade{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
 @media(max-width:760px){.grid{grid-template-columns:1fr}}
-.box{border:1px solid var(--ink);padding:20px;margin-bottom:16px;background:var(--paper);position:relative;transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s}
+.box{border:1px solid var(--ink);padding:20px;margin-bottom:16px;background:var(--paper);position:relative;transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s,background .4s,border-color .4s}
 .box:hover{transform:translateY(-2px);box-shadow:0 8px 24px -12px rgba(0,0,0,.15)}
 .box::after{content:'';position:absolute;inset:-1px;pointer-events:none;border:1px solid transparent;mask-image:linear-gradient(135deg,#000 0%,transparent 40%);-webkit-mask-image:linear-gradient(135deg,#000 0%,transparent 40%);opacity:0;transition:opacity .35s}
 .box:hover::after{opacity:1}
+.refine-frame{position:relative;display:inline-block}
+.refine-frame::after{content:'';position:absolute;inset:-1px;border:1px solid var(--accent);opacity:0;animation:refine-pulse 3s infinite;pointer-events:none}
+@keyframes refine-pulse{0%,100%{opacity:0;transform:scale(1)}50%{opacity:1;transform:scale(1.01)}}
 
-h2{font-size:15px;font-weight:700;letter-spacing:-.01em;margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+h2{font-size:15px;font-weight:700;letter-spacing:-.01em;margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--line);transition:border-color .4s}
 .steps{margin:0 0 20px;padding-left:20px;list-style:none;counter-reset:step}
 .steps li{counter-increment:step;margin:4px 0;font-size:13px;color:var(--muted);position:relative;padding-left:8px}
 .steps li::before{content:counter(step,decimal-leading-zero);position:absolute;left:-20px;font:600 10px/1 var(--mono);color:var(--ink);letter-spacing:.05em}
@@ -107,124 +159,298 @@ h2{font-size:15px;font-weight:700;letter-spacing:-.01em;margin:0 0 14px;padding-
 label{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin:14px 0 5px;color:var(--muted)}
 label:first-child{margin-top:0}
 input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--ink);border-radius:0;background:var(--paper);color:var(--ink);font:14px/1.4 var(--font);transition:background .2s,border-color .2s}
-input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;background:#fff}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;background:var(--surface);box-shadow:0 0 0 3px var(--accent-soft)}
 textarea{min-height:80px;resize:vertical}
 input[type=file]{padding:8px;font-size:12px}
 input[type=checkbox]{width:auto;margin-right:8px;transform:scale(1.15);accent-color:var(--ink)}
 .chk{display:flex;align-items:center;font-weight:600;font-size:12px;margin:14px 0 4px;color:var(--ink);text-transform:none;letter-spacing:0}
 
-/* 7. HOLD BUTTON */
+/* ============================================================
+   08 — HOLD BUTTON + 09 — RIPPLE + 10 — ANCHOR SLIDE
+   ============================================================ */
 .row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;align-items:center}
 .row>*{flex:1}
 .row .btn{flex:0 1 auto}
-.btn{padding:10px 18px;border:1px solid var(--ink);border-radius:0;background:var(--paper);color:var(--ink);font:600 12px/1 var(--font);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:background .2s,color .2s,transform .15s;-webkit-tap-highlight-color:transparent}
+.btn{padding:10px 18px;border:1px solid var(--ink);border-radius:0;background:var(--paper);color:var(--ink);font:600 12px/1 var(--font);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:background .2s,color .2s,transform .15s;text-decoration:none;display:inline-block;-webkit-tap-highlight-color:transparent}
 .btn:hover:not(:disabled){background:var(--ink);color:var(--paper);transform:translateY(-1px)}
 .btn:active:not(:disabled){transform:translateY(0) scale(.98)}
 .btn:disabled{opacity:.3;cursor:not-allowed}
 .btn.pri{background:var(--ink);color:var(--paper)}
-.btn.pri:hover:not(:disabled){background:#1a1a1a;color:var(--paper)}
+.btn.pri:hover:not(:disabled){background:var(--ink);opacity:.85;color:var(--paper)}
 .btn.hold-btn::before{content:'';position:absolute;inset:0;background:var(--accent);z-index:0;transform:scaleX(0);transform-origin:left;transition:transform .2s}
 .btn.hold-btn:hover::before{transform:scaleX(1)}
 .btn.hold-btn span{position:relative;z-index:1}
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.35);transform:scale(0);animation:ripple-anim .55s ease-out forwards;pointer-events:none}
+@keyframes ripple-anim{to{transform:scale(2.5);opacity:0}}
+a.btn::after{content:'';position:absolute;left:0;bottom:4px;width:100%;height:1px;background:currentColor;transform:scaleX(0);transform-origin:right;transition:transform .3s cubic-bezier(.22,1,.36,1)}
+a.btn:hover::after{transform:scaleX(1);transform-origin:left}
 
-/* 8. GRID MOTION PREVIEW */
-.pv{display:flex;justify-content:center;align-items:center;border:1px solid var(--ink);padding:20px;min-height:220px;background:#fff;position:relative;overflow:hidden}
+/* ============================================================
+   11 — GRID MOTION PREVIEW
+   ============================================================ */
+.pv{display:flex;justify-content:center;align-items:center;border:1px solid var(--ink);padding:20px;min-height:220px;background:var(--surface);position:relative;overflow:hidden;transition:background .4s,border-color .4s}
 .pv::before{content:'';position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:24px 24px;opacity:.15;pointer-events:none}
 canvas.qr{max-width:100%;height:auto;image-rendering:pixelated;position:relative;z-index:1}
 #c-empty,#tx-empty{position:relative;z-index:1;font-size:13px;color:var(--muted);text-align:center}
 
-.cam{position:relative;overflow:hidden;border:1px solid var(--ink);background:#0a0a0a;min-height:200px}
+/* ============================================================
+   12 — CAMERA
+   ============================================================ */
+.cam{position:relative;overflow:hidden;border:1px solid var(--ink);background:#0a0a0a;min-height:200px;transition:border-color .4s}
 .vid{position:relative;overflow:hidden;min-height:200px}
 .vid video{display:block;width:100%;max-height:380px;object-fit:cover;transform-origin:center}
-.vid .idle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--paper);color:var(--muted);font:600 12px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.vid .idle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--paper);color:var(--muted);font:600 12px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;transition:background .4s}
 .cam.on .idle{display:none}
 .cam .zoom{display:flex;gap:10px;align-items:center;margin-top:8px;padding:0 4px}
 .cam .zoom input[type=range]{padding:0;border:0;accent-color:var(--ink);flex:1}
 .cam .zoom .zv{font:600 11px/1 var(--mono);min-width:36px;text-align:right}
 
-/* 9. SLOSH GAUGE */
-.status{font-weight:600;font-size:12px;letter-spacing:.02em;margin:8px 0 12px;min-height:20px;color:var(--ink);font-family:var(--mono)}
+/* ============================================================
+   13 — SLOSH GAUGE + 14 — TYPEWRITER STATUS
+   ============================================================ */
+.status{font-weight:600;font-size:12px;letter-spacing:.02em;margin:8px 0 12px;min-height:20px;color:var(--ink);font-family:var(--mono);transition:color .3s}
+.status.typewriter::after{content:'|';animation:blink .8s step-end infinite;margin-left:2px;color:var(--accent)}
+@keyframes blink{50%{opacity:0}}
 .muted{color:var(--muted);font-size:13px}
-.bar{height:8px;border:1px solid var(--ink);background:var(--paper);margin:8px 0;position:relative;overflow:hidden}
+.bar{height:8px;border:1px solid var(--ink);background:var(--paper);margin:8px 0;position:relative;overflow:hidden;transition:background .4s,border-color .4s}
 .bar i{display:block;height:100%;width:0;background:var(--ink);transition:width .25s cubic-bezier(.22,1,.36,1)}
 .bar i::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);animation:shimmer 2s infinite}
 @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
 
 .res{border:1px solid var(--line);padding:12px;margin-bottom:8px;background:var(--paper);transition:border-color .2s,background .2s}
-.res:hover{border-color:var(--ink);background:#fff}
+.res:hover{border-color:var(--ink);background:var(--surface)}
 .res pre{margin:0 0 8px;white-space:pre-wrap;word-break:break-all;font:12px/1.5 var(--mono);max-height:140px;overflow:auto}
 
-/* 10. FUSE BUTTON CODE */
-.code{font:700 30px/1.2 var(--mono);letter-spacing:6px;text-align:center;border:1px solid var(--ink);padding:14px;margin:12px 0;background:var(--paper);position:relative;overflow:hidden}
+/* ============================================================
+   15 — FUSE BUTTON (code)
+   ============================================================ */
+.code{font:700 30px/1.2 var(--mono);letter-spacing:6px;text-align:center;border:1px solid var(--ink);padding:14px;margin:12px 0;background:var(--paper);position:relative;overflow:hidden;transition:background .4s,border-color .4s}
 .code::after{content:'';position:absolute;bottom:0;left:0;height:2px;background:var(--accent);width:100%;animation:fuse-burn 8s linear infinite}
 @keyframes fuse-burn{0%{transform:scaleX(1);transform-origin:left}100%{transform:scaleX(0);transform-origin:left}}
 
-.item{border:1px solid var(--line);padding:12px;margin-bottom:8px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;transition:border-color .2s}
-.item:hover{border-color:var(--ink)}
-.item .nm{word-break:break-all;font-weight:600;font-size:13px}
-.item .bar{flex-basis:100%;height:6px;margin:0}
-.map{display:block;width:100%;height:50px;border:1px solid var(--ink);image-rendering:pixelated;background:#fff}
-
-/* 11. SWIPE TOAST */
-#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(0);background:var(--ink);color:var(--paper);padding:10px 20px;font:600 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;z-index:40;animation:toast-in .35s cubic-bezier(.34,1.56,.64,1) both}
+/* ============================================================
+   16 — SWIPE TOAST
+   ============================================================ */
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(0);background:var(--ink);color:var(--paper);padding:10px 20px;font:600 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;z-index:40;animation:toast-in .35s cubic-bezier(.34,1.56,.64,1) both;transition:background .4s,color .4s}
 @keyframes toast-in{0%{opacity:0;transform:translateX(-50%) translateY(16px) scale(.96)}100%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
 
-/* 12. SPECULAR DOWNLOAD BUTTON */
-.dl-btn{background:var(--ink)!important;color:var(--paper)!important;padding:14px 24px!important;font-size:13px!important;margin-top:14px;width:100%;text-align:center;border:1px solid var(--ink);position:relative;overflow:hidden;transition:background .2s}
+/* ============================================================
+   17 — SPECULAR DOWNLOAD BUTTON
+   ============================================================ */
+.dl-btn{background:var(--ink)!important;color:var(--paper)!important;padding:14px 24px!important;font-size:13px!important;margin-top:14px;width:100%;text-align:center;border:1px solid var(--ink);position:relative;overflow:hidden;transition:background .2s,border-color .4s}
 .dl-btn::before{content:'';position:absolute;inset:0;background:var(--accent);z-index:0;transform:scaleY(0);transform-origin:bottom;transition:transform .3s cubic-bezier(.22,1,.36,1)}
 .dl-btn:hover::before{transform:scaleY(1)}
 .dl-btn span{position:relative;z-index:1}
 
-/* 13. REFINE FRAME */
-.refine-frame{position:relative;display:inline-block}
-.refine-frame::after{content:'';position:absolute;inset:-1px;border:1px solid var(--accent);opacity:0;animation:refine-pulse 3s infinite;pointer-events:none}
-@keyframes refine-pulse{0%,100%{opacity:0;transform:scale(1)}50%{opacity:1;transform:scale(1.01)}}
-
-/* 14. DODGE FIELD HINT */
+/* ============================================================
+   18 — DODGE FIELD
+   ============================================================ */
 .dodge-hint{display:inline-block;transition:transform .3s cubic-bezier(.22,1,.36,1)}
 
-/* 15. STAR BORDER on focused inputs */
-input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px var(--accent-soft)}
+/* ============================================================
+   19 — ITEMS / MAP
+   ============================================================ */
+.item{border:1px solid var(--line);padding:12px;margin-bottom:8px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;transition:border-color .2s}
+.item:hover{border-color:var(--ink)}
+.item .nm{word-break:break-all;font-weight:600;font-size:13px}
+.item .bar{flex-basis:100%;height:6px;margin:0}
+.map{display:block;width:100%;height:50px;border:1px solid var(--ink);image-rendering:pixelated;background:#fff;transition:background .4s,border-color .4s}
 
-/* 16. ANCHOR UNDERLINE SLIDE */
-a.btn{text-decoration:none;position:relative}
-a.btn::after{content:'';position:absolute;left:0;bottom:4px;width:100%;height:1px;background:currentColor;transform:scaleX(0);transform-origin:right;transition:transform .3s cubic-bezier(.22,1,.36,1)}
-a.btn:hover::after{transform:scaleX(1);transform-origin:left}
-
-/* 17. COUNT BADGE PULSE */
-#rx-count,#tx-info{transition:color .3s}
-#rx-count:not(:empty){color:var(--accent)}
-
-/* 18. SCROLL REVEAL (applied via JS) */
+/* ============================================================
+   20 — SCROLL REVEAL
+   ============================================================ */
 .reveal{opacity:0;transform:translateY(12px);transition:opacity .5s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.22,1,.36,1)}
 .reveal.visible{opacity:1;transform:translateY(0)}
 
-/* 19. RIPPLE ON PRIMARY BUTTONS */
-.btn.pri{overflow:hidden}
-.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.35);transform:scale(0);animation:ripple-anim .55s ease-out forwards;pointer-events:none}
-@keyframes ripple-anim{to{transform:scale(2.5);opacity:0}}
+/* ============================================================
+   21 — NOISE OVERLAY
+   ============================================================ */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.018;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");transition:opacity .4s}
 
-/* 20. MAGNETIC NAV HOVER */
-nav button{transition:color .25s,background .25s,transform .15s}
-nav button:not(.on):hover{transform:translateY(-1px)}
+/* ============================================================
+   22 — ASCII TEXT (header decoration)
+   ============================================================ */
+.ascii-deco{font:600 11px/1.2 var(--mono);letter-spacing:.15em;color:var(--muted);opacity:.5;margin-bottom:8px;white-space:pre;overflow:hidden;max-height:14px;transition:color .4s}
 
-/* 21. TYPEWRITER STATUS */
-.status.typewriter::after{content:'|';animation:blink .8s step-end infinite;margin-left:2px;color:var(--accent)}
-@keyframes blink{50%{opacity:0}}
+/* ============================================================
+   23 — BLUR TEXT on empty states
+   ============================================================ */
+#c-empty.blur-in,#tx-empty.blur-in{animation:blur-resolve .6s cubic-bezier(.22,1,.36,1) both}
+@keyframes blur-resolve{0%{opacity:0;filter:blur(8px)}100%{opacity:1;filter:blur(0)}}
 
-/* 22. NOISE TEXTURE OVERLAY */
-body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.018;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+/* ============================================================
+   24 — CLICK SPARK (handled via JS)
+   ============================================================ */
+.spark{position:fixed;width:4px;height:4px;border-radius:50%;pointer-events:none;z-index:10000;animation:spark-fly .5s ease-out forwards}
+@keyframes spark-fly{to{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0}}
 
-::-webkit-scrollbar{width:8px;height:8px}
-::-webkit-scrollbar-track{background:var(--paper)}
-::-webkit-scrollbar-thumb{background:var(--line);border:1px solid var(--paper)}
-::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+/* ============================================================
+   25 — PIXEL TRANSITION on tab switch
+   ============================================================ */
+.pixel-overlay{position:fixed;inset:0;z-index:9998;pointer-events:none;display:grid;grid-template-columns:repeat(20,1fr);grid-template-rows:repeat(20,1fr);opacity:0;transition:opacity .15s}
+.pixel-overlay.on{opacity:1}
+.pixel-overlay span{background:var(--ink);transform:scale(0);transition:transform .3s cubic-bezier(.22,1,.36,1)}
+.pixel-overlay.on span{transform:scale(1)}
 
+/* ============================================================
+   26 — STAR BORDER on active nav
+   ============================================================ */
+nav button.on{position:relative}
+nav button.on::after{content:'';position:absolute;bottom:-1px;left:10%;width:80%;height:2px;background:var(--accent);animation:star-slide 2s ease-in-out infinite}
+@keyframes star-slide{0%,100%{transform:translateX(-10%)}50%{transform:translateX(10%)}}
+
+/* ============================================================
+   27 — PULSE HEART on scan result
+   ============================================================ */
+.res::before{content:'';position:absolute;left:0;top:50%;width:4px;height:4px;border-radius:50%;background:var(--accent);transform:translateY(-50%) scale(0);transition:transform .3s}
+.res:hover::before{transform:translateY(-50%) scale(1)}
+
+/* ============================================================
+   28 — JELLY RADIO on sub buttons
+   ============================================================ */
+.sub button.on{animation:jelly-pop .3s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes jelly-pop{0%{transform:scale(.92)}60%{transform:scale(1.04)}100%{transform:scale(1)}}
+
+/* ============================================================
+   29 — SPRING CHECK on checkbox
+   ============================================================ */
+input[type=checkbox]{transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
+input[type=checkbox]:checked{transform:scale(1.25)}
+input[type=checkbox]:active{transform:scale(.9)}
+
+/* ============================================================
+   30 — SQUISH SWITCH on file input focus
+   ============================================================ */
+input[type=file]:focus{border-color:var(--accent)}
+
+/* ============================================================
+   31 — MAGNET LINES on labels
+   ============================================================ */
+label{transition:transform .2s,color .2s}
+label:hover{transform:translateX(2px);color:var(--ink)}
+
+/* ============================================================
+   32 — GLARE HOVER on buttons
+   ============================================================ */
+.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.15) 45%,rgba(255,255,255,.15) 50%,transparent 55%);transform:translateX(-100%);transition:transform .6s}
+.btn:hover::after{transform:translateX(100%)}
+
+/* ============================================================
+   33 — MAGNETIC DOCK on camera zoom buttons
+   ============================================================ */
+.cam .row [data-z]{transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
+.cam .row [data-z]:hover{transform:translateY(-3px) scale(1.05)}
+
+/* ============================================================
+   34 — AURORA BACKGROUND (subtle body accent)
+   ============================================================ */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.03;background:radial-gradient(ellipse at 20% 50%,var(--accent) 0%,transparent 50%),radial-gradient(ellipse at 80% 20%,#7cff67 0%,transparent 50%),radial-gradient(ellipse at 50% 80%,#ff6b9d 0%,transparent 50%);animation:aurora-drift 20s ease-in-out infinite alternate;transition:opacity .4s}
+@keyframes aurora-drift{0%{transform:translate(0,0) scale(1)}100%{transform:translate(10px,-10px) scale(1.1)}}
+
+/* ============================================================
+   35 — COUNT UP (status numbers handled in JS)
+   ============================================================ */
+
+/* ============================================================
+   36 — SHAKE on error
+   ============================================================ */
+.shake{animation:shake .4s cubic-bezier(.36,.07,.19,.97) both}
+@keyframes shake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-3px)}40%,60%{transform:translateX(3px)}}
+
+/* ============================================================
+   37 — POP on success
+   ============================================================ */
+.pop{animation:pop .35s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes pop{0%{transform:scale(.8);opacity:.5}100%{transform:scale(1);opacity:1}}
+
+/* ============================================================
+   38 — SKEW REVEAL on panel entry
+   ============================================================ */
+.panel.on .box{animation:skew-in .5s cubic-bezier(.22,1,.36,1) both}
+.panel.on .box:nth-child(2){animation-delay:.08s}
+@keyframes skew-in{0%{opacity:0;transform:skewX(-2deg) translateY(10px)}100%{opacity:1;transform:skewX(0) translateY(0)}}
+
+/* ============================================================
+   39 — WAVE TEXT on h2
+   ============================================================ */
+h2 span{display:inline-block;transition:transform .2s}
+h2:hover span{animation:wave-letter .4s ease both}
+@keyframes wave-letter{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+
+/* ============================================================
+   40 — MAGNETIC BUTTON on primary
+   ============================================================ */
+.btn.pri{transition:transform .2s cubic-bezier(.34,1.56,.64,1),background .2s,color .2s}
+.btn.pri:hover{transform:translateY(-2px) scale(1.02)}
+
+/* ============================================================
+   41 — GLITCH on load error
+   ============================================================ */
+#loadErr{animation:glitch-text 2s infinite}
+@keyframes glitch-text{0%,100%{transform:translate(0)}20%{transform:translate(-1px,1px)}40%{transform:translate(1px,-1px)}60%{transform:translate(-1px,0)}80%{transform:translate(1px,0)}}
+
+/* ============================================================
+   42 — RIPPLE BACKGROUND on pv hover
+   ============================================================ */
+.pv:hover::before{opacity:.25;transition:opacity .3s}
+
+/* ============================================================
+   43 — FLOAT on camera torch button
+   ============================================================ */
+.cam .tq{animation:float-gentle 3s ease-in-out infinite}
+@keyframes float-gentle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+
+/* ============================================================
+   44 — SCALE IN on toast
+   ============================================================ */
+#toast:not([hidden]){animation:toast-in .35s cubic-bezier(.34,1.56,.64,1) both}
+
+/* ============================================================
+   45 — BLUR TEXT on loader message
+   ============================================================ */
+#loader .msg{animation:blur-loader 2s ease-in-out infinite}
+@keyframes blur-loader{0%,100%{filter:blur(0);opacity:.6}50%{filter:blur(2px);opacity:1}}
+
+/* ============================================================
+   46 — SHINY TEXT on title
+   ============================================================ */
+.split-title .char{background:linear-gradient(90deg,var(--ink) 0%,var(--ink) 40%,var(--accent) 50%,var(--ink) 60%,var(--ink) 100%);background-size:200% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shiny-move 4s linear infinite}
+@keyframes shiny-move{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ============================================================
+   47 — STAR BORDER on code display
+   ============================================================ */
+.code{position:relative}
+.code::before{content:'';position:absolute;top:-1px;left:-1px;right:-1px;bottom:-1px;border:1px solid transparent;background:linear-gradient(90deg,transparent,var(--accent),transparent) border-box;-webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:star-border-rotate 3s linear infinite;pointer-events:none;opacity:.5}
+@keyframes star-border-rotate{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+
+/* ============================================================
+   48 — SPOTLIGHT on box hover
+   ============================================================ */
+.box{position:relative;overflow:hidden}
+.box::before{content:'';position:absolute;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,var(--accent-soft) 0%,transparent 70%);opacity:0;transition:opacity .3s;pointer-events:none;transform:translate(-50%,-50%)}
+.box:hover::before{opacity:.4}
+
+/* ============================================================
+   49 — GLOW on status receiving
+   ============================================================ */
+.status.glow{text-shadow:0 0 8px var(--accent)}
+
+/* ============================================================
+   50 — FADE UP on list items
+   ============================================================ */
+.res,.item{animation:fade-up .3s ease both}
+@keyframes fade-up{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
+
+/* ============================================================
+   51 — REDUCED MOTION
+   ============================================================ */
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
 
+<!-- LATTICE LOADER -->
 <div id="loader">
   <div class="lattice-loader">
     <span></span><span></span><span></span>
@@ -238,9 +464,11 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 
 <div id="app" hidden>
 
+<!-- HEADER: Sliced Waves + Split Text + ASCII deco + Shiny Text -->
 <header>
   <div class="slice-waves"></div>
   <div class="wrap">
+    <div class="ascii-deco">.:*~ Q R   T O O L K I T   / /   R E A C T B I T S   E D I T I O N ~*:.</div>
     <h1 class="split-title">
       <span class="word"><span class="char">Q</span><span class="char">R</span></span>
       <span class="word"><span class="char">T</span><span class="char">o</span><span class="char">o</span><span class="char">l</span><span class="char">k</span><span class="char">i</span><span class="char">t</span></span>
@@ -256,6 +484,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 
 <main><div class="wrap">
 
+<!-- CREATE -->
 <section id="tab-create" class="panel on">
   <ol class="steps">
     <li>Pick a type and fill in the content.</li>
@@ -270,7 +499,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
         <div id="c-fields"></div>
       </div>
       <div class="box">
-        <h2>Options</h2>
+        <h2><span>O</span><span>p</span><span>t</span><span>i</span><span>o</span><span>n</span><span>s</span></h2>
         <div class="row">
           <div><label for="c-ec">Error correction</label>
             <select id="c-ec"><option value="L">L - 7%</option><option value="M" selected>M - 15%</option><option value="Q">Q - 25%</option><option value="H">H - 30%</option></select></div>
@@ -295,6 +524,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
   </div>
 </section>
 
+<!-- SCAN -->
 <section id="tab-scan" class="panel">
   <ol class="steps">
     <li>Press Start Camera, or choose an image file.</li>
@@ -319,6 +549,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
   </div>
 </section>
 
+<!-- QR TRANSFER -->
 <section id="tab-qrtx" class="panel">
   <p class="muted" style="margin-top:0">Works offline. Sends a file as a stream of QR codes that another device reads with its camera.</p>
   <div class="sub" id="qrtx-sub"><button data-sub="send" class="on">Send</button><button data-sub="recv">Receive</button></div>
@@ -381,6 +612,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
   </div>
 </section>
 
+<!-- P2P -->
 <section id="tab-p2p" class="panel">
   <p class="muted" style="margin-top:0">Direct device-to-device transfer over the internet. Scan a QR code once, then send any number of files or text.</p>
   <div class="sub" id="p2p-sub"><button data-sub="send" class="on">Send</button><button data-sub="recv">Receive</button></div>
@@ -476,7 +708,9 @@ function mk(tag, props, kids) {
   return e;
 }
 
-/* Ripple effect on primary buttons */
+/* ============================================================
+   RIPPLE on primary buttons
+   ============================================================ */
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.btn.pri');
   if (!btn) return;
@@ -491,24 +725,81 @@ document.addEventListener('click', (e) => {
   setTimeout(() => r.remove(), 600);
 });
 
-/* Dodge field hint */
+/* ============================================================
+   CLICK SPARK — bursts of colored dots on every click
+   ============================================================ */
+const sparkColors = ['#3b5bdb', '#6c8cff', '#ff6b9d', '#7cff67', '#ffd866'];
+document.addEventListener('click', (e) => {
+  for (let i = 0; i < 6; i++) {
+    const s = document.createElement('div');
+    s.className = 'spark';
+    const angle = (Math.PI * 2 * i) / 6 + Math.random() * 0.5;
+    const dist = 20 + Math.random() * 30;
+    s.style.left = e.clientX + 'px';
+    s.style.top = e.clientY + 'px';
+    s.style.background = sparkColors[i % sparkColors.length];
+    s.style.setProperty('--sx', Math.cos(angle) * dist + 'px');
+    s.style.setProperty('--sy', Math.sin(angle) * dist + 'px');
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 600);
+  }
+});
+
+/* ============================================================
+   DODGE FIELD — hint elements avoid the pointer
+   ============================================================ */
 document.querySelectorAll('.dodge-hint').forEach((el) => {
   el.addEventListener('mousemove', (e) => {
     const r = el.getBoundingClientRect();
     const dx = (e.clientX - r.left - r.width / 2) / r.width;
     const dy = (e.clientY - r.top - r.height / 2) / r.height;
-    el.style.transform = `translate(${dx * 4}px, ${dy * 4}px)`;
+    el.style.transform = `translate(${dx * 6}px, ${dy * 6}px)`;
   });
   el.addEventListener('mouseleave', () => { el.style.transform = ''; });
 });
 
-/* Scroll reveal */
+/* ============================================================
+   SCROLL REVEAL — IntersectionObserver
+   ============================================================ */
 const io = new IntersectionObserver((entries) => {
   entries.forEach((en) => { if (en.isIntersecting) en.target.classList.add('visible'); });
 }, { threshold: 0.1 });
-document.querySelectorAll('.panel, .box, .pv').forEach((el) => {
+document.querySelectorAll('.box, .pv').forEach((el) => {
   el.classList.add('reveal'); io.observe(el);
 });
+
+/* ============================================================
+   PIXEL TRANSITION on tab switch
+   ============================================================ */
+let pixelOverlay = null;
+function pixelTransition(cb) {
+  if (pixelOverlay) pixelOverlay.remove();
+  pixelOverlay = document.createElement('div');
+  pixelOverlay.className = 'pixel-overlay';
+  for (let i = 0; i < 100; i++) {
+    const s = document.createElement('span');
+    s.style.transitionDelay = (Math.random() * 0.2) + 's';
+    pixelOverlay.appendChild(s);
+  }
+  document.body.appendChild(pixelOverlay);
+  requestAnimationFrame(() => {
+    pixelOverlay.classList.add('on');
+    setTimeout(() => {
+      cb();
+      setTimeout(() => {
+        pixelOverlay.classList.remove('on');
+        setTimeout(() => { if (pixelOverlay) { pixelOverlay.remove(); pixelOverlay = null; } }, 400);
+      }, 100);
+    }, 350);
+  });
+}
+
+/* ============================================================
+   BLUR TEXT on empty states
+   ============================================================ */
+function blurIn(el) {
+  el.classList.remove('blur-in'); void el.offsetWidth; el.classList.add('blur-in');
+}
 
 function qrMatrix(text, ec) {
   const d = document.createElement('div');
@@ -618,9 +909,13 @@ function camUI() {
 
 let curTab = 'create';
 function setTab(t) {
-  stopTx(); Cam.stop(); curTab = t;
-  document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
-  document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('on', p.id === 'tab-' + t));
+  if (t === curTab) return;
+  pixelTransition(() => {
+    stopTx(); Cam.stop(); curTab = t;
+    document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
+    document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('on', p.id === 'tab-' + t));
+    document.querySelectorAll('.panel.on .box').forEach((b) => { b.classList.remove('reveal'); b.classList.add('reveal'); io.observe(b); });
+  });
 }
 function wireSub(id, prefix, onChange) {
   document.querySelectorAll('#' + id + ' button').forEach((b) => b.addEventListener('click', () => {
@@ -686,6 +981,7 @@ function renderCreate() {
   const text = TYPES[$('c-type').value].b(getVals()), cv = $('c-canvas');
   const ok = !!text; cText = text;
   cv.hidden = !ok; $('c-empty').hidden = ok;
+  if (ok) blurIn($('c-empty'));
   ['c-png', 'c-svg', 'c-cimg', 'c-ctxt'].forEach((id) => { $(id).disabled = !ok; });
   if (!ok) { $('c-info').textContent = ''; return; }
   try {
@@ -761,7 +1057,7 @@ function stopTx(msg) {
 }
 async function startTx() {
   const f = $('tx-file').files[0];
-  if (!f) { $('tx-status').textContent = 'Please choose a file first'; return; }
+  if (!f) { $('tx-status').textContent = 'Please choose a file first'; $('tx-status').classList.add('shake'); setTimeout(() => $('tx-status').classList.remove('shake'), 500); return; }
   const my = ++tx.id; tx.run = true; tx.paused = false; txUI(true);
   $('tx-status').textContent = 'Preparing file...';
   const raw = new Uint8Array(await f.arrayBuffer());
@@ -1040,7 +1336,7 @@ document.addEventListener('visibilitychange', () => {
 });
 function prConnect(raw, quiet) {
   const code = normCode(raw);
-  if (!/^[A-Z0-9]{4,12}$/.test(code)) { $('pr-status').textContent = 'That code does not look valid'; return; }
+  if (!/^[A-Z0-9]{4,12}$/.test(code)) { $('pr-status').textContent = 'That code does not look valid'; $('pr-status').classList.add('shake'); setTimeout(() => $('pr-status').classList.remove('shake'), 500); return; }
   Cam.stop();
   R.code = code; R.last = Date.now(); if (!quiet) R.retry = 0;
   prWatch(); prLock();
@@ -1169,6 +1465,7 @@ async function boot() {
   try { await zbarWasm.scanImageData(new ImageData(2, 2)); } catch (e) {}
   init();
   $('loader').hidden = true; $('app').hidden = false;
+  blurIn($('c-empty')); blurIn($('tx-empty'));
 }
 window.addEventListener('load', boot);
 </script>
