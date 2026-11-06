@@ -647,16 +647,19 @@ const ICE = [
   { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
   { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
 ];
-const PREFIX = 'qrx-', ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const P = { peer: null, conns: [], queue: [], sending: false, cancel: false };
+const PREFIX = 'qrx-', ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', CHUNK = 16384, HIGH_WATER = 1048576;
+const P = { peer: null, conns: [], count: 0 };
+const R = { peer: null, conn: null };
 const newCode = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => ALPHA[b % ALPHA.length]).join('');
 const mkPeer = (id) => new Peer(id, { debug: 1, config: { iceServers: ICE } });
+const connOpts = { reliable: true, serialization: 'raw' };
 
 function p2pTeardown() {
-  P.queue.forEach((q) => { q.st.textContent = 'Cancelled'; });
-  P.queue = []; P.sending = false; P.cancel = true;
-  P.conns.forEach((c) => { try { c.close(); } catch (e) {} });
-  P.conns = [];
+  P.conns.forEach((c) => {
+    if (c._s) { c._s.cancel = true; c._s.queue.forEach((j) => { j.st.textContent = 'Cancelled'; }); c._s.queue = []; }
+    try { c.close(); } catch (e) {}
+  });
+  P.conns = []; P.count = 0;
   if (P.peer) { try { P.peer.destroy(); } catch (e) {} }
   P.peer = null;
 }
@@ -664,13 +667,24 @@ function p2pTeardown() {
 function psUpdateStatus() {
   const open = P.conns.filter((c) => c.open);
   $('ps-tools').hidden = open.length === 0;
-  if (open.length === 0) $('ps-status').textContent = 'Waiting for the receiver to join...';
-  else if (open.length === 1) $('ps-status').textContent = 'Connected. Choose files or send text.';
-  else $('ps-status').textContent = 'Connected to ' + open.length + ' receivers.';
+  if (!P.peer) $('ps-status').textContent = 'No session yet';
+  else if (open.length === 0) $('ps-status').textContent = 'Waiting for receivers to join...';
+  else if (open.length === 1) $('ps-status').textContent = 'Connected to 1 receiver. Choose files or send text.';
+  else $('ps-status').textContent = 'Connected to ' + open.length + ' receivers. Choose files or send text.';
+}
+
+function psDrop(c) {
+  if (c._s) {
+    c._s.cancel = true;
+    c._s.queue.forEach((j) => { j.st.textContent = 'Disconnected'; });
+    c._s.queue = [];
+  }
+  P.conns = P.conns.filter((x) => x !== c);
+  psUpdateStatus();
 }
 
 function psCreate(tries) {
-  p2pTeardown(); P.cancel = false;
+  p2pTeardown();
   const code = newCode(); $('ps-status').textContent = 'Starting session...';
   $('ps-create').hidden = true; $('ps-end').hidden = false; $('ps-list').innerHTML = '';
   const peer = mkPeer(PREFIX + code); P.peer = peer;
@@ -680,116 +694,130 @@ function psCreate(tries) {
     psUpdateStatus();
   });
   peer.on('connection', (c) => {
+    c._s = { queue: [], busy: false, cancel: false, n: ++P.count };
     c.on('open', () => {
+      if (P.peer !== peer) { try { c.close(); } catch (e) {} return; }
       P.conns.push(c);
       psUpdateStatus();
-      if (P.queue.length) psRun();
     });
-    c.on('close', () => {
-      P.conns = P.conns.filter((x) => x !== c);
-      psUpdateStatus();
-    });
-    c.on('error', () => {
-      P.conns = P.conns.filter((x) => x !== c);
-      psUpdateStatus();
-    });
+    c.on('close', () => psDrop(c));
+    c.on('error', () => psDrop(c));
   });
   peer.on('error', (e) => {
     if (e.type === 'unavailable-id' && (tries || 0) < 5) { psCreate((tries || 0) + 1); return; }
+    if (P.peer !== peer) return;
     $('ps-status').textContent = 'Error: ' + (e.type || 'unknown') + '. Check your internet connection.';
   });
-  peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) {} });
+  peer.on('disconnected', () => { if (P.peer === peer) { try { peer.reconnect(); } catch (e) {} } });
 }
+
 function psEnd() {
   p2pTeardown();
   $('ps-session').hidden = true; $('ps-create').hidden = false; $('ps-end').hidden = true;
-  $('ps-tools').hidden = true; $('ps-status').textContent = 'No session yet';
+  $('ps-tools').hidden = true; $('ps-list').innerHTML = ''; $('ps-status').textContent = 'No session yet';
 }
+
 function psAdd(files) {
+  const targets = P.conns.filter((c) => c.open);
+  if (!targets.length) return;
   for (const f of files) {
-    const bar = mk('i'), st = mk('span', { className: 'muted', textContent: 'Queued' });
-    const el = mk('div', { className: 'item' }, [mk('span', { className: 'nm', textContent: f.name + ' (' + fmt(f.size) + ')' }), st, mk('div', { className: 'bar' }, [bar])]);
-    $('ps-list').appendChild(el); P.queue.push({ f, bar, st });
+    const rows = mk('div', { style: 'flex-basis:100%;width:100%' });
+    const el = mk('div', { className: 'item' }, [mk('span', { className: 'nm', textContent: f.name + ' (' + fmt(f.size) + ')' }), rows]);
+    $('ps-list').appendChild(el);
+    const id = Math.random().toString(36).slice(2);
+    targets.forEach((c) => {
+      const bar = mk('i'), st = mk('span', { className: 'muted', textContent: 'Queued' });
+      rows.appendChild(mk('div', { style: 'margin-top:6px' }, [
+        mk('div', { className: 'muted', textContent: 'Receiver ' + c._s.n + ': ' }), st,
+        mk('div', { className: 'bar', style: 'height:10px;margin:4px 0 0' }, [bar])
+      ]));
+      c._s.queue.push({ f, id, bar, st });
+    });
   }
-  psRun();
+  targets.forEach(psPump);
 }
-async function psRun() {
-  if (P.sending) return;
-  P.sending = true; P.cancel = false;
+
+async function psPump(c) {
+  const s = c._s;
+  if (!s || s.busy) return;
+  s.busy = true;
   try {
-    while (P.queue.length) {
-      const targets = P.conns.filter((c) => c.open);
-      if (targets.length === 0) break;
-      const it = P.queue.shift(), f = it.f, id = Math.random().toString(36).slice(2);
-      it.st.textContent = 'Sending'; const t0 = Date.now(); let off = 0;
-      const metaMsg = JSON.stringify({ t: 'meta', id, name: f.name, size: f.size, mime: f.type });
-      targets.forEach((c) => { try { c.send(metaMsg); } catch (e) {} });
-      while (off < f.size) {
-        if (P.cancel) break;
-        const live = P.conns.filter((c) => c.open);
-        if (live.length === 0) break;
-        const buf = await f.slice(off, off + 16384).arrayBuffer();
-        let waited = 0;
-        while (waited < 10000) {
-          const busy = live.some((c) => c.dataChannel && c.dataChannel.bufferedAmount > 2097152);
-          if (!busy) break;
-          await sleep(30); waited += 30;
+    while (s.queue.length && c.open) {
+      s.cancel = false;
+      const job = s.queue.shift(), f = job.f;
+      job.st.textContent = 'Sending';
+      const t0 = Date.now(); let off = 0;
+      try {
+        c.send(JSON.stringify({ t: 'meta', id: job.id, name: f.name, size: f.size, mime: f.type }));
+        while (off < f.size && c.open && !s.cancel) {
+          const buf = await f.slice(off, off + CHUNK).arrayBuffer();
+          while (c.open && !s.cancel && c.dataChannel && c.dataChannel.bufferedAmount > HIGH_WATER) await sleep(20);
+          if (!c.open || s.cancel) break;
+          c.send(buf);
+          off += buf.byteLength;
+          job.bar.style.width = Math.round((off / f.size) * 100) + '%';
+          job.st.textContent = Math.round((off / f.size) * 100) + '% - ' + fmt(off / Math.max(0.2, (Date.now() - t0) / 1000)) + '/s';
         }
-        const still = P.conns.filter((c) => c.open);
-        if (still.length === 0) break;
-        still.forEach((c) => { try { c.send(buf); } catch (e) {} });
-        off += buf.byteLength;
-        it.bar.style.width = Math.round((off / f.size) * 100) + '%';
-        it.st.textContent = Math.round((off / f.size) * 100) + '% - ' + fmt(off / Math.max(0.2, (Date.now() - t0) / 1000)) + '/s';
-      }
-      const done = P.conns.filter((c) => c.open);
-      if (P.cancel || off < f.size) {
-        it.st.textContent = 'Cancelled';
-        done.forEach((c) => { try { c.send(JSON.stringify({ t: 'cancel', id })); } catch (e) {} });
-        continue;
-      }
-      const endMsg = JSON.stringify({ t: 'end', id });
-      done.forEach((c) => { try { c.send(endMsg); } catch (e) {} });
-      it.bar.style.width = '100%'; it.st.textContent = 'Sent';
-    }
-    if (P.cancel) {
-      P.queue.forEach((q) => { q.st.textContent = 'Cancelled'; });
-      P.queue = [];
-      const live = P.conns.filter((c) => c.open);
-      live.forEach((c) => { try { c.send(JSON.stringify({ t: 'cancel' })); } catch (e) {} });
-    } else if (P.conns.filter((c) => c.open).length) {
-      $('ps-status').textContent = 'All files sent. Choose more or send text.';
+        if (off >= f.size && c.open) {
+          c.send(JSON.stringify({ t: 'end', id: job.id }));
+          job.bar.style.width = '100%'; job.st.textContent = 'Sent';
+          continue;
+        }
+        if (c.open) c.send(JSON.stringify({ t: 'cancel', id: job.id }));
+      } catch (e) {}
+      job.st.textContent = c.open ? 'Cancelled' : 'Disconnected';
     }
   } finally {
-    P.sending = false;
-    if (P.queue.length && P.conns.filter((c) => c.open).length) psRun();
+    s.busy = false;
   }
+  if (c.open && !s.queue.length && !s.cancel && P.conns.every((x) => !x._s || (!x._s.busy && !x._s.queue.length))) {
+    $('ps-status').textContent = 'All files sent. Choose more or send text.';
+  }
+  if (c.open && s.queue.length) psPump(c);
 }
+
+function psCancelAll() {
+  P.conns.forEach((c) => {
+    if (!c._s) return;
+    c._s.cancel = true;
+    c._s.queue.forEach((j) => { j.st.textContent = 'Cancelled'; });
+    c._s.queue = [];
+  });
+}
+
 function normCode(s) { s = (s || '').trim(); if (s.toLowerCase().startsWith(PREFIX)) s = s.slice(PREFIX.length); return s.toUpperCase(); }
+
 function prConnect(raw) {
   const code = normCode(raw);
   if (!/^[A-Z0-9]{4,12}$/.test(code)) { $('pr-status').textContent = 'That code does not look valid'; return; }
   Cam.stop();
-  if (P.peer) { try { P.peer.destroy(); } catch (e) {} }
-  if (P.conns.length) { P.conns.forEach((c) => { try { c.close(); } catch (e) {} }); P.conns = []; }
+  if (R.conn) { try { R.conn.close(); } catch (e) {} R.conn = null; }
+  if (R.peer) { try { R.peer.destroy(); } catch (e) {} R.peer = null; }
   $('pr-status').textContent = 'Connecting...';
-  const peer = mkPeer(undefined); P.peer = peer;
-  const timer = setTimeout(() => { if (!P.conns.some((c) => c.open)) $('pr-status').textContent = 'Timed out. Make sure the sender is waiting, then try again.'; }, 20000);
+  const peer = mkPeer(undefined); R.peer = peer;
+  const timer = setTimeout(() => { if (R.peer === peer && !(R.conn && R.conn.open)) $('pr-status').textContent = 'Timed out. Make sure the sender is waiting, then try again.'; }, 20000);
   peer.on('open', () => {
-    const c = peer.connect(PREFIX + code, { reliable: true }); P.conns = [c]; let cur = null;
+    const c = peer.connect(PREFIX + code, connOpts); R.conn = c; let cur = null;
     c.on('open', () => { clearTimeout(timer); $('pr-status').textContent = 'Connected. Waiting for files...'; $('pr-connect').hidden = true; $('pr-live').hidden = false; });
-    c.on('close', () => { $('pr-status').textContent = 'Sender disconnected'; });
-    c.on('error', () => { $('pr-status').textContent = 'Connection error'; });
+    c.on('close', () => {
+      if (R.conn !== c) return;
+      if (cur) { cur.st.textContent = 'Interrupted'; cur = null; }
+      $('pr-status').textContent = 'Sender disconnected';
+    });
+    c.on('error', () => { if (R.conn === c) $('pr-status').textContent = 'Connection error'; });
     c.on('data', (d) => {
       if (typeof d === 'string') {
         let m; try { m = JSON.parse(d); } catch (e) { return; }
         if (m.t === 'meta') {
+          if (cur) cur.st.textContent = 'Interrupted';
           const bar = mk('i'), st = mk('span', { className: 'muted', textContent: 'Receiving' });
           const el = mk('div', { className: 'item' }, [mk('span', { className: 'nm', textContent: m.name + ' (' + fmt(m.size) + ')' }), st, mk('div', { className: 'bar' }, [bar])]);
           if (!$('pr-list').querySelector('.item')) $('pr-list').innerHTML = '';
           $('pr-list').appendChild(el); cur = { m, parts: [], got: 0, bar, st, el, t0: Date.now() };
           $('pr-status').textContent = 'Receiving ' + m.name;
-        } else if (m.t === 'end' && cur) {
+        } else if (m.t === 'end') {
+          if (!cur || cur.m.id !== m.id) return;
+          if (cur.got !== cur.m.size) { cur.st.textContent = 'Failed (incomplete)'; $('pr-status').textContent = 'Transfer failed: ' + cur.m.name; cur = null; return; }
           const blob = new Blob(cur.parts, { type: cur.m.mime || 'application/octet-stream' }), name = cur.m.name;
           cur.bar.style.width = '100%'; cur.st.textContent = 'Received';
           const b = mk('button', { className: 'btn pri dl-btn', textContent: 'Save File' });
@@ -797,13 +825,14 @@ function prConnect(raw) {
           cur.el.appendChild(b);
           if ($('pr-auto').checked) {
             setTimeout(() => { saveBlob(blob, name); toast('Download triggered'); }, 150);
-            $('pr-status').textContent = 'Received ' + name + ' (auto-saved)';
+            $('pr-status').textContent = 'Received ' + name + ' (auto-saved). Waiting for more...';
           } else {
-            $('pr-status').textContent = 'Received ' + name;
+            $('pr-status').textContent = 'Received ' + name + '. Waiting for more...';
           }
           cur = null;
         } else if (m.t === 'cancel') {
-          if (cur) { cur.st.textContent = 'Cancelled by sender'; cur = null; }
+          if (cur && (!m.id || cur.m.id === m.id)) { cur.st.textContent = 'Cancelled by sender'; cur = null; }
+          $('pr-status').textContent = 'Connected. Waiting for files...';
         } else if (m.t === 'text') {
           if (!$('pr-texts').querySelector('.res')) $('pr-texts').innerHTML = '';
           const row = mk('div', { className: 'res' }, [mk('pre', { textContent: m.text })]);
@@ -818,23 +847,25 @@ function prConnect(raw) {
       }
     });
   });
-  peer.on('error', (e) => { clearTimeout(timer); $('pr-status').textContent = e.type === 'peer-unavailable' ? 'Sender not found. Check the code.' : 'Connection failed: ' + (e.type || 'unknown'); });
+  peer.on('error', (e) => { clearTimeout(timer); if (R.peer === peer) $('pr-status').textContent = e.type === 'peer-unavailable' ? 'Sender not found. Check the code.' : 'Connection failed: ' + (e.type || 'unknown'); });
 }
+
 function prDisconnect() {
-  P.conns.forEach((c) => { try { c.close(); } catch (e) {} });
-  P.conns = [];
-  if (P.peer) { try { P.peer.destroy(); } catch (e) {} }
-  P.peer = null;
+  if (R.conn) { try { R.conn.close(); } catch (e) {} }
+  R.conn = null;
+  if (R.peer) { try { R.peer.destroy(); } catch (e) {} }
+  R.peer = null;
   $('pr-live').hidden = true; $('pr-connect').hidden = false; $('pr-status').textContent = 'Not connected';
   $('pr-list').innerHTML = '<p class="muted">Nothing received yet</p>'; $('pr-texts').innerHTML = '<p class="muted">Nothing received yet</p>';
 }
+
 function initP2P() {
   wireSub('p2p-sub', 'p2p');
   $('ps-create').addEventListener('click', () => psCreate(0));
   $('ps-end').addEventListener('click', psEnd);
   $('ps-copy').addEventListener('click', () => copyText($('ps-code').textContent));
   $('ps-files').addEventListener('change', (e) => { psAdd(Array.from(e.target.files)); e.target.value = ''; });
-  $('ps-cancel').addEventListener('click', () => { P.cancel = true; });
+  $('ps-cancel').addEventListener('click', psCancelAll);
   $('ps-sendtxt').addEventListener('click', () => {
     const t = $('ps-text').value;
     const live = P.conns.filter((c) => c.open);
@@ -860,7 +891,7 @@ function initP2P() {
 function init() {
   document.querySelectorAll('#nav button').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
   initCreate(); initScan(); initQrTx(); initP2P(); camUI();
-  window.addEventListener('beforeunload', () => { Cam.stop(); p2pTeardown(); });
+  window.addEventListener('beforeunload', () => { Cam.stop(); p2pTeardown(); prDisconnect(); });
 }
 async function boot() {
   const libs = { QRCode: () => window.QRCode, pako: () => window.pako, 'zbar-wasm': () => window.zbarWasm, PeerJS: () => window.Peer };
