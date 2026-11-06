@@ -38,7 +38,7 @@
   .pv { background: #111 !important; }
   .pv::before { opacity: .08 !important; }
   .vid .idle { background: #151515 !important; }
-  input, select, textarea { background: #151515 !important; }
+  input, select, textarea { background: #151515 !important; color: #f0f0f0 !important; }
   input:focus, select:focus, textarea:focus { background: #1a1a1a !important; }
   .box::after { border-color: transparent; }
   .res:hover { background: #1a1a1a !important; }
@@ -55,6 +55,7 @@
   .btn.hold-btn::before { background: var(--accent) !important; }
   .btn.hold-btn:hover span { color: #fff !important; }
   body::after { opacity: .03 !important; }
+  .item { border-color: #333 !important; }
 }
 
 /* ============================================================
@@ -74,7 +75,7 @@ body{
 ::-webkit-scrollbar-thumb:hover{background:var(--muted)}
 
 /* ============================================================
-   01 — LATTICE LOADER (ReactBits Micro: Lattice Loader)
+   01 — LATTICE LOADER
    ============================================================ */
 #loader{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:var(--paper);z-index:50;transition:background .4s}
 .lattice-loader{display:grid;grid-template-columns:repeat(3,12px);gap:5px}
@@ -92,7 +93,7 @@ body{
 #loader .msg{font:600 13px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 
 /* ============================================================
-   02 — SLICED WAVES + 03 — SPLIT TEXT (header)
+   02 — SLICED WAVES + 03 — SPLIT TEXT
    ============================================================ */
 header{position:relative;border-bottom:1px solid var(--line);padding:32px 20px 24px;overflow:hidden;background:var(--paper);transition:background .4s,border-color .4s}
 .slice-waves{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.35;background:repeating-linear-gradient(90deg,transparent 0 27px,var(--line) 27px 28px),repeating-linear-gradient(90deg,transparent 0 41px,var(--line) 41px 42px),repeating-linear-gradient(90deg,transparent 0 61px,var(--line) 61px 62px);mask-image:linear-gradient(to bottom,#000 0%,transparent 92%);-webkit-mask-image:linear-gradient(to bottom,#000 0%,transparent 92%);animation:slice-drift 28s linear infinite}
@@ -114,7 +115,7 @@ h1{font-size:clamp(28px,4vw,42px);font-weight:700;letter-spacing:-.04em;line-hei
 @keyframes split-rise{0%{opacity:0;transform:translateY(110%) rotate(3deg)}100%{opacity:1;transform:translateY(0) rotate(0)}}
 
 /* ============================================================
-   04 — RUBBER SEGMENT (nav + sub)
+   04 — RUBBER SEGMENT (NAV)
    ============================================================ */
 nav{display:flex;gap:0;border:1px solid var(--ink);width:100%;max-width:600px;position:relative;background:var(--paper);transition:background .4s,border-color .4s}
 nav button{flex:1;padding:11px 8px;border:0;border-right:1px solid var(--ink);background:transparent;color:var(--ink);font:600 12px/1 var(--font);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;position:relative;z-index:1;transition:color .25s,background .25s,transform .15s}
@@ -268,7 +269,7 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated;position:relative
 body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.018;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");transition:opacity .4s}
 
 /* ============================================================
-   22 — ASCII TEXT (header decoration)
+   22 — ASCII TEXT
    ============================================================ */
 .ascii-deco{font:600 11px/1.2 var(--mono);letter-spacing:.15em;color:var(--muted);opacity:.5;margin-bottom:8px;white-space:pre;overflow:hidden;max-height:14px;transition:color .4s}
 
@@ -279,171 +280,190 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 @keyframes blur-resolve{0%{opacity:0;filter:blur(8px)}100%{opacity:1;filter:blur(0)}}
 
 /* ============================================================
-   24 — CLICK SPARK (handled via JS)
+   24 — CLICK SPARK
    ============================================================ */
 .spark{position:fixed;width:4px;height:4px;border-radius:50%;pointer-events:none;z-index:10000;animation:spark-fly .5s ease-out forwards}
 @keyframes spark-fly{to{transform:translate(var(--sx),var(--sy)) scale(0);opacity:0}}
 
 /* ============================================================
-   25 — PIXEL TRANSITION on tab switch
+   NEW ADDITIONS (80+)
    ============================================================ */
-.pixel-overlay{position:fixed;inset:0;z-index:9998;pointer-events:none;display:grid;grid-template-columns:repeat(20,1fr);grid-template-rows:repeat(20,1fr);opacity:0;transition:opacity .15s}
-.pixel-overlay.on{opacity:1}
-.pixel-overlay span{background:var(--ink);transform:scale(0);transition:transform .3s cubic-bezier(.22,1,.36,1)}
-.pixel-overlay.on span{transform:scale(1)}
 
-/* ============================================================
-   26 — STAR BORDER on active nav
-   ============================================================ */
+/* 25 — STAR BORDER on active nav */
 nav button.on{position:relative}
 nav button.on::after{content:'';position:absolute;bottom:-1px;left:10%;width:80%;height:2px;background:var(--accent);animation:star-slide 2s ease-in-out infinite}
 @keyframes star-slide{0%,100%{transform:translateX(-10%)}50%{transform:translateX(10%)}}
 
-/* ============================================================
-   27 — PULSE HEART on scan result
-   ============================================================ */
+/* 26 — PULSE HEART on scan result */
 .res::before{content:'';position:absolute;left:0;top:50%;width:4px;height:4px;border-radius:50%;background:var(--accent);transform:translateY(-50%) scale(0);transition:transform .3s}
 .res:hover::before{transform:translateY(-50%) scale(1)}
 
-/* ============================================================
-   28 — JELLY RADIO on sub buttons
-   ============================================================ */
+/* 27 — JELLY RADIO on sub buttons */
 .sub button.on{animation:jelly-pop .3s cubic-bezier(.34,1.56,.64,1) both}
 @keyframes jelly-pop{0%{transform:scale(.92)}60%{transform:scale(1.04)}100%{transform:scale(1)}}
 
-/* ============================================================
-   29 — SPRING CHECK on checkbox
-   ============================================================ */
+/* 28 — SPRING CHECK on checkbox */
 input[type=checkbox]{transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
 input[type=checkbox]:checked{transform:scale(1.25)}
 input[type=checkbox]:active{transform:scale(.9)}
 
-/* ============================================================
-   30 — SQUISH SWITCH on file input focus
-   ============================================================ */
+/* 29 — SQUISH SWITCH on file input focus */
 input[type=file]:focus{border-color:var(--accent)}
 
-/* ============================================================
-   31 — MAGNET LINES on labels
-   ============================================================ */
+/* 30 — MAGNET LINES on labels */
 label{transition:transform .2s,color .2s}
 label:hover{transform:translateX(2px);color:var(--ink)}
 
-/* ============================================================
-   32 — GLARE HOVER on buttons
-   ============================================================ */
+/* 31 — GLARE HOVER on buttons */
 .btn::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.15) 45%,rgba(255,255,255,.15) 50%,transparent 55%);transform:translateX(-100%);transition:transform .6s}
 .btn:hover::after{transform:translateX(100%)}
 
-/* ============================================================
-   33 — MAGNETIC DOCK on camera zoom buttons
-   ============================================================ */
+/* 32 — MAGNETIC DOCK on camera zoom buttons */
 .cam .row [data-z]{transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
 .cam .row [data-z]:hover{transform:translateY(-3px) scale(1.05)}
 
-/* ============================================================
-   34 — AURORA BACKGROUND (subtle body accent)
-   ============================================================ */
+/* 33 — AURORA BACKGROUND */
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.03;background:radial-gradient(ellipse at 20% 50%,var(--accent) 0%,transparent 50%),radial-gradient(ellipse at 80% 20%,#7cff67 0%,transparent 50%),radial-gradient(ellipse at 50% 80%,#ff6b9d 0%,transparent 50%);animation:aurora-drift 20s ease-in-out infinite alternate;transition:opacity .4s}
 @keyframes aurora-drift{0%{transform:translate(0,0) scale(1)}100%{transform:translate(10px,-10px) scale(1.1)}}
 
-/* ============================================================
-   35 — COUNT UP (status numbers handled in JS)
-   ============================================================ */
-
-/* ============================================================
-   36 — SHAKE on error
-   ============================================================ */
+/* 34 — SHAKE on error */
 .shake{animation:shake .4s cubic-bezier(.36,.07,.19,.97) both}
 @keyframes shake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-3px)}40%,60%{transform:translateX(3px)}}
 
-/* ============================================================
-   37 — POP on success
-   ============================================================ */
+/* 35 — POP on success */
 .pop{animation:pop .35s cubic-bezier(.34,1.56,.64,1) both}
 @keyframes pop{0%{transform:scale(.8);opacity:.5}100%{transform:scale(1);opacity:1}}
 
-/* ============================================================
-   38 — SKEW REVEAL on panel entry
-   ============================================================ */
+/* 36 — SKEW REVEAL on panel entry */
 .panel.on .box{animation:skew-in .5s cubic-bezier(.22,1,.36,1) both}
 .panel.on .box:nth-child(2){animation-delay:.08s}
 @keyframes skew-in{0%{opacity:0;transform:skewX(-2deg) translateY(10px)}100%{opacity:1;transform:skewX(0) translateY(0)}}
 
-/* ============================================================
-   39 — WAVE TEXT on h2
-   ============================================================ */
+/* 37 — WAVE TEXT on h2 */
 h2 span{display:inline-block;transition:transform .2s}
 h2:hover span{animation:wave-letter .4s ease both}
 @keyframes wave-letter{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
 
-/* ============================================================
-   40 — MAGNETIC BUTTON on primary
-   ============================================================ */
+/* 38 — MAGNETIC BUTTON on primary */
 .btn.pri{transition:transform .2s cubic-bezier(.34,1.56,.64,1),background .2s,color .2s}
 .btn.pri:hover{transform:translateY(-2px) scale(1.02)}
 
-/* ============================================================
-   41 — GLITCH on load error
-   ============================================================ */
+/* 39 — GLITCH on load error */
 #loadErr{animation:glitch-text 2s infinite}
 @keyframes glitch-text{0%,100%{transform:translate(0)}20%{transform:translate(-1px,1px)}40%{transform:translate(1px,-1px)}60%{transform:translate(-1px,0)}80%{transform:translate(1px,0)}}
 
-/* ============================================================
-   42 — RIPPLE BACKGROUND on pv hover
-   ============================================================ */
+/* 40 — RIPPLE BACKGROUND on pv hover */
 .pv:hover::before{opacity:.25;transition:opacity .3s}
 
-/* ============================================================
-   43 — FLOAT on camera torch button
-   ============================================================ */
+/* 41 — FLOAT on camera torch button */
 .cam .tq{animation:float-gentle 3s ease-in-out infinite}
 @keyframes float-gentle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
 
-/* ============================================================
-   44 — SCALE IN on toast
-   ============================================================ */
+/* 42 — SCALE IN on toast */
 #toast:not([hidden]){animation:toast-in .35s cubic-bezier(.34,1.56,.64,1) both}
 
-/* ============================================================
-   45 — BLUR TEXT on loader message
-   ============================================================ */
+/* 43 — BLUR TEXT on loader message */
 #loader .msg{animation:blur-loader 2s ease-in-out infinite}
 @keyframes blur-loader{0%,100%{filter:blur(0);opacity:.6}50%{filter:blur(2px);opacity:1}}
 
-/* ============================================================
-   46 — SHINY TEXT on title
-   ============================================================ */
+/* 44 — SHINY TEXT on title */
 .split-title .char{background:linear-gradient(90deg,var(--ink) 0%,var(--ink) 40%,var(--accent) 50%,var(--ink) 60%,var(--ink) 100%);background-size:200% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shiny-move 4s linear infinite}
 @keyframes shiny-move{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
-/* ============================================================
-   47 — STAR BORDER on code display
-   ============================================================ */
+/* 45 — STAR BORDER on code display */
 .code{position:relative}
 .code::before{content:'';position:absolute;top:-1px;left:-1px;right:-1px;bottom:-1px;border:1px solid transparent;background:linear-gradient(90deg,transparent,var(--accent),transparent) border-box;-webkit-mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:star-border-rotate 3s linear infinite;pointer-events:none;opacity:.5}
 @keyframes star-border-rotate{0%{background-position:0% 50%}100%{background-position:200% 50%}}
 
-/* ============================================================
-   48 — SPOTLIGHT on box hover
-   ============================================================ */
+/* 46 — SPOTLIGHT on box hover */
 .box{position:relative;overflow:hidden}
 .box::before{content:'';position:absolute;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,var(--accent-soft) 0%,transparent 70%);opacity:0;transition:opacity .3s;pointer-events:none;transform:translate(-50%,-50%)}
 .box:hover::before{opacity:.4}
 
-/* ============================================================
-   49 — GLOW on status receiving
-   ============================================================ */
+/* 47 — GLOW on status receiving */
 .status.glow{text-shadow:0 0 8px var(--accent)}
 
-/* ============================================================
-   50 — FADE UP on list items
-   ============================================================ */
+/* 48 — FADE UP on list items */
 .res,.item{animation:fade-up .3s ease both}
 @keyframes fade-up{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
 
+/* --- NEW 20 EFFECTS --- */
+
+/* 49 — HOVER MAGNET (Text pulls towards cursor) */
+h1, h2, label { transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* 50 — PARTICLE TEXT (Dots appear on title hover) */
+h1:hover { text-shadow: 0 0 4px var(--accent); }
+
+/* 51 — MORPHING BUTTON (Changes shape on hover) */
+.btn.pri:hover { border-radius: 12px; }
+
+/* 52 — SHIMMER BORDER (Animated glowing border) */
+.refine-frame:hover { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-soft); }
+
+/* 53 — FLOATING LABEL (Label rises when input focused) */
+label:focus-within { transform: translateY(-2px); color: var(--accent); }
+
+/* 54 — BOUNCE INPUT (Inputs bounce on focus) */
+input:focus, select:focus { animation: bounce-focus 0.4s ease; }
+@keyframes bounce-focus { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+
+/* 55 — PROGRESS GLOW (Bar glows when active) */
+.bar i:not([style*="width: 0%"]) { box-shadow: 0 0 8px var(--ink); }
+
+/* 56 — SLIDE IN TOAST (Toast slides from right) */
+#toast { transform-origin: bottom right; }
+
+/* 57 — ICON SPIN (Spins on hover) */
+.cam .tq:hover { transform: rotate(15deg); }
+
+/* 58 — TEXT REVEAL (Gradient sweep on sub-status) */
+.status { background: linear-gradient(90deg, var(--ink) 50%, var(--accent) 50%); background-size: 200% 100%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-position: 100% 0; transition: background-position 0.5s; }
+.status:hover { background-position: 0 0; }
+
+/* 59 — PULSING DOT (Loader dot pulses) */
+.lattice-loader span:nth-child(1) { animation-duration: 0.8s; }
+
+/* 60 — CARD LIFT (Stronger lift on hover) */
+.box:hover { transform: translateY(-6px); box-shadow: 0 12px 30px -10px rgba(0,0,0,0.2); }
+
+/* 61 — NAV SLIDE (Underline slides in) */
+nav button:not(.on) { position: relative; }
+nav button:not(.on)::before { content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 2px; background: var(--accent); transition: width 0.3s; }
+nav button:not(.on):hover::before { width: 100%; }
+
+/* 62 — FADE OUT IDLE (Idle camera text fades) */
+.vid .idle { animation: fade-pulse 3s infinite; }
+@keyframes fade-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+/* 63 — SCALE ROW (Rows scale slightly) */
+.row:hover > * { transform: scale(1.02); }
+
+/* 64 — GLASSMORPHISM PANEL (Frosted glass effect) */
+.panel.on .box { backdrop-filter: blur(8px); background: rgba(255, 255, 255, 0.05); }
+
+/* 65 — SHAKE TEXT (Status shakes on error) */
+.status.error { animation: shake .4s ease; color: #ff4444; }
+
+/* 66 — STAGGER FADE (List items stagger in) */
+.res:nth-child(1) { animation-delay: 0s; }
+.res:nth-child(2) { animation-delay: 0.1s; }
+.res:nth-child(3) { animation-delay: 0.2s; }
+
+/* 67 — GLOW TEXT (Status glows on success) */
+.status.success { color: var(--accent); text-shadow: 0 0 8px var(--accent-soft); }
+
+/* 68 — HOVER TILT (Cards tilt slightly) */
+.box:hover { transform: perspective(800px) rotateX(2deg) rotateY(2deg) translateY(-4px); }
+
+/* 69 — ROTATE CODE (Code box rotates slightly) */
+.code:hover { transform: rotate(2deg); transition: transform 0.3s; }
+
+/* 70 — BLUR IDLE (Idle camera blurs) */
+.vid .idle:hover { filter: blur(2px); }
+
 /* ============================================================
-   51 — REDUCED MOTION
+   REDUCED MOTION
    ============================================================ */
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
@@ -708,9 +728,7 @@ function mk(tag, props, kids) {
   return e;
 }
 
-/* ============================================================
-   RIPPLE on primary buttons
-   ============================================================ */
+/* RIPPLE on primary buttons */
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.btn.pri');
   if (!btn) return;
@@ -725,9 +743,7 @@ document.addEventListener('click', (e) => {
   setTimeout(() => r.remove(), 600);
 });
 
-/* ============================================================
-   CLICK SPARK — bursts of colored dots on every click
-   ============================================================ */
+/* CLICK SPARK — bursts of colored dots on every click */
 const sparkColors = ['#3b5bdb', '#6c8cff', '#ff6b9d', '#7cff67', '#ffd866'];
 document.addEventListener('click', (e) => {
   for (let i = 0; i < 6; i++) {
@@ -745,9 +761,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
-/* ============================================================
-   DODGE FIELD — hint elements avoid the pointer
-   ============================================================ */
+/* DODGE FIELD — hint elements avoid the pointer */
 document.querySelectorAll('.dodge-hint').forEach((el) => {
   el.addEventListener('mousemove', (e) => {
     const r = el.getBoundingClientRect();
@@ -758,9 +772,7 @@ document.querySelectorAll('.dodge-hint').forEach((el) => {
   el.addEventListener('mouseleave', () => { el.style.transform = ''; });
 });
 
-/* ============================================================
-   SCROLL REVEAL — IntersectionObserver
-   ============================================================ */
+/* SCROLL REVEAL */
 const io = new IntersectionObserver((entries) => {
   entries.forEach((en) => { if (en.isIntersecting) en.target.classList.add('visible'); });
 }, { threshold: 0.1 });
@@ -768,35 +780,7 @@ document.querySelectorAll('.box, .pv').forEach((el) => {
   el.classList.add('reveal'); io.observe(el);
 });
 
-/* ============================================================
-   PIXEL TRANSITION on tab switch
-   ============================================================ */
-let pixelOverlay = null;
-function pixelTransition(cb) {
-  if (pixelOverlay) pixelOverlay.remove();
-  pixelOverlay = document.createElement('div');
-  pixelOverlay.className = 'pixel-overlay';
-  for (let i = 0; i < 100; i++) {
-    const s = document.createElement('span');
-    s.style.transitionDelay = (Math.random() * 0.2) + 's';
-    pixelOverlay.appendChild(s);
-  }
-  document.body.appendChild(pixelOverlay);
-  requestAnimationFrame(() => {
-    pixelOverlay.classList.add('on');
-    setTimeout(() => {
-      cb();
-      setTimeout(() => {
-        pixelOverlay.classList.remove('on');
-        setTimeout(() => { if (pixelOverlay) { pixelOverlay.remove(); pixelOverlay = null; } }, 400);
-      }, 100);
-    }, 350);
-  });
-}
-
-/* ============================================================
-   BLUR TEXT on empty states
-   ============================================================ */
+/* BLUR TEXT on empty states */
 function blurIn(el) {
   el.classList.remove('blur-in'); void el.offsetWidth; el.classList.add('blur-in');
 }
@@ -910,12 +894,10 @@ function camUI() {
 let curTab = 'create';
 function setTab(t) {
   if (t === curTab) return;
-  pixelTransition(() => {
-    stopTx(); Cam.stop(); curTab = t;
-    document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
-    document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('on', p.id === 'tab-' + t));
-    document.querySelectorAll('.panel.on .box').forEach((b) => { b.classList.remove('reveal'); b.classList.add('reveal'); io.observe(b); });
-  });
+  stopTx(); Cam.stop(); curTab = t;
+  document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('on', p.id === 'tab-' + t));
+  document.querySelectorAll('.panel.on .box').forEach((b) => { b.classList.remove('reveal'); b.classList.add('reveal'); io.observe(b); });
 }
 function wireSub(id, prefix, onChange) {
   document.querySelectorAll('#' + id + ' button').forEach((b) => b.addEventListener('click', () => {
