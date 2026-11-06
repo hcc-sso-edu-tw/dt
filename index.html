@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link href="dt.png" rel="apple-touch-icon" type="image/png">
 <title>QR Toolkit</title>
+<link href="dt.png" rel="apple-touch-icon" type="image/png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.3/pako.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.9.15/dist/index.js"></script>
@@ -246,7 +246,7 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
       </div>
     </div>
     <div id="pr-live" hidden>
-      <div class="row"><label class="chk" style="margin:0"><input id="pr-auto" type="checkbox" checked />Save files automatically</label><button class="btn" id="pr-end">Disconnect</button></div>
+      <div class="row"><label class="chk" style="margin:0"><input id="pr-auto" type="checkbox" />Save files automatically</label><button class="btn" id="pr-end">Disconnect</button></div>
       <div class="grid">
         <div><h2>Files</h2><div id="pr-list"><p class="muted">Nothing received yet</p></div></div>
         <div><h2>Text</h2><div id="pr-texts"><p class="muted">Nothing received yet</p></div></div>
@@ -649,13 +649,14 @@ const ICE = [
   { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
 ];
 const PREFIX = 'qrx-', ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', CHUNK = 16384, HIGH_WATER = 1048576;
-const P = { peer: null, conns: [], count: 0 };
-const R = { peer: null, conn: null };
+const P = { peer: null, conns: [], count: 0, timer: null };
+const R = { peer: null, conn: null, code: '', last: 0, timer: null, retry: 0, lock: null };
 const newCode = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => ALPHA[b % ALPHA.length]).join('');
 const mkPeer = (id) => new Peer(id, { debug: 1, config: { iceServers: ICE } });
 const connOpts = { reliable: true, serialization: 'raw' };
 
 function p2pTeardown() {
+  clearInterval(P.timer); P.timer = null;
   P.conns.forEach((c) => {
     if (c._s) { c._s.cancel = true; c._s.queue.forEach((j) => { j.st.textContent = 'Cancelled'; }); c._s.queue = []; }
     try { c.close(); } catch (e) {}
@@ -695,15 +696,33 @@ function psCreate(tries) {
     psUpdateStatus();
   });
   peer.on('connection', (c) => {
-    c._s = { queue: [], busy: false, cancel: false, n: ++P.count };
+    c._s = { queue: [], busy: false, cancel: false, n: ++P.count, last: Date.now(), jobs: new Map() };
     c.on('open', () => {
       if (P.peer !== peer) { try { c.close(); } catch (e) {} return; }
+      c._s.last = Date.now();
       P.conns.push(c);
       psUpdateStatus();
+    });
+    c.on('data', (d) => {
+      c._s.last = Date.now();
+      if (typeof d !== 'string') return;
+      let m; try { m = JSON.parse(d); } catch (e) { return; }
+      if (m.t === 'ack') {
+        const j = c._s.jobs.get(m.id);
+        if (j) { j.st.textContent = 'Received by receiver'; c._s.jobs.delete(m.id); }
+      }
     });
     c.on('close', () => psDrop(c));
     c.on('error', () => psDrop(c));
   });
+  clearInterval(P.timer);
+  P.timer = setInterval(() => {
+    P.conns.slice().forEach((c) => {
+      if (!c.open) { psDrop(c); return; }
+      if (Date.now() - c._s.last > 25000) { try { c.close(); } catch (e) {} psDrop(c); return; }
+      try { c.send(JSON.stringify({ t: 'ping' })); } catch (e) {}
+    });
+  }, 3000);
   peer.on('error', (e) => {
     if (e.type === 'unavailable-id' && (tries || 0) < 5) { psCreate((tries || 0) + 1); return; }
     if (P.peer !== peer) return;
@@ -761,7 +780,8 @@ async function psPump(c) {
         }
         if (off >= f.size && c.open) {
           c.send(JSON.stringify({ t: 'end', id: job.id }));
-          job.bar.style.width = '100%'; job.st.textContent = 'Sent';
+          job.bar.style.width = '100%'; job.st.textContent = 'Sent, waiting for confirmation';
+          s.jobs.set(job.id, job);
           continue;
         }
         if (c.open) c.send(JSON.stringify({ t: 'cancel', id: job.id }));
@@ -788,27 +808,50 @@ function psCancelAll() {
 
 function normCode(s) { s = (s || '').trim(); if (s.toLowerCase().startsWith(PREFIX)) s = s.slice(PREFIX.length); return s.toUpperCase(); }
 
-function prConnect(raw) {
+async function prLock() {
+  try { if (navigator.wakeLock && !R.lock) { R.lock = await navigator.wakeLock.request('screen'); R.lock.addEventListener('release', () => { R.lock = null; }); } } catch (e) {}
+}
+function prWatch() {
+  clearInterval(R.timer);
+  R.timer = setInterval(() => {
+    if (!R.code) return;
+    if (Date.now() - R.last > 12000 && R.retry < 20) {
+      R.retry++;
+      $('pr-status').textContent = 'Connection lost. Reconnecting...';
+      prConnect(R.code, true);
+    }
+  }, 3000);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && R.code) { prLock(); R.last = Math.min(R.last, Date.now() - 9000); }
+});
+function prConnect(raw, quiet) {
   const code = normCode(raw);
   if (!/^[A-Z0-9]{4,12}$/.test(code)) { $('pr-status').textContent = 'That code does not look valid'; return; }
   Cam.stop();
+  R.code = code; R.last = Date.now(); if (!quiet) R.retry = 0;
+  prWatch(); prLock();
   if (R.conn) { try { R.conn.close(); } catch (e) {} R.conn = null; }
   if (R.peer) { try { R.peer.destroy(); } catch (e) {} R.peer = null; }
-  $('pr-status').textContent = 'Connecting...';
+  if (!quiet) $('pr-status').textContent = 'Connecting...';
   const peer = mkPeer(undefined); R.peer = peer;
-  const timer = setTimeout(() => { if (R.peer === peer && !(R.conn && R.conn.open)) $('pr-status').textContent = 'Timed out. Make sure the sender is waiting, then try again.'; }, 20000);
+  const timer = setTimeout(() => { if (R.peer === peer && !(R.conn && R.conn.open) && !quiet) $('pr-status').textContent = 'Timed out. Make sure the sender is waiting, then try again.'; }, 20000);
   peer.on('open', () => {
     const c = peer.connect(PREFIX + code, connOpts); R.conn = c; let cur = null;
-    c.on('open', () => { clearTimeout(timer); $('pr-status').textContent = 'Connected. Waiting for files...'; $('pr-connect').hidden = true; $('pr-live').hidden = false; });
+    c.on('open', () => { clearTimeout(timer); R.last = Date.now(); R.retry = 0; $('pr-status').textContent = 'Connected. Waiting for files...'; $('pr-connect').hidden = true; $('pr-live').hidden = false; });
     c.on('close', () => {
       if (R.conn !== c) return;
       if (cur) { cur.st.textContent = 'Interrupted'; cur = null; }
-      $('pr-status').textContent = 'Sender disconnected';
+      $('pr-status').textContent = 'Connection closed. Reconnecting...';
+      R.last = 0;
     });
     c.on('error', () => { if (R.conn === c) $('pr-status').textContent = 'Connection error'; });
     c.on('data', (d) => {
+      if (R.conn !== c) return;
+      R.last = Date.now();
       if (typeof d === 'string') {
         let m; try { m = JSON.parse(d); } catch (e) { return; }
+        if (m.t === 'ping') { try { c.send(JSON.stringify({ t: 'pong' })); } catch (e) {} return; }
         if (m.t === 'meta') {
           if (cur) cur.st.textContent = 'Interrupted';
           const bar = mk('i'), st = mk('span', { className: 'muted', textContent: 'Receiving' });
@@ -824,6 +867,7 @@ function prConnect(raw) {
           const b = mk('button', { className: 'btn pri dl-btn', textContent: 'Save File' });
           b.addEventListener('click', () => saveBlob(blob, name));
           cur.el.appendChild(b);
+          try { c.send(JSON.stringify({ t: 'ack', id: m.id })); } catch (e) {}
           if ($('pr-auto').checked) {
             setTimeout(() => { saveBlob(blob, name); toast('Download triggered'); }, 150);
             $('pr-status').textContent = 'Received ' + name + ' (auto-saved). Waiting for more...';
@@ -848,10 +892,12 @@ function prConnect(raw) {
       }
     });
   });
-  peer.on('error', (e) => { clearTimeout(timer); if (R.peer === peer) $('pr-status').textContent = e.type === 'peer-unavailable' ? 'Sender not found. Check the code.' : 'Connection failed: ' + (e.type || 'unknown'); });
+  peer.on('error', (e) => { clearTimeout(timer); if (R.peer === peer && !quiet) $('pr-status').textContent = e.type === 'peer-unavailable' ? 'Sender not found. Check the code.' : 'Connection failed: ' + (e.type || 'unknown'); });
 }
 
 function prDisconnect() {
+  R.code = ''; clearInterval(R.timer); R.timer = null;
+  if (R.lock) { try { R.lock.release(); } catch (e) {} R.lock = null; }
   if (R.conn) { try { R.conn.close(); } catch (e) {} }
   R.conn = null;
   if (R.peer) { try { R.peer.destroy(); } catch (e) {} }
