@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link href="dt.png" rel="apple-touch-icon" type="image/png">
 <title>QR Toolkit</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.3/pako.min.js"></script>
@@ -68,7 +67,6 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
 .item .bar{flex-basis:100%;height:10px;margin:0}
 .map{display:block;width:100%;height:56px;border:2px solid #000;image-rendering:pixelated;background:#fff}
 #toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#000;color:#fff;padding:9px 16px;font-weight:600;z-index:40}
-/* 大下載按鈕 */
 .dl-btn{background:#000!important;color:#fff!important;padding:12px 20px!important;font-size:16px!important;margin-top:10px;width:100%;text-align:center;border-radius:4px;display:block;}
 </style>
 </head>
@@ -89,7 +87,6 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
 
 <main><div class="wrap">
 
-<!-- ===================== CREATE ===================== -->
 <section id="tab-create" class="panel on">
   <ol class="steps"><li>Pick a type and fill in the content.</li><li>Check the preview on the right.</li><li>Download or copy the QR code.</li></ol>
   <div class="grid">
@@ -122,7 +119,6 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
   </div>
 </section>
 
-<!-- ===================== SCAN ===================== -->
 <section id="tab-scan" class="panel">
   <ol class="steps"><li>Press Start Camera, or choose an image file.</li><li>Point the camera at any QR code.</li><li>Copy or open the result.</li></ol>
   <div class="grid">
@@ -143,7 +139,6 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
   </div>
 </section>
 
-<!-- ===================== QR TRANSFER ===================== -->
 <section id="tab-qrtx" class="panel">
   <p class="muted" style="margin-top:0">Works offline. Sends a file as a stream of QR codes that another device reads with its camera.</p>
   <div class="sub" id="qrtx-sub"><button data-sub="send" class="on">Send</button><button data-sub="recv">Receive</button></div>
@@ -199,14 +194,13 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
         <canvas id="rx-map" class="map" width="400" height="56"></canvas>
         <div id="rx-done" hidden class="box" style="margin-top:14px">
           <div id="rx-name" style="font-weight:700;word-break:break-all"></div>
-          <div class="row"><button class="btn pri dl-btn" id="rx-save">⬇ Download File ⬇</button></div>
+          <div class="row"><button class="btn pri dl-btn" id="rx-save">Download File</button></div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ===================== P2P ===================== -->
 <section id="tab-p2p" class="panel">
   <p class="muted" style="margin-top:0">Direct device-to-device transfer over the internet. Scan a QR code once, then send any number of files or text.</p>
   <div class="sub" id="p2p-sub"><button data-sub="send" class="on">Send</button><button data-sub="recv">Receive</button></div>
@@ -267,7 +261,6 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
 
 <script>
 "use strict";
-/* ============================== helpers ============================== */
 const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const fmt = (n) => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(2) + ' MB';
@@ -303,7 +296,6 @@ function mk(tag, props, kids) {
   return e;
 }
 
-/* ============================== QR rendering ============================== */
 function qrMatrix(text, ec) {
   const d = document.createElement('div');
   const q = new QRCode(d, { text, width: 8, height: 8, correctLevel: QRCode.CorrectLevel[ec] });
@@ -325,7 +317,6 @@ function qrSvg(text, ec, margin, size) {
   return '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 ' + tot + ' ' + tot + '" shape-rendering="crispEdges"><rect width="' + tot + '" height="' + tot + '" fill="#fff"/><path d="' + p + '" fill="#000"/></svg>';
 }
 
-/* ============================== Camera ============================== */
 function mountCam(host) {
   host.classList.add('cam');
   host.innerHTML = '<div class="vid"><video playsinline muted autoplay></video><div class="idle">Camera is off</div></div>' +
@@ -411,7 +402,6 @@ function camUI() {
   });
 }
 
-/* ============================== Tabs ============================== */
 let curTab = 'create';
 function setTab(t) {
   stopTx(); Cam.stop(); curTab = t;
@@ -428,7 +418,6 @@ function wireSub(id, prefix, onChange) {
   }));
 }
 
-/* ============================== CREATE ============================== */
 const TYPES = {
   text: { l: 'Text', f: [['text', 'Text', 'area']], b: (v) => v.text },
   url: { l: 'Website URL', f: [['url', 'URL', 'text', 'https://example.com']], b: (v) => v.url },
@@ -507,13 +496,12 @@ function initCreate() {
   buildFields();
 }
 
-/* ============================== SCAN ============================== */
 let lastScan = '';
 const OPENABLE = /^(https?:|mailto:|tel:|sms:|smsto:|geo:)/i;
 function addScanResult(text) {
   const list = $('scan-list');
   if (!list.querySelector('.res')) list.innerHTML = '';
-  const url = OPENABLE.test(text) && /^https?:|^mailto:|^tel:|^sms:|^geo:/i.test(text);
+  const url = OPENABLE.test(text);
   const row = mk('div', { className: 'res' }, [mk('pre', { textContent: text })]);
   const b = mk('div', { className: 'row', style: 'margin:0' });
   const cp = mk('button', { className: 'btn', textContent: 'Copy' }); cp.addEventListener('click', () => copyText(text)); b.appendChild(cp);
@@ -546,7 +534,6 @@ function initScan() {
   });
 }
 
-/* ============================== QR TRANSFER ============================== */
 const tx = { run: false, paused: false, id: 0 };
 function txUI(running) {
   $('tx-start').hidden = running; $('tx-pause').hidden = !running; $('tx-stop').hidden = !running;
@@ -634,7 +621,7 @@ function rxCheck() {
   let out; try { out = pako.inflate(all); } catch (e) { $('rx-status').textContent = 'Could not decompress. Collecting again...'; rx.chunks = new Map(); rxProgress(); return; }
   rx.blob = new Blob([out]); rx.name = m.n;
   Cam.stop(); $('rx-status').textContent = 'Transfer complete'; $('rx-name').textContent = m.n + ' (' + fmt(out.length) + ')'; $('rx-done').hidden = false;
-  try { saveBlob(rx.blob, rx.name); } catch (e) { /* the button below is the fallback */ }
+  try { saveBlob(rx.blob, rx.name); } catch (e) {}
 }
 function initQrTx() {
   wireSub('qrtx-sub', 'qrtx');
@@ -654,7 +641,6 @@ function initQrTx() {
   drawMap();
 }
 
-/* ============================== P2P ============================== */
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
@@ -662,32 +648,51 @@ const ICE = [
   { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
 ];
 const PREFIX = 'qrx-', ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const P = { peer: null, conn: null, queue: [], sending: false, cancel: false, cur: null, timer: null };
+const P = { peer: null, conns: [], queue: [], sending: false, cancel: false };
 const newCode = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => ALPHA[b % ALPHA.length]).join('');
 const mkPeer = (id) => new Peer(id, { debug: 1, config: { iceServers: ICE } });
-function p2pReset() {
-  clearTimeout(P.timer);
-  if (P.conn) { try { P.conn.close(); } catch (e) {} }
+
+function p2pTeardown() {
+  P.queue.forEach((q) => { q.st.textContent = 'Cancelled'; });
+  P.queue = []; P.sending = false; P.cancel = true;
+  P.conns.forEach((c) => { try { c.close(); } catch (e) {} });
+  P.conns = [];
   if (P.peer) { try { P.peer.destroy(); } catch (e) {} }
-  P.peer = null; P.conn = null; P.queue = []; P.sending = false; P.cancel = true; P.cur = null;
+  P.peer = null;
 }
-/* ---- sender ---- */
+
+function psUpdateStatus() {
+  const open = P.conns.filter((c) => c.open);
+  $('ps-tools').hidden = open.length === 0;
+  if (open.length === 0) $('ps-status').textContent = 'Waiting for the receiver to join...';
+  else if (open.length === 1) $('ps-status').textContent = 'Connected. Choose files or send text.';
+  else $('ps-status').textContent = 'Connected to ' + open.length + ' receivers.';
+}
+
 function psCreate(tries) {
-  p2pReset(); P.cancel = false;
+  p2pTeardown(); P.cancel = false;
   const code = newCode(); $('ps-status').textContent = 'Starting session...';
   $('ps-create').hidden = true; $('ps-end').hidden = false; $('ps-list').innerHTML = '';
   const peer = mkPeer(PREFIX + code); P.peer = peer;
   peer.on('open', () => {
-    $('ps-code').textContent = code; $('ps-session').hidden = false; $('ps-tools').hidden = true;
+    $('ps-code').textContent = code; $('ps-session').hidden = false;
     drawQR($('ps-qr'), PREFIX + code, 'L', 300, 3);
-    $('ps-status').textContent = 'Waiting for the receiver to join...';
+    psUpdateStatus();
   });
   peer.on('connection', (c) => {
-    if (P.conn && P.conn.open) { c.on('open', () => c.close()); return; }
-    P.conn = c;
-    c.on('open', () => { $('ps-status').textContent = 'Connected. Choose files or send text.'; $('ps-tools').hidden = false; });
-    c.on('close', () => { $('ps-status').textContent = 'Receiver disconnected. Waiting for a new receiver...'; $('ps-tools').hidden = true; P.conn = null; P.cancel = true; });
-    c.on('error', () => { $('ps-status').textContent = 'Connection error'; });
+    c.on('open', () => {
+      P.conns.push(c);
+      psUpdateStatus();
+      if (P.queue.length) psRun();
+    });
+    c.on('close', () => {
+      P.conns = P.conns.filter((x) => x !== c);
+      psUpdateStatus();
+    });
+    c.on('error', () => {
+      P.conns = P.conns.filter((x) => x !== c);
+      psUpdateStatus();
+    });
   });
   peer.on('error', (e) => {
     if (e.type === 'unavailable-id' && (tries || 0) < 5) { psCreate((tries || 0) + 1); return; }
@@ -696,7 +701,9 @@ function psCreate(tries) {
   peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) {} });
 }
 function psEnd() {
-  p2pReset(); $('ps-session').hidden = true; $('ps-create').hidden = false; $('ps-end').hidden = true; $('ps-status').textContent = 'No session yet';
+  p2pTeardown();
+  $('ps-session').hidden = true; $('ps-create').hidden = false; $('ps-end').hidden = true;
+  $('ps-tools').hidden = true; $('ps-status').textContent = 'No session yet';
 }
 function psAdd(files) {
   for (const f of files) {
@@ -707,41 +714,70 @@ function psAdd(files) {
   psRun();
 }
 async function psRun() {
-  if (P.sending) return; P.sending = true; P.cancel = false;
-  while (P.queue.length && P.conn && P.conn.open) {
-    const it = P.queue.shift(), f = it.f, id = Math.random().toString(36).slice(2);
-    it.st.textContent = 'Sending'; const t0 = Date.now(); let off = 0;
-    P.conn.send(JSON.stringify({ t: 'meta', id, name: f.name, size: f.size, mime: f.type }));
-    while (off < f.size) {
-      if (P.cancel || !P.conn || !P.conn.open) break;
-      const buf = await f.slice(off, off + 16384).arrayBuffer();
-      while (P.conn && P.conn.dataChannel && P.conn.dataChannel.bufferedAmount > 2097152) await sleep(30);
-      if (!P.conn || !P.conn.open) break;
-      P.conn.send(buf); off += buf.byteLength;
-      it.bar.style.width = Math.round((off / f.size) * 100) + '%';
-      it.st.textContent = Math.round((off / f.size) * 100) + '% - ' + fmt(off / Math.max(0.2, (Date.now() - t0) / 1000)) + '/s';
+  if (P.sending) return;
+  P.sending = true; P.cancel = false;
+  try {
+    while (P.queue.length) {
+      const targets = P.conns.filter((c) => c.open);
+      if (targets.length === 0) break;
+      const it = P.queue.shift(), f = it.f, id = Math.random().toString(36).slice(2);
+      it.st.textContent = 'Sending'; const t0 = Date.now(); let off = 0;
+      const metaMsg = JSON.stringify({ t: 'meta', id, name: f.name, size: f.size, mime: f.type });
+      targets.forEach((c) => { try { c.send(metaMsg); } catch (e) {} });
+      while (off < f.size) {
+        if (P.cancel) break;
+        const live = P.conns.filter((c) => c.open);
+        if (live.length === 0) break;
+        const buf = await f.slice(off, off + 16384).arrayBuffer();
+        let waited = 0;
+        while (waited < 10000) {
+          const busy = live.some((c) => c.dataChannel && c.dataChannel.bufferedAmount > 2097152);
+          if (!busy) break;
+          await sleep(30); waited += 30;
+        }
+        const still = P.conns.filter((c) => c.open);
+        if (still.length === 0) break;
+        still.forEach((c) => { try { c.send(buf); } catch (e) {} });
+        off += buf.byteLength;
+        it.bar.style.width = Math.round((off / f.size) * 100) + '%';
+        it.st.textContent = Math.round((off / f.size) * 100) + '% - ' + fmt(off / Math.max(0.2, (Date.now() - t0) / 1000)) + '/s';
+      }
+      const done = P.conns.filter((c) => c.open);
+      if (P.cancel || off < f.size) {
+        it.st.textContent = 'Cancelled';
+        done.forEach((c) => { try { c.send(JSON.stringify({ t: 'cancel', id })); } catch (e) {} });
+        continue;
+      }
+      const endMsg = JSON.stringify({ t: 'end', id });
+      done.forEach((c) => { try { c.send(endMsg); } catch (e) {} });
+      it.bar.style.width = '100%'; it.st.textContent = 'Sent';
     }
-    if (P.cancel || !P.conn || !P.conn.open) { it.st.textContent = 'Cancelled'; break; }
-    P.conn.send(JSON.stringify({ t: 'end', id })); it.bar.style.width = '100%'; it.st.textContent = 'Sent';
+    if (P.cancel) {
+      P.queue.forEach((q) => { q.st.textContent = 'Cancelled'; });
+      P.queue = [];
+      const live = P.conns.filter((c) => c.open);
+      live.forEach((c) => { try { c.send(JSON.stringify({ t: 'cancel' })); } catch (e) {} });
+    } else if (P.conns.filter((c) => c.open).length) {
+      $('ps-status').textContent = 'All files sent. Choose more or send text.';
+    }
+  } finally {
+    P.sending = false;
+    if (P.queue.length && P.conns.filter((c) => c.open).length) psRun();
   }
-  if (P.cancel) {
-    P.queue.forEach((q) => { q.st.textContent = 'Cancelled'; }); P.queue = [];
-    if (P.conn && P.conn.open) P.conn.send(JSON.stringify({ t: 'cancel' }));
-  } else $('ps-status').textContent = 'All files sent. Choose more or send text.';
-  P.sending = false;
 }
-/* ---- receiver ---- */
 function normCode(s) { s = (s || '').trim(); if (s.toLowerCase().startsWith(PREFIX)) s = s.slice(PREFIX.length); return s.toUpperCase(); }
 function prConnect(raw) {
   const code = normCode(raw);
   if (!/^[A-Z0-9]{4,12}$/.test(code)) { $('pr-status').textContent = 'That code does not look valid'; return; }
-  Cam.stop(); p2pReset(); P.cancel = false;
+  Cam.stop();
+  if (P.peer) { try { P.peer.destroy(); } catch (e) {} }
+  if (P.conns.length) { P.conns.forEach((c) => { try { c.close(); } catch (e) {} }); P.conns = []; }
   $('pr-status').textContent = 'Connecting...';
-  P.timer = setTimeout(() => { if (!P.conn || !P.conn.open) $('pr-status').textContent = 'Timed out. Make sure the sender is waiting, then try again.'; }, 20000);
   const peer = mkPeer(undefined); P.peer = peer;
+  const timer = setTimeout(() => { if (!P.conns.some((c) => c.open)) $('pr-status').textContent = 'Timed out. Make sure the sender is waiting, then try again.'; }, 20000);
   peer.on('open', () => {
-    const c = peer.connect(PREFIX + code, { reliable: true }); P.conn = c; let cur = null;
-    c.on('open', () => { clearTimeout(P.timer); $('pr-status').textContent = 'Connected. Waiting for files...'; $('pr-connect').hidden = true; $('pr-live').hidden = false; });
+    const c = peer.connect(PREFIX + code, { reliable: true }); P.conns = [c]; let cur = null;
+    c.on('open', () => { clearTimeout(timer); $('pr-status').textContent = 'Connected. Waiting for files...'; $('pr-connect').hidden = true; $('pr-live').hidden = false; });
     c.on('close', () => { $('pr-status').textContent = 'Sender disconnected'; });
     c.on('error', () => { $('pr-status').textContent = 'Connection error'; });
     c.on('data', (d) => {
@@ -758,20 +794,17 @@ function prConnect(raw) {
           cur.bar.style.width = '100%'; cur.st.textContent = 'Received';
           const b = mk('button', { className: 'btn pri dl-btn', textContent: 'Save File' });
           b.addEventListener('click', () => saveBlob(blob, name));
-          // 下載按鈕放在檔案列的最下方
           cur.el.appendChild(b);
           if ($('pr-auto').checked) {
-            setTimeout(() => {
-              saveBlob(blob, name);
-              toast('Download triggered!');
-            }, 150);
-            $('pr-status').textContent = 'Received ' + name + ' (Auto-save triggered)';
+            setTimeout(() => { saveBlob(blob, name); toast('Download triggered'); }, 150);
+            $('pr-status').textContent = 'Received ' + name + ' (auto-saved)';
           } else {
             $('pr-status').textContent = 'Received ' + name;
           }
           cur = null;
-        } else if (m.t === 'cancel' && cur) { cur.st.textContent = 'Cancelled by sender'; cur = null; }
-        else if (m.t === 'text') {
+        } else if (m.t === 'cancel') {
+          if (cur) { cur.st.textContent = 'Cancelled by sender'; cur = null; }
+        } else if (m.t === 'text') {
           if (!$('pr-texts').querySelector('.res')) $('pr-texts').innerHTML = '';
           const row = mk('div', { className: 'res' }, [mk('pre', { textContent: m.text })]);
           const b = mk('button', { className: 'btn', textContent: 'Copy' }); b.addEventListener('click', () => copyText(m.text)); row.appendChild(b);
@@ -785,10 +818,14 @@ function prConnect(raw) {
       }
     });
   });
-  peer.on('error', (e) => { clearTimeout(P.timer); $('pr-status').textContent = e.type === 'peer-unavailable' ? 'Sender not found. Check the code.' : 'Connection failed: ' + (e.type || 'unknown'); });
+  peer.on('error', (e) => { clearTimeout(timer); $('pr-status').textContent = e.type === 'peer-unavailable' ? 'Sender not found. Check the code.' : 'Connection failed: ' + (e.type || 'unknown'); });
 }
 function prDisconnect() {
-  p2pReset(); $('pr-live').hidden = true; $('pr-connect').hidden = false; $('pr-status').textContent = 'Not connected';
+  P.conns.forEach((c) => { try { c.close(); } catch (e) {} });
+  P.conns = [];
+  if (P.peer) { try { P.peer.destroy(); } catch (e) {} }
+  P.peer = null;
+  $('pr-live').hidden = true; $('pr-connect').hidden = false; $('pr-status').textContent = 'Not connected';
   $('pr-list').innerHTML = '<p class="muted">Nothing received yet</p>'; $('pr-texts').innerHTML = '<p class="muted">Nothing received yet</p>';
 }
 function initP2P() {
@@ -799,14 +836,18 @@ function initP2P() {
   $('ps-files').addEventListener('change', (e) => { psAdd(Array.from(e.target.files)); e.target.value = ''; });
   $('ps-cancel').addEventListener('click', () => { P.cancel = true; });
   $('ps-sendtxt').addEventListener('click', () => {
-    const t = $('ps-text').value; if (!t.trim() || !P.conn || !P.conn.open) return;
-    P.conn.send(JSON.stringify({ t: 'text', text: t })); $('ps-text').value = ''; toast('Text sent');
+    const t = $('ps-text').value;
+    const live = P.conns.filter((c) => c.open);
+    if (!t.trim() || !live.length) return;
+    const msg = JSON.stringify({ t: 'text', text: t });
+    live.forEach((c) => { try { c.send(msg); } catch (e) {} });
+    $('ps-text').value = ''; toast('Text sent');
   });
   mountCam($('pr-cam'));
   $('pr-start').addEventListener('click', async () => {
     $('pr-status').textContent = 'Opening camera...';
     try {
-      await Cam.start($('pr-cam'), 'pr', (t) => { const c = normCode(t); if (t.toLowerCase().startsWith(PREFIX) && /^[A-Z0-9]{4,12}$/.test(c)) prConnect(t); });
+      await Cam.start($('pr-cam'), 'pr', (t) => { const c = normCode(t); if (t.toLowerCase().startsWith(PREFIX) && /^[A-Z0-9]{4,12}$/.test(c)) { Cam.stop(); prConnect(t); } });
       $('pr-status').textContent = 'Scanning for the sender code...';
     } catch (e) { $('pr-status').textContent = e.message; camUI(); }
   });
@@ -816,11 +857,10 @@ function initP2P() {
   $('pr-end').addEventListener('click', prDisconnect);
 }
 
-/* ============================== boot ============================== */
 function init() {
   document.querySelectorAll('#nav button').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
   initCreate(); initScan(); initQrTx(); initP2P(); camUI();
-  window.addEventListener('beforeunload', () => { Cam.stop(); p2pReset(); });
+  window.addEventListener('beforeunload', () => { Cam.stop(); p2pTeardown(); });
 }
 async function boot() {
   const libs = { QRCode: () => window.QRCode, pako: () => window.pako, 'zbar-wasm': () => window.zbarWasm, PeerJS: () => window.Peer };
@@ -834,7 +874,7 @@ async function boot() {
     $('reload').addEventListener('click', () => location.reload());
     return;
   }
-  try { await zbarWasm.scanImageData(new ImageData(2, 2)); } catch (e) { /* warm-up only */ }
+  try { await zbarWasm.scanImageData(new ImageData(2, 2)); } catch (e) {}
   init();
   $('loader').hidden = true; $('app').hidden = false;
 }
