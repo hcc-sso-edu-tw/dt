@@ -3,97 +3,269 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>QR Toolkit</title>
+<title>QR Toolkit — Refined</title>
 <link href="dt.png" rel="apple-touch-icon" type="image/png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.3/pako.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.9.15/dist/index.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
-*{box-sizing:border-box}
+/* ============================================================
+   BASE
+   ============================================================ */
+*{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}
-body{margin:0;background:#fff;color:#000;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-#loader{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#fff;z-index:50}
-.spin{width:36px;height:36px;border:4px solid #ddd;border-top-color:#000;border-radius:50%;animation:r .8s linear infinite}
-@keyframes r{to{transform:rotate(360deg)}}
-header{border-bottom:2px solid #000;padding:14px 16px}
-.wrap{max-width:980px;margin:0 auto}
-h1{margin:0 0 10px;font-size:22px;letter-spacing:-.3px}
-h2{margin:0 0 8px;font-size:17px}
-nav,.sub{display:flex;gap:0;border:2px solid #000;width:100%}
-nav button,.sub button{flex:1;padding:10px 6px;border:0;border-right:2px solid #000;background:#fff;color:#000;font:inherit;font-weight:600;cursor:pointer}
-nav button:last-child,.sub button:last-child{border-right:0}
-nav button.on,.sub button.on{background:#000;color:#fff}
-main{padding:18px 16px 60px}
+:root{
+  --ink:#0a0a0a;
+  --paper:#fafafa;
+  --line:#d4d4d4;
+  --muted:#6b6b6b;
+  --accent:#3b5bdb;
+  --accent-soft:#eef1fd;
+  --font: "Inter", "SF Pro Text", -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", "Cascadia Code", "Fira Code", ui-monospace, monospace;
+}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font:15px/1.55 var(--font);
+  font-feature-settings:"ss01","cv05";
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+/* 1. LATTICE LOADER */
+#loader{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:var(--paper);z-index:50}
+.lattice-loader{display:grid;grid-template-columns:repeat(3,12px);gap:5px}
+.lattice-loader span{width:12px;height:12px;background:var(--ink);display:block;animation:lattice-wave 1.4s ease-in-out infinite}
+.lattice-loader span:nth-child(1){animation-delay:0s}
+.lattice-loader span:nth-child(2){animation-delay:.1s}
+.lattice-loader span:nth-child(3){animation-delay:.2s}
+.lattice-loader span:nth-child(4){animation-delay:.1s}
+.lattice-loader span:nth-child(5){animation-delay:.2s}
+.lattice-loader span:nth-child(6){animation-delay:.3s}
+.lattice-loader span:nth-child(7){animation-delay:.2s}
+.lattice-loader span:nth-child(8){animation-delay:.3s}
+.lattice-loader span:nth-child(9){animation-delay:.4s}
+@keyframes lattice-wave{0%,100%{opacity:.12;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}
+#loader .msg{font:600 13px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+
+/* 2. SLICED WAVES HEADER + 3. SPLIT TEXT */
+header{position:relative;border-bottom:1px solid var(--line);padding:32px 20px 24px;overflow:hidden;background:var(--paper)}
+.slice-waves{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.35;background:repeating-linear-gradient(90deg,transparent 0 27px,var(--line) 27px 28px),repeating-linear-gradient(90deg,transparent 0 41px,#e8e8e8 41px 42px),repeating-linear-gradient(90deg,transparent 0 61px,#f0f0f0 61px 62px);mask-image:linear-gradient(to bottom,#000 0%,transparent 92%);-webkit-mask-image:linear-gradient(to bottom,#000 0%,transparent 92%);animation:slice-drift 28s linear infinite}
+@keyframes slice-drift{0%{transform:translateX(0)}100%{transform:translateX(28px)}}
+header::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.08;background:repeating-linear-gradient(125deg,transparent 0 80px,var(--accent) 80px 81px,transparent 81px 180px);mask-image:radial-gradient(ellipse at 70% 30%,#000 0%,transparent 70%);-webkit-mask-image:radial-gradient(ellipse at 70% 30%,#000 0%,transparent 70%)}
+.wrap{max-width:1020px;margin:0 auto;position:relative;z-index:1}
+h1{font-size:clamp(28px,4vw,42px);font-weight:700;letter-spacing:-.04em;line-height:1.1;margin:0 0 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.split-title .word{display:inline-block;overflow:hidden}
+.split-title .char{display:inline-block;animation:split-rise .7s cubic-bezier(.22,1,.36,1) both}
+.split-title .char:nth-child(1){animation-delay:0s}
+.split-title .char:nth-child(2){animation-delay:.04s}
+.split-title .char:nth-child(3){animation-delay:.08s}
+.split-title .char:nth-child(4){animation-delay:.12s}
+.split-title .char:nth-child(5){animation-delay:.16s}
+.split-title .char:nth-child(6){animation-delay:.20s}
+.split-title .char:nth-child(7){animation-delay:.24s}
+.split-title .char:nth-child(8){animation-delay:.28s}
+.split-title .char:nth-child(9){animation-delay:.32s}
+@keyframes split-rise{0%{opacity:0;transform:translateY(110%) rotate(3deg)}100%{opacity:1;transform:translateY(0) rotate(0)}}
+
+/* 4. RUBBER SEGMENT NAV */
+nav{display:flex;gap:0;border:1px solid var(--ink);width:100%;max-width:600px;position:relative;background:var(--paper)}
+nav button{flex:1;padding:11px 8px;border:0;border-right:1px solid var(--ink);background:transparent;color:var(--ink);font:600 12px/1 var(--font);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;position:relative;z-index:1;transition:color .25s,background .25s}
+nav button:last-child{border-right:0}
+nav button.on{background:var(--ink);color:var(--paper)}
+nav button:not(.on):hover{background:#f0f0f0}
+nav button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+main{padding:28px 20px 80px;position:relative}
 .panel{display:none}
-.panel.on{display:block}
-.sub{max-width:320px;margin-bottom:16px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.panel.on{display:block;animation:panel-fade .35s ease}
+@keyframes panel-fade{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
+
+.sub{display:flex;gap:0;border:1px solid var(--ink);width:100%;max-width:280px;margin-bottom:24px;position:relative;overflow:hidden}
+.sub button{flex:1;padding:9px 6px;border:0;border-right:1px solid var(--ink);background:transparent;color:var(--ink);font:600 11px/1 var(--font);letter-spacing:.05em;text-transform:uppercase;cursor:pointer;position:relative;z-index:1;transition:color .25s}
+.sub button:last-child{border-right:0}
+.sub button.on{color:var(--paper)}
+.sub button.on::before{content:'';position:absolute;inset:0;background:var(--ink);z-index:-1;animation:rubber-thumb .4s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes rubber-thumb{0%{transform:scaleX(.7)}100%{transform:scaleX(1)}}
+.sub button:not(.on):hover{background:#f0f0f0}
+
+/* 5. FLIP CARD TILT + 6. SPECULAR EDGE */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
 @media(max-width:760px){.grid{grid-template-columns:1fr}}
-.box{border:2px solid #000;padding:14px;margin-bottom:14px}
-.steps{margin:0 0 14px;padding-left:20px}
-.steps li{margin:2px 0}
-label{display:block;font-size:13px;font-weight:600;margin:10px 0 4px}
-input,select,textarea{width:100%;padding:8px 10px;border:2px solid #000;border-radius:0;background:#fff;color:#000;font:inherit}
-input[type=checkbox]{width:auto;margin-right:8px;transform:scale(1.2)}
-input[type=file]{padding:6px}
-textarea{min-height:96px;resize:vertical}
-input:focus,select:focus,textarea:focus,button:focus-visible{outline:3px solid #888;outline-offset:1px}
-.chk{display:flex;align-items:center;font-weight:600;font-size:13px;margin:12px 0 4px}
-.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;align-items:center}
+.box{border:1px solid var(--ink);padding:20px;margin-bottom:16px;background:var(--paper);position:relative;transition:transform .3s cubic-bezier(.22,1,.36,1),box-shadow .3s}
+.box:hover{transform:translateY(-2px);box-shadow:0 8px 24px -12px rgba(0,0,0,.15)}
+.box::after{content:'';position:absolute;inset:-1px;pointer-events:none;border:1px solid transparent;mask-image:linear-gradient(135deg,#000 0%,transparent 40%);-webkit-mask-image:linear-gradient(135deg,#000 0%,transparent 40%);opacity:0;transition:opacity .35s}
+.box:hover::after{opacity:1}
+
+h2{font-size:15px;font-weight:700;letter-spacing:-.01em;margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.steps{margin:0 0 20px;padding-left:20px;list-style:none;counter-reset:step}
+.steps li{counter-increment:step;margin:4px 0;font-size:13px;color:var(--muted);position:relative;padding-left:8px}
+.steps li::before{content:counter(step,decimal-leading-zero);position:absolute;left:-20px;font:600 10px/1 var(--mono);color:var(--ink);letter-spacing:.05em}
+
+label{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin:14px 0 5px;color:var(--muted)}
+label:first-child{margin-top:0}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--ink);border-radius:0;background:var(--paper);color:var(--ink);font:14px/1.4 var(--font);transition:background .2s,border-color .2s}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;background:#fff}
+textarea{min-height:80px;resize:vertical}
+input[type=file]{padding:8px;font-size:12px}
+input[type=checkbox]{width:auto;margin-right:8px;transform:scale(1.15);accent-color:var(--ink)}
+.chk{display:flex;align-items:center;font-weight:600;font-size:12px;margin:14px 0 4px;color:var(--ink);text-transform:none;letter-spacing:0}
+
+/* 7. HOLD BUTTON */
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;align-items:center}
 .row>*{flex:1}
 .row .btn{flex:0 1 auto}
-.btn{padding:9px 16px;border:2px solid #000;background:#fff;color:#000;font:inherit;font-weight:600;cursor:pointer}
-.btn.pri{background:#000;color:#fff}
-.btn:disabled{opacity:.35;cursor:not-allowed}
-.btn:hover:not(:disabled){background:#000;color:#fff}
-.btn.pri:hover:not(:disabled){background:#333}
-.status{font-weight:600;margin:6px 0 10px;min-height:22px}
-.muted{color:#555;font-size:13px}
-.bar{height:14px;border:2px solid #000;background:#fff;margin:6px 0}
-.bar i{display:block;height:100%;width:0;background:#000}
-.pv{display:flex;justify-content:center;align-items:center;border:2px solid #000;padding:12px;min-height:200px;background:#fff}
-canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
-.vid{position:relative;overflow:hidden;border:2px solid #000;background:#000;min-height:180px}
-.vid video{display:block;width:100%;max-height:360px;object-fit:cover;transform-origin:center}
-.vid .idle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#fff;color:#000;font-weight:600}
+.btn{padding:10px 18px;border:1px solid var(--ink);border-radius:0;background:var(--paper);color:var(--ink);font:600 12px/1 var(--font);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:background .2s,color .2s,transform .15s;-webkit-tap-highlight-color:transparent}
+.btn:hover:not(:disabled){background:var(--ink);color:var(--paper);transform:translateY(-1px)}
+.btn:active:not(:disabled){transform:translateY(0) scale(.98)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+.btn.pri{background:var(--ink);color:var(--paper)}
+.btn.pri:hover:not(:disabled){background:#1a1a1a;color:var(--paper)}
+.btn.hold-btn::before{content:'';position:absolute;inset:0;background:var(--accent);z-index:0;transform:scaleX(0);transform-origin:left;transition:transform .2s}
+.btn.hold-btn:hover::before{transform:scaleX(1)}
+.btn.hold-btn span{position:relative;z-index:1}
+
+/* 8. GRID MOTION PREVIEW */
+.pv{display:flex;justify-content:center;align-items:center;border:1px solid var(--ink);padding:20px;min-height:220px;background:#fff;position:relative;overflow:hidden}
+.pv::before{content:'';position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:24px 24px;opacity:.15;pointer-events:none}
+canvas.qr{max-width:100%;height:auto;image-rendering:pixelated;position:relative;z-index:1}
+#c-empty,#tx-empty{position:relative;z-index:1;font-size:13px;color:var(--muted);text-align:center}
+
+.cam{position:relative;overflow:hidden;border:1px solid var(--ink);background:#0a0a0a;min-height:200px}
+.vid{position:relative;overflow:hidden;min-height:200px}
+.vid video{display:block;width:100%;max-height:380px;object-fit:cover;transform-origin:center}
+.vid .idle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--paper);color:var(--muted);font:600 12px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase}
 .cam.on .idle{display:none}
-.cam .zoom{display:flex;gap:10px;align-items:center;margin-top:8px}
-.cam .zoom input{padding:0;border:0}
-.res{border:2px solid #000;padding:10px;margin-bottom:8px}
-.res pre{margin:0 0 8px;white-space:pre-wrap;word-break:break-all;font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;max-height:160px;overflow:auto}
-.code{font:700 34px/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:4px;text-align:center;border:2px solid #000;padding:8px;margin:10px 0}
-.item{border:2px solid #000;padding:10px;margin-bottom:8px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.item .nm{word-break:break-all;font-weight:600;font-size:15px}
-.item .bar{flex-basis:100%;height:10px;margin:0}
-.map{display:block;width:100%;height:56px;border:2px solid #000;image-rendering:pixelated;background:#fff}
-#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#000;color:#fff;padding:9px 16px;font-weight:600;z-index:40}
-.dl-btn{background:#000!important;color:#fff!important;padding:12px 20px!important;font-size:16px!important;margin-top:10px;width:100%;text-align:center;border-radius:4px;display:block;}
+.cam .zoom{display:flex;gap:10px;align-items:center;margin-top:8px;padding:0 4px}
+.cam .zoom input[type=range]{padding:0;border:0;accent-color:var(--ink);flex:1}
+.cam .zoom .zv{font:600 11px/1 var(--mono);min-width:36px;text-align:right}
+
+/* 9. SLOSH GAUGE */
+.status{font-weight:600;font-size:12px;letter-spacing:.02em;margin:8px 0 12px;min-height:20px;color:var(--ink);font-family:var(--mono)}
+.muted{color:var(--muted);font-size:13px}
+.bar{height:8px;border:1px solid var(--ink);background:var(--paper);margin:8px 0;position:relative;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--ink);transition:width .25s cubic-bezier(.22,1,.36,1)}
+.bar i::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);animation:shimmer 2s infinite}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
+.res{border:1px solid var(--line);padding:12px;margin-bottom:8px;background:var(--paper);transition:border-color .2s,background .2s}
+.res:hover{border-color:var(--ink);background:#fff}
+.res pre{margin:0 0 8px;white-space:pre-wrap;word-break:break-all;font:12px/1.5 var(--mono);max-height:140px;overflow:auto}
+
+/* 10. FUSE BUTTON CODE */
+.code{font:700 30px/1.2 var(--mono);letter-spacing:6px;text-align:center;border:1px solid var(--ink);padding:14px;margin:12px 0;background:var(--paper);position:relative;overflow:hidden}
+.code::after{content:'';position:absolute;bottom:0;left:0;height:2px;background:var(--accent);width:100%;animation:fuse-burn 8s linear infinite}
+@keyframes fuse-burn{0%{transform:scaleX(1);transform-origin:left}100%{transform:scaleX(0);transform-origin:left}}
+
+.item{border:1px solid var(--line);padding:12px;margin-bottom:8px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;transition:border-color .2s}
+.item:hover{border-color:var(--ink)}
+.item .nm{word-break:break-all;font-weight:600;font-size:13px}
+.item .bar{flex-basis:100%;height:6px;margin:0}
+.map{display:block;width:100%;height:50px;border:1px solid var(--ink);image-rendering:pixelated;background:#fff}
+
+/* 11. SWIPE TOAST */
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(0);background:var(--ink);color:var(--paper);padding:10px 20px;font:600 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;z-index:40;animation:toast-in .35s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes toast-in{0%{opacity:0;transform:translateX(-50%) translateY(16px) scale(.96)}100%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
+
+/* 12. SPECULAR DOWNLOAD BUTTON */
+.dl-btn{background:var(--ink)!important;color:var(--paper)!important;padding:14px 24px!important;font-size:13px!important;margin-top:14px;width:100%;text-align:center;border:1px solid var(--ink);position:relative;overflow:hidden;transition:background .2s}
+.dl-btn::before{content:'';position:absolute;inset:0;background:var(--accent);z-index:0;transform:scaleY(0);transform-origin:bottom;transition:transform .3s cubic-bezier(.22,1,.36,1)}
+.dl-btn:hover::before{transform:scaleY(1)}
+.dl-btn span{position:relative;z-index:1}
+
+/* 13. REFINE FRAME */
+.refine-frame{position:relative;display:inline-block}
+.refine-frame::after{content:'';position:absolute;inset:-1px;border:1px solid var(--accent);opacity:0;animation:refine-pulse 3s infinite;pointer-events:none}
+@keyframes refine-pulse{0%,100%{opacity:0;transform:scale(1)}50%{opacity:1;transform:scale(1.01)}}
+
+/* 14. DODGE FIELD HINT */
+.dodge-hint{display:inline-block;transition:transform .3s cubic-bezier(.22,1,.36,1)}
+
+/* 15. STAR BORDER on focused inputs */
+input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px var(--accent-soft)}
+
+/* 16. ANCHOR UNDERLINE SLIDE */
+a.btn{text-decoration:none;position:relative}
+a.btn::after{content:'';position:absolute;left:0;bottom:4px;width:100%;height:1px;background:currentColor;transform:scaleX(0);transform-origin:right;transition:transform .3s cubic-bezier(.22,1,.36,1)}
+a.btn:hover::after{transform:scaleX(1);transform-origin:left}
+
+/* 17. COUNT BADGE PULSE */
+#rx-count,#tx-info{transition:color .3s}
+#rx-count:not(:empty){color:var(--accent)}
+
+/* 18. SCROLL REVEAL (applied via JS) */
+.reveal{opacity:0;transform:translateY(12px);transition:opacity .5s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.22,1,.36,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* 19. RIPPLE ON PRIMARY BUTTONS */
+.btn.pri{overflow:hidden}
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.35);transform:scale(0);animation:ripple-anim .55s ease-out forwards;pointer-events:none}
+@keyframes ripple-anim{to{transform:scale(2.5);opacity:0}}
+
+/* 20. MAGNETIC NAV HOVER */
+nav button{transition:color .25s,background .25s,transform .15s}
+nav button:not(.on):hover{transform:translateY(-1px)}
+
+/* 21. TYPEWRITER STATUS */
+.status.typewriter::after{content:'|';animation:blink .8s step-end infinite;margin-left:2px;color:var(--accent)}
+@keyframes blink{50%{opacity:0}}
+
+/* 22. NOISE TEXTURE OVERLAY */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.018;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:var(--paper)}
+::-webkit-scrollbar-thumb{background:var(--line);border:1px solid var(--paper)}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
 
-<div id="loader"><div class="spin"></div><div style="font-weight:600">Loading</div><div id="loadErr" class="muted" hidden></div><button id="reload" class="btn" hidden>Reload</button></div>
+<div id="loader">
+  <div class="lattice-loader">
+    <span></span><span></span><span></span>
+    <span></span><span></span><span></span>
+    <span></span><span></span><span></span>
+  </div>
+  <div class="msg">Calibrating</div>
+  <div id="loadErr" class="muted" hidden style="font-size:12px"></div>
+  <button id="reload" class="btn" hidden style="margin-top:8px">Reload</button>
+</div>
 
 <div id="app" hidden>
-<header><div class="wrap">
-  <h1>QR Toolkit</h1>
-  <nav id="nav">
-    <button data-tab="create" class="on">Create QR</button>
-    <button data-tab="scan">Scan QR</button>
-    <button data-tab="qrtx">QR Transfer</button>
-    <button data-tab="p2p">P2P Transfer</button>
-  </nav>
-</div></header>
+
+<header>
+  <div class="slice-waves"></div>
+  <div class="wrap">
+    <h1 class="split-title">
+      <span class="word"><span class="char">Q</span><span class="char">R</span></span>
+      <span class="word"><span class="char">T</span><span class="char">o</span><span class="char">o</span><span class="char">l</span><span class="char">k</span><span class="char">i</span><span class="char">t</span></span>
+    </h1>
+    <nav id="nav">
+      <button data-tab="create" class="on">Create</button>
+      <button data-tab="scan">Scan</button>
+      <button data-tab="qrtx">QR Transfer</button>
+      <button data-tab="p2p">P2P Transfer</button>
+    </nav>
+  </div>
+</header>
 
 <main><div class="wrap">
 
 <section id="tab-create" class="panel on">
-  <ol class="steps"><li>Pick a type and fill in the content.</li><li>Check the preview on the right.</li><li>Download or copy the QR code.</li></ol>
+  <ol class="steps">
+    <li>Pick a type and fill in the content.</li>
+    <li>Check the preview on the right.</li>
+    <li>Download or copy the QR code.</li>
+  </ol>
   <div class="grid">
     <div>
       <div class="box">
-        <label for="c-type" style="margin-top:0">Type</label>
+        <label for="c-type">Type</label>
         <select id="c-type"></select>
         <div id="c-fields"></div>
       </div>
@@ -108,10 +280,13 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
       </div>
     </div>
     <div>
-      <div class="pv"><canvas id="c-canvas" class="qr" width="10" height="10" hidden></canvas><span id="c-empty" class="muted">Enter content to see the QR code</span></div>
-      <p id="c-info" class="muted"></p>
+      <div class="pv refine-frame">
+        <canvas id="c-canvas" class="qr" width="10" height="10" hidden></canvas>
+        <span id="c-empty" class="muted dodge-hint">Enter content to see the QR code</span>
+      </div>
+      <p id="c-info" class="muted" style="margin-top:10px;font-family:var(--mono);font-size:11px"></p>
       <div class="row">
-        <button class="btn pri" id="c-png">Download PNG</button>
+        <button class="btn pri hold-btn" id="c-png"><span>Download PNG</span></button>
         <button class="btn" id="c-svg">Download SVG</button>
         <button class="btn" id="c-cimg">Copy image</button>
         <button class="btn" id="c-ctxt">Copy content</button>
@@ -121,12 +296,16 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
 </section>
 
 <section id="tab-scan" class="panel">
-  <ol class="steps"><li>Press Start Camera, or choose an image file.</li><li>Point the camera at any QR code.</li><li>Copy or open the result.</li></ol>
+  <ol class="steps">
+    <li>Press Start Camera, or choose an image file.</li>
+    <li>Point the camera at any QR code.</li>
+    <li>Copy or open the result.</li>
+  </ol>
   <div class="grid">
     <div>
       <div class="cam" id="scan-cam"></div>
       <div class="row">
-        <button class="btn pri" id="scan-start">Start Camera</button>
+        <button class="btn pri hold-btn" id="scan-start"><span>Start Camera</span></button>
         <button class="btn" id="scan-stop" hidden>Stop Camera</button>
       </div>
       <label for="scan-file">Or scan from an image</label>
@@ -134,7 +313,7 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
       <div id="scan-status" class="status" aria-live="polite"></div>
     </div>
     <div>
-      <div class="row" style="margin-top:0"><h2 style="flex:1;margin:0">Results</h2><button class="btn" id="scan-clear">Clear</button></div>
+      <div class="row" style="margin-top:0"><h2 style="flex:1;margin:0;border:none;padding:0">Results</h2><button class="btn" id="scan-clear">Clear</button></div>
       <div id="scan-list"><p class="muted">No results yet</p></div>
     </div>
   </div>
@@ -149,7 +328,7 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
     <div class="grid">
       <div>
         <div class="box">
-          <label for="tx-file" style="margin-top:0">File</label>
+          <label for="tx-file">File</label>
           <input id="tx-file" type="file" />
           <div class="row">
             <div><label for="tx-chunk">Bytes per QR</label>
@@ -159,10 +338,10 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
               <select id="tx-ec"><option value="L">L</option><option value="M" selected>M</option><option value="Q">Q</option></select></div>
           </div>
           <label class="chk"><input id="tx-loop" type="checkbox" checked />Repeat until stopped (recommended)</label>
-          <p class="muted" style="margin:6px 0 0">Smaller bytes per QR and longer time per QR are more reliable. Larger and shorter are faster.</p>
+          <p class="muted" style="margin:8px 0 0;font-size:12px">Smaller bytes per QR and longer time per QR are more reliable.</p>
         </div>
         <div class="row">
-          <button class="btn pri" id="tx-start">Start</button>
+          <button class="btn pri hold-btn" id="tx-start"><span>Start</span></button>
           <button class="btn" id="tx-pause" hidden>Pause</button>
           <button class="btn" id="tx-stop" hidden>Stop</button>
         </div>
@@ -171,7 +350,7 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
         <div class="pv"><canvas id="tx-canvas" class="qr" width="10" height="10" hidden></canvas><span id="tx-empty" class="muted">The QR stream appears here</span></div>
         <div id="tx-status" class="status" aria-live="polite">Choose a file to get started</div>
         <div class="bar"><i id="tx-bar"></i></div>
-        <div id="tx-info" class="muted"></div>
+        <div id="tx-info" class="muted" style="font-family:var(--mono);font-size:11px"></div>
       </div>
     </div>
   </div>
@@ -182,7 +361,7 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
       <div>
         <div class="cam" id="rx-cam"></div>
         <div class="row">
-          <button class="btn pri" id="rx-start">Start Camera</button>
+          <button class="btn pri hold-btn" id="rx-start"><span>Start Camera</span></button>
           <button class="btn" id="rx-stop" hidden>Stop Camera</button>
           <button class="btn" id="rx-reset">Reset</button>
         </div>
@@ -190,12 +369,12 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
       <div>
         <div id="rx-status" class="status" aria-live="polite">Press Start Camera</div>
         <div class="bar"><i id="rx-bar"></i></div>
-        <div id="rx-count" class="muted"></div>
-        <p class="muted" style="margin:10px 0 4px">Received pieces (black = received)</p>
+        <div id="rx-count" class="muted" style="font-family:var(--mono);font-size:11px"></div>
+        <p class="muted" style="margin:12px 0 4px;font-size:11px">Received pieces (black = received)</p>
         <canvas id="rx-map" class="map" width="400" height="56"></canvas>
-        <div id="rx-done" hidden class="box" style="margin-top:14px">
-          <div id="rx-name" style="font-weight:700;word-break:break-all"></div>
-          <div class="row"><button class="btn pri dl-btn" id="rx-save">Download File</button></div>
+        <div id="rx-done" hidden class="box" style="margin-top:16px">
+          <div id="rx-name" style="font-weight:700;word-break:break-all;font-size:14px"></div>
+          <div class="row"><button class="btn pri dl-btn" id="rx-save"><span>Download File</span></button></div>
         </div>
       </div>
     </div>
@@ -209,7 +388,7 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
   <div id="p2p-send">
     <ol class="steps"><li>Press Create Session.</li><li>On the other device open Receive and scan the QR code or type the code.</li><li>Once connected, choose files or type text to send.</li></ol>
     <div id="ps-status" class="status" aria-live="polite">No session yet</div>
-    <div class="row"><button class="btn pri" id="ps-create">Create Session</button><button class="btn" id="ps-end" hidden>End Session</button></div>
+    <div class="row"><button class="btn pri hold-btn" id="ps-create"><span>Create Session</span></button><button class="btn" id="ps-end" hidden>End Session</button></div>
     <div id="ps-session" hidden class="grid">
       <div>
         <div class="code" id="ps-code"></div>
@@ -218,15 +397,15 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
       </div>
       <div id="ps-tools" hidden>
         <div class="box">
-          <label for="ps-files" style="margin-top:0">Files</label>
+          <label for="ps-files">Files</label>
           <input id="ps-files" type="file" multiple />
           <div class="row"><button class="btn" id="ps-cancel">Stop sending</button></div>
           <div id="ps-list"></div>
         </div>
         <div class="box">
-          <label for="ps-text" style="margin-top:0">Text</label>
+          <label for="ps-text">Text</label>
           <textarea id="ps-text" placeholder="Type or paste text to send"></textarea>
-          <div class="row"><button class="btn pri" id="ps-sendtxt">Send text</button></div>
+          <div class="row"><button class="btn pri hold-btn" id="ps-sendtxt"><span>Send text</span></button></div>
         </div>
       </div>
     </div>
@@ -238,11 +417,11 @@ canvas.qr{max-width:100%;height:auto;image-rendering:pixelated}
     <div id="pr-connect" class="grid">
       <div>
         <div class="cam" id="pr-cam"></div>
-        <div class="row"><button class="btn pri" id="pr-start">Start Camera</button><button class="btn" id="pr-stop" hidden>Stop Camera</button></div>
+        <div class="row"><button class="btn pri hold-btn" id="pr-start"><span>Start Camera</span></button><button class="btn" id="pr-stop" hidden>Stop Camera</button></div>
       </div>
       <div>
         <label for="pr-code" style="margin-top:0">Or type the code</label>
-        <div class="row" style="margin-top:0"><input id="pr-code" placeholder="e.g. ABC123" maxlength="16" autocomplete="off" style="font-family:monospace;text-transform:uppercase" /><button class="btn pri" id="pr-go">Connect</button></div>
+        <div class="row" style="margin-top:0"><input id="pr-code" placeholder="e.g. ABC123" maxlength="16" autocomplete="off" style="font-family:monospace;text-transform:uppercase" /><button class="btn pri hold-btn" id="pr-go"><span>Connect</span></button></div>
       </div>
     </div>
     <div id="pr-live" hidden>
@@ -296,6 +475,40 @@ function mk(tag, props, kids) {
   (kids || []).forEach((k) => e.appendChild(typeof k === 'string' ? document.createTextNode(k) : k));
   return e;
 }
+
+/* Ripple effect on primary buttons */
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btn.pri');
+  if (!btn) return;
+  const r = document.createElement('span');
+  r.className = 'ripple';
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  r.style.width = r.style.height = size + 'px';
+  r.style.left = (e.clientX - rect.left - size / 2) + 'px';
+  r.style.top = (e.clientY - rect.top - size / 2) + 'px';
+  btn.appendChild(r);
+  setTimeout(() => r.remove(), 600);
+});
+
+/* Dodge field hint */
+document.querySelectorAll('.dodge-hint').forEach((el) => {
+  el.addEventListener('mousemove', (e) => {
+    const r = el.getBoundingClientRect();
+    const dx = (e.clientX - r.left - r.width / 2) / r.width;
+    const dy = (e.clientY - r.top - r.height / 2) / r.height;
+    el.style.transform = `translate(${dx * 4}px, ${dy * 4}px)`;
+  });
+  el.addEventListener('mouseleave', () => { el.style.transform = ''; });
+});
+
+/* Scroll reveal */
+const io = new IntersectionObserver((entries) => {
+  entries.forEach((en) => { if (en.isIntersecting) en.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.panel, .box, .pv').forEach((el) => {
+  el.classList.add('reveal'); io.observe(el);
+});
 
 function qrMatrix(text, ec) {
   const d = document.createElement('div');
@@ -946,7 +1159,8 @@ async function boot() {
   const t0 = Date.now();
   while (missing().length && Date.now() - t0 < 20000) await sleep(100);
   if (missing().length) {
-    document.querySelector('#loader .spin').hidden = true;
+    document.querySelector('#loader .lattice-loader').hidden = true;
+    document.querySelector('#loader .msg').textContent = 'Load failed';
     $('loadErr').textContent = 'Could not load: ' + missing().join(', ') + '. Check your internet connection.';
     $('loadErr').hidden = false; $('reload').hidden = false;
     $('reload').addEventListener('click', () => location.reload());
