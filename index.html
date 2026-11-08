@@ -302,25 +302,50 @@ main{padding:14px 0 90px; position:relative; overflow-x:hidden;}
 .acc-content{padding-top:12px; animation:fadeUp .3s var(--ease)}
 @keyframes fadeUp{from{opacity:0; transform:translateY(6px)}to{opacity:1; transform:none}}
 
+/* ---------- Mobile Studio layout ---------- */
 .studio-preview-card{padding:20px; transition:all .3s var(--ease);}
-@media (max-width:920px){
-  .studio-preview-card{
-    position:sticky; top:calc(var(--safe-t) + 74px); z-index:20;
-    padding:12px; max-height:36vh; overflow-y:auto; margin-bottom:14px;
-    border-radius:var(--radius-sm);
-    box-shadow:0 10px 30px rgba(0,0,0,0.15);
-  }
-  .studio-preview-card .canvas-container{min-height:120px; max-height:200px; margin-bottom:8px;}
-  .studio-preview-card canvas#display-canvas{max-height:100%;}
-  .studio-preview-card .row { flex-wrap: wrap; gap: 4px; }
-  .studio-preview-card .btn { padding: 6px 10px; font-size: 11px; min-height: 32px; }
-  .studio-preview-card.collapsed { max-height: 48px; overflow: hidden; padding: 8px 12px; }
-  .studio-preview-card.collapsed .canvas-container,
-  .studio-preview-card.collapsed p,
-  .studio-preview-card.collapsed .row:not(:first-child) { display: none; }
-  .studio-preview-card .toggle-collapse { display: block; margin: 0 auto; }
-  .studio-preview-card.collapsed .toggle-collapse { margin-bottom: 0; }
+
+/* Desktop: preview on left, settings on right */
+@media (min-width:921px){
+  .studio-grid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); gap:20px; align-items:start;}
 }
+
+/* Mobile: preview on top as sticky small card, then settings stacked */
+@media (max-width:920px){
+  .studio-grid{display:flex; flex-direction:column; gap:14px;}
+  .studio-preview-card{
+    position:sticky; top:calc(var(--safe-t) + 70px); z-index:20;
+    padding:12px; margin-bottom:0;
+    border-radius:var(--radius-sm);
+    box-shadow:0 10px 30px rgba(0,0,0,0.18);
+  }
+  .studio-preview-card .canvas-container{
+    min-height:0; padding:8px; margin-bottom:10px;
+    aspect-ratio:1; max-height:34vh;
+  }
+  .studio-preview-card canvas#display-canvas{max-height:100%; max-width:100%;}
+  .studio-preview-card .row { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:6px 0; }
+  .studio-preview-card .row > *{min-width:0;}
+  .studio-preview-card .row .btn,
+  .studio-preview-card .row select { font-size:11px; padding:8px 10px; min-height:36px; width:100%; }
+  .studio-preview-card .row:first-of-type { grid-template-columns:1fr; }
+  .studio-preview-card #c-info { margin-bottom:8px; font-size:10px; }
+  .studio-preview-card .kbd-hint { display:none; }
+  .studio-preview-card .toggle-collapse { display:none; }
+
+  .studio-settings { display:flex; flex-direction:column; gap:14px; }
+
+  /* Settings cards on mobile — comfortable touch */
+  .studio-settings .card{padding:16px;}
+  .studio-settings label{font-size:11px; margin-top:14px;}
+  .studio-settings input[type=color]{height:44px; width:56px;}
+  .studio-settings .seg button{min-height:44px; font-size:13px;}
+  .studio-settings .row{gap:8px;}
+  .studio-settings .row input[type=range]{min-height:36px;}
+  .studio-settings .btn{min-height:44px;}
+  /* Collapsible preview when scrolled — no, keep sticky */
+}
+
 .studio-preview-card .toggle-collapse { display: none; }
 
 .canvas-container{
@@ -577,7 +602,7 @@ canvas.qr{max-width:100%; height:auto; image-rendering:pixelated; border-radius:
 }
 @keyframes dialogIn{from{opacity:0; transform:scale(.92) translateY(20px)}to{opacity:1; transform:none}}
 .dialog h3{font-size:16px; font-weight:800; margin-bottom:10px; letter-spacing:-.01em}
-.dialog p{font-size:13.5px; line-height:1.6; color:var(--text-muted); margin-bottom:16px; white-space:pre-wrap}
+.dialog p{font-size:13.5px; line-height:1.6; color:var(--text-muted); margin-bottom:16px; white-space:pre-wrap; word-break:break-all}
 .dialog .row{margin-top:16px; margin-bottom:0}
 .dialog .row .btn{flex:1}
 .dialog .choices { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
@@ -637,6 +662,108 @@ canvas.qr:fullscreen{
   image-rendering:pixelated;
 }
 
+/* ---------- P2P layout: centered, larger tap targets ---------- */
+.p2p-wrap{
+  display:flex; flex-direction:column; align-items:center; gap:14px;
+  padding:8px 0;
+}
+.p2p-wrap .p2p-inner{
+  width:100%; max-width:720px;
+}
+.p2p-hero{
+  width:100%; display:flex; flex-direction:column; align-items:center;
+  text-align:center; gap:14px;
+  padding:28px 18px;
+}
+.p2p-hero .p2p-title{
+  font-size:15px; font-weight:800; letter-spacing:.02em;
+}
+.p2p-hero .p2p-sub{font-size:12.5px; color:var(--text-muted); max-width:340px; line-height:1.55;}
+.p2p-hero .btn{min-width:200px; min-height:52px; font-size:14px; padding:0 22px;}
+.p2p-hero .p2p-icon{
+  width:64px; height:64px; border-radius:18px; display:grid; place-items:center;
+  background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent-2) 22%, transparent));
+  color:var(--accent); margin-bottom:4px;
+}
+.p2p-hero .p2p-icon svg{width:32px; height:32px; stroke:currentColor; fill:none; stroke-width:2;}
+
+.p2p-session{
+  display:flex; flex-direction:column; align-items:center; gap:14px; width:100%;
+}
+.p2p-session .code{
+  width:100%; max-width:360px; margin:0;
+  font-size:32px; letter-spacing:10px; padding:22px 14px;
+}
+.p2p-session .pv{
+  width:100%; max-width:340px;
+  aspect-ratio:1; padding:14px;
+}
+.p2p-session .pv canvas.qr{width:100%; height:100%; object-fit:contain;}
+
+.p2p-recv-hero{
+  width:100%; display:flex; flex-direction:column; align-items:center;
+  text-align:center; gap:12px; padding:22px 14px;
+}
+.p2p-recv-hero .p2p-icon{
+  width:56px; height:56px; border-radius:16px; display:grid; place-items:center;
+  background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent-2) 22%, transparent));
+  color:var(--accent);
+}
+.p2p-recv-hero .p2p-icon svg{width:28px; height:28px; stroke:currentColor; fill:none; stroke-width:2;}
+
+/* P2P send/receive live layout: centered column on mobile */
+@media (max-width:920px){
+  .p2p-send-grid, .p2p-recv-grid{
+    display:flex; flex-direction:column; gap:14px; width:100%;
+  }
+  .p2p-send-grid > *, .p2p-recv-grid > *{width:100%;}
+  .p2p-send-grid .card, .p2p-recv-grid .card{margin-bottom:0;}
+}
+
+/* P2P send/recv sub tabs center */
+#p2p-sub{display:flex; justify-content:center; margin:0 auto 14px; max-width:340px;}
+#p2p-sub button{flex:1; text-align:center;}
+#qrtx-sub{display:flex; justify-content:center; margin:0 auto 14px; max-width:340px;}
+#qrtx-sub button{flex:1;}
+
+/* Scanner found overlay */
+.scan-result-overlay{
+  position:fixed; inset:0; z-index:140;
+  display:flex; align-items:center; justify-content:center;
+  padding:20px;
+  background:rgba(0,0,0,.45); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  animation:fadeIn .25s var(--ease);
+}
+.scan-result-card{
+  width:100%; max-width:420px;
+  border-radius:var(--radius); padding:22px;
+  background:linear-gradient(135deg, var(--glass-3-a), var(--glass-3-b));
+  border:1px solid transparent; box-shadow:var(--glass-shadow), var(--glass-inset);
+  position:relative; overflow:hidden;
+  animation:dialogIn .35s var(--spring) both;
+}
+.scan-result-card::before{
+  content:''; position:absolute; inset:0; border-radius:inherit; padding:1px; pointer-events:none;
+  background:linear-gradient(180deg, var(--glass-border), rgba(255,255,255,.04) 60%, rgba(0,0,0,.04));
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+}
+.scan-result-card .src-type{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 10px; border-radius:999px;
+  background:var(--accent-soft); color:var(--accent-ink);
+  font:700 10.5px/1 var(--mono); letter-spacing:.08em; text-transform:uppercase;
+  margin-bottom:12px;
+}
+.scan-result-card .src-text{
+  font:12.5px/1.5 var(--mono); word-break:break-all; max-height:120px; overflow:auto;
+  padding:10px 12px; border-radius:10px;
+  background:var(--glass-1-a); border:1px solid var(--glass-border-lo);
+  margin-bottom:16px;
+}
+.scan-result-card .actions{display:flex; gap:8px; flex-wrap:wrap;}
+.scan-result-card .actions .btn{flex:1; min-height:44px;}
+
 @media (max-width:520px){
   .head-in{padding:8px 10px; gap:8px; margin:8px auto}
   .brand{font-size:15px}
@@ -649,6 +776,7 @@ canvas.qr:fullscreen{
   .code{font-size:22px; letter-spacing:5px}
   canvas#display-canvas{max-height:320px}
   .btn{min-height:44px}
+  .p2p-session .code{font-size:28px; letter-spacing:8px;}
 }
 @media (hover:none){
   .card::after{display:none}
@@ -694,212 +822,207 @@ canvas.qr:fullscreen{
 
 <main class="shell">
 <section id="tab-studio" class="panel on" role="tabpanel" aria-labelledby="nav">
-  <div class="grid stagger">
-    <div class="studio-preview-wrapper" style="display:contents;">
-      <div class="card studio-preview-card" id="studio-preview-card">
-        <button class="btn xs ghost toggle-collapse" id="toggle-preview-btn" aria-label="Toggle preview">▼</button>
-        <div class="canvas-container" id="preview-container">
-          <canvas id="display-canvas" width="600" height="600" aria-label="QR code preview"></canvas>
-        </div>
-        <p id="c-info" class="muted" style="margin-bottom:14px;font-family:var(--mono);font-size:11px;text-align:center"></p>
-        <div class="row" style="margin-top:0">
-          <button class="btn pri" id="c-export-png" data-i18n="studio.exportPng">Export PNG</button>
-        </div>
-        <div class="row">
-          <button class="btn sm" id="c-export-svg">SVG</button>
-          <button class="btn sm" id="c-preview-transparent" data-i18n="studio.previewTransparent">Preview Transparent</button>
-          <button class="btn sm" id="c-export-transparent" data-i18n="studio.exportTransparent">Export Transparent</button>
-          <button class="btn sm" id="c-export-copy" data-i18n="studio.copyImg">Copy image</button>
-        </div>
-        <div class="row">
-          <select id="c-resolution" style="flex:1">
-            <option value="512">512×512</option>
-            <option value="1024" selected>1024×1024</option>
-            <option value="2048">2048×2048</option>
-            <option value="4096">4096×4096</option>
-          </select>
-          <button class="btn sm" id="c-export-custom" data-i18n="studio.exportRes">Export</button>
-        </div>
-        <div class="row">
-          <button class="btn sm" id="c-export-pdf" data-i18n="studio.pdf">Print PDF</button>
-          <button class="btn sm" id="c-reset" data-i18n="studio.reset">Reset</button>
-        </div>
-        <div class="muted" style="font-size:10px;text-align:center;margin-top:8px;font-family:var(--mono)">
-          <kbd>⌘S</kbd> save · <kbd>⌘E</kbd> export · <kbd>⌘Z</kbd> undo
-        </div>
+  <div class="studio-grid">
+    <div class="studio-preview-card card" id="studio-preview-card">
+      <div class="canvas-container" id="preview-container">
+        <canvas id="display-canvas" width="600" height="600" aria-label="QR code preview"></canvas>
+      </div>
+      <p id="c-info" class="muted" style="margin-bottom:12px;font-family:var(--mono);font-size:11px;text-align:center"></p>
+      <div class="row" style="margin-top:0">
+        <button class="btn pri" id="c-export-png" data-i18n="studio.exportPng">Export PNG</button>
+      </div>
+      <div class="row">
+        <button class="btn sm" id="c-export-svg">SVG</button>
+        <button class="btn sm" id="c-preview-transparent" data-i18n="studio.previewTransparent">Preview Transparent</button>
+        <button class="btn sm" id="c-export-transparent" data-i18n="studio.exportTransparent">Export Transparent</button>
+        <button class="btn sm" id="c-export-copy" data-i18n="studio.copyImg">Copy image</button>
+      </div>
+      <div class="row">
+        <select id="c-resolution" style="flex:1">
+          <option value="512">512×512</option>
+          <option value="1024" selected>1024×1024</option>
+          <option value="2048">2048×2048</option>
+          <option value="4096">4096×4096</option>
+        </select>
+        <button class="btn sm" id="c-export-custom" data-i18n="studio.exportRes">Export</button>
+      </div>
+      <div class="row">
+        <button class="btn sm" id="c-export-pdf" data-i18n="studio.pdf">Print PDF</button>
+        <button class="btn sm" id="c-reset" data-i18n="studio.reset">Reset</button>
+      </div>
+      <div class="muted kbd-hint" style="font-size:10px;text-align:center;margin-top:8px;font-family:var(--mono)">
+        <kbd>⌘S</kbd> save · <kbd>⌘E</kbd> export · <kbd>⌘Z</kbd> undo
       </div>
     </div>
     
-    <div class="studio-settings-wrapper" style="display:contents;">
-      <div>
-        <div class="card">
-          <h2 data-i18n="studio.content">Content</h2>
-          <label for="c-type" data-i18n="studio.type">Type</label>
-          <select id="c-type"></select>
-          <div id="c-fields"></div>
-          <div class="muted" id="c-bytes" style="margin-top:8px;font-family:var(--mono);font-size:11px"></div>
+    <div class="studio-settings">
+      <div class="card">
+        <h2 data-i18n="studio.content">Content</h2>
+        <label for="c-type" data-i18n="studio.type">Type</label>
+        <select id="c-type"></select>
+        <div id="c-fields"></div>
+        <div class="muted" id="c-bytes" style="margin-top:8px;font-family:var(--mono);font-size:11px"></div>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="studio.design">Design</h2>
+        <div class="seg" id="c-canvas-ratio" style="margin-top:12px" role="radiogroup">
+          <button data-r="1:1" class="on">1:1</button>
+          <button data-r="3:4">3:4</button>
+          <button data-r="16:9">16:9</button>
         </div>
 
-        <div class="card">
-          <h2 data-i18n="studio.design">Design</h2>
-          <div class="seg" id="c-canvas-ratio" style="margin-top:12px" role="radiogroup">
-            <button data-r="1:1" class="on">1:1</button>
-            <button data-r="3:4">3:4</button>
-            <button data-r="16:9">16:9</button>
-          </div>
+        <label data-i18n="studio.background">Background</label>
+        <div class="row" style="margin-top:0">
+          <input type="color" id="c-bg-color" value="#ffffff" aria-label="Background color">
+          <button class="btn sm ghost" id="c-bg-img-btn" data-i18n="studio.upload">Upload image</button>
+          <button class="btn sm ghost" id="c-bg-img-clear" hidden data-i18n="studio.clear">Clear</button>
+          <input type="file" id="c-bg-img" accept="image/*" hidden>
+        </div>
 
-          <label data-i18n="studio.background">Background</label>
-          <div class="row" style="margin-top:0">
-            <input type="color" id="c-bg-color" value="#ffffff" aria-label="Background color">
-            <button class="btn sm ghost" id="c-bg-img-btn" data-i18n="studio.upload">Upload image</button>
-            <button class="btn sm ghost" id="c-bg-img-clear" hidden data-i18n="studio.clear">Clear</button>
-            <input type="file" id="c-bg-img" accept="image/*" hidden>
-          </div>
+        <label data-i18n="studio.qrSize">QR size (%)</label>
+        <div class="row" style="margin-top:0">
+          <input type="range" id="c-qr-size" min="20" max="80" value="60" style="flex:1">
+          <span class="muted" id="c-qr-size-v" style="min-width:44px;text-align:right">60%</span>
+        </div>
 
-          <label data-i18n="studio.qrSize">QR size (%)</label>
-          <div class="row" style="margin-top:0">
-            <input type="range" id="c-qr-size" min="20" max="80" value="60" style="flex:1">
-            <span class="muted" id="c-qr-size-v" style="min-width:44px;text-align:right">60%</span>
-          </div>
+        <label data-i18n="studio.frameColor">QR frame color &amp; radius</label>
+        <div class="row" style="margin-top:0">
+          <input type="color" id="c-frame-color" value="#ffffff">
+          <input type="range" id="c-frame-radius" min="0" max="30" value="8" style="flex:1" aria-label="Frame radius">
+          <span class="muted" id="c-frame-radius-v" style="min-width:44px;text-align:right">8px</span>
+        </div>
+      </div>
 
-          <label data-i18n="studio.frameColor">QR frame color &amp; radius</label>
-          <div class="row" style="margin-top:0">
-            <input type="color" id="c-frame-color" value="#ffffff">
-            <input type="range" id="c-frame-radius" min="0" max="30" value="8" style="flex:1" aria-label="Frame radius">
-            <span class="muted" id="c-frame-radius-v" style="min-width:44px;text-align:right">8px</span>
+      <div class="card">
+        <h2 data-i18n="studio.style">QR Style</h2>
+        <label data-i18n="studio.foreground">Foreground</label>
+        <div class="row" style="margin-top:0">
+          <input type="color" id="c-fg" value="#141414" aria-label="Foreground color">
+          <input type="text" id="c-fg-hex" value="#141414" style="flex:1;font-family:var(--mono)" aria-label="Foreground hex">
+        </div>
+        <div class="rec-colors" id="rec-colors"></div>
+        <label class="chk" style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text)">
+          <input type="checkbox" id="c-gradient-on" style="width:auto"> <span data-i18n="studio.gradient">Gradient foreground</span>
+        </label>
+        <div id="c-gradient-tools" hidden>
+          <div class="row" style="margin-top:8px">
+            <input type="color" id="c-fg2" value="#3b5bdb">
+            <select id="c-grad-type" style="flex:1">
+              <option value="linear">Linear</option>
+              <option value="radial">Radial</option>
+            </select>
+          </div>
+          <div class="row">
+            <input type="range" id="c-grad-angle" min="0" max="360" value="135" style="flex:1">
+            <span class="muted" id="c-grad-angle-v" style="min-width:44px;text-align:right">135°</span>
           </div>
         </div>
 
-        <div class="card">
-          <h2 data-i18n="studio.style">QR Style</h2>
-          <label data-i18n="studio.foreground">Foreground</label>
+        <label data-i18n="studio.dotStyle">Dot style</label>
+        <div class="seg" id="c-dot-style">
+          <button data-v="square" class="on">■</button>
+          <button data-v="dots">●</button>
+          <button data-v="rounded">▢</button>
+          <button data-v="diamond">◆</button>
+          <button data-v="fluid">≈</button>
+        </div>
+
+        <label data-i18n="studio.eyeFrame">Eye frame</label>
+        <div class="seg" id="c-eye-frame">
+          <button data-v="square" class="on">■</button>
+          <button data-v="rounded">▢</button>
+          <button data-v="circle">●</button>
+        </div>
+        <label data-i18n="studio.eyeDot">Eye dot</label>
+        <div class="seg" id="c-eye-dot">
+          <button data-v="square" class="on">■</button>
+          <button data-v="rounded">▢</button>
+          <button data-v="circle">●</button>
+          <button data-v="diamond">◆</button>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <input type="color" id="c-eye-frame-color" value="#141414" aria-label="Eye frame color" title="Follows foreground by default">
+          <input type="color" id="c-eye-dot-color" value="#141414" aria-label="Eye dot color" title="Follows foreground by default">
+          <button class="btn xs ghost" id="c-eye-follow" style="flex:0 0 auto" title="Follow foreground color">↺</button>
+        </div>
+
+        <label data-i18n="studio.ec">Error correction</label>
+        <div class="seg" id="c-ec">
+          <button data-ec="L">L</button>
+          <button data-ec="M" class="on">M</button>
+          <button data-ec="Q">Q</button>
+          <button data-ec="H">H</button>
+        </div>
+
+        <label class="chk" style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text)">
+          <input type="checkbox" id="c-logo-enable" style="width:auto"> <span data-i18n="studio.logo">Center logo</span>
+        </label>
+        <div id="c-logo-tools" hidden>
+          <input type="file" id="c-logo-file" accept="image/*">
+          <label data-i18n="studio.logoSize">Logo size (%)</label>
           <div class="row" style="margin-top:0">
-            <input type="color" id="c-fg" value="#141414" aria-label="Foreground color">
-            <input type="text" id="c-fg-hex" value="#141414" style="flex:1;font-family:var(--mono)" aria-label="Foreground hex">
+            <input type="range" id="c-logo-size" min="10" max="25" value="18" style="flex:1">
+            <span class="muted" id="c-logo-size-v" style="min-width:44px;text-align:right">18%</span>
           </div>
-          <div class="rec-colors" id="rec-colors"></div>
-          <label class="chk" style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text)">
-            <input type="checkbox" id="c-gradient-on" style="width:auto"> <span data-i18n="studio.gradient">Gradient foreground</span>
-          </label>
-          <div id="c-gradient-tools" hidden>
+        </div>
+      </div>
+
+      <div class="card accordion">
+        <details open>
+          <summary data-i18n="studio.quality">Quality check</summary>
+          <div class="acc-content" id="c-quality">
+            <div class="gauge-wrap">
+              <div class="gauge" id="q-gauge"><span class="gauge-val" id="q-gauge-val">0%</span></div>
+              <div style="flex:1;font-size:12px;line-height:1.9">
+                <div style="display:flex;justify-content:space-between">Contrast <span id="q-contrast" style="font-family:var(--mono)">-</span></div>
+                <div style="display:flex;justify-content:space-between">Version <span id="q-version" style="font-family:var(--mono)">-</span></div>
+                <div style="display:flex;justify-content:space-between">Capacity <span id="q-capacity" style="font-family:var(--mono)">-</span></div>
+                <div style="display:flex;justify-content:space-between">EC Level <span id="q-ec" style="font-family:var(--mono)">-</span></div>
+              </div>
+            </div>
+            <div class="row" style="margin-top:10px">
+              <span class="qlights" aria-hidden="true"><span class="l" id="ql-r"></span><span class="l" id="ql-y"></span><span class="l" id="ql-g"></span></span>
+              <span id="c-decode-result" class="status" style="margin:0;flex:1;font-size:11px"></span>
+            </div>
+            <div id="c-quality-warn" class="status warn" style="font-size:11px;margin-top:6px;display:none"></div>
+          </div>
+        </details>
+
+        <details>
+          <summary data-i18n="studio.templates">Templates</summary>
+          <div class="acc-content"><div class="tpl-grid" id="c-templates"></div></div>
+        </details>
+
+        <details>
+          <summary data-i18n="studio.batch">Batch generate</summary>
+          <div class="acc-content">
+            <textarea id="c-batch-text" placeholder="One line per QR code" style="min-height:80px"></textarea>
             <div class="row" style="margin-top:8px">
-              <input type="color" id="c-fg2" value="#3b5bdb">
-              <select id="c-grad-type" style="flex:1">
-                <option value="linear">Linear</option>
-                <option value="radial">Radial</option>
-              </select>
+              <button class="btn sm" id="c-batch-gen" data-i18n="studio.batchGen">Generate ZIP</button>
+              <label class="btn sm ghost" style="margin:0;font-size:11.5px;font-weight:600;color:var(--text);background:transparent;border:1px solid var(--glass-border-lo)">
+                <span data-i18n="studio.batchCsv">Import CSV</span><input type="file" id="c-batch-csv" accept=".csv,text/csv" hidden>
+              </label>
             </div>
-            <div class="row">
-              <input type="range" id="c-grad-angle" min="0" max="360" value="135" style="flex:1">
-              <span class="muted" id="c-grad-angle-v" style="min-width:44px;text-align:right">135°</span>
-            </div>
+            <div id="c-batch-status" class="muted" style="font-size:11px;margin-top:6px"></div>
           </div>
+        </details>
 
-          <label data-i18n="studio.dotStyle">Dot style</label>
-          <div class="seg" id="c-dot-style">
-            <button data-v="square" class="on">■</button>
-            <button data-v="dots">●</button>
-            <button data-v="rounded">▢</button>
-            <button data-v="diamond">◆</button>
-            <button data-v="fluid">≈</button>
-          </div>
-
-          <label data-i18n="studio.eyeFrame">Eye frame</label>
-          <div class="seg" id="c-eye-frame">
-            <button data-v="square" class="on">■</button>
-            <button data-v="rounded">▢</button>
-            <button data-v="circle">●</button>
-          </div>
-          <label data-i18n="studio.eyeDot">Eye dot</label>
-          <div class="seg" id="c-eye-dot">
-            <button data-v="square" class="on">■</button>
-            <button data-v="rounded">▢</button>
-            <button data-v="circle">●</button>
-            <button data-v="diamond">◆</button>
-          </div>
-          <div class="row" style="margin-top:10px">
-            <input type="color" id="c-eye-frame-color" value="#141414" aria-label="Eye frame color" title="Follows foreground by default">
-            <input type="color" id="c-eye-dot-color" value="#141414" aria-label="Eye dot color" title="Follows foreground by default">
-            <button class="btn xs ghost" id="c-eye-follow" style="flex:0 0 auto" title="Follow foreground color">↺</button>
-          </div>
-
-          <label data-i18n="studio.ec">Error correction</label>
-          <div class="seg" id="c-ec">
-            <button data-ec="L">L</button>
-            <button data-ec="M" class="on">M</button>
-            <button data-ec="Q">Q</button>
-            <button data-ec="H">H</button>
-          </div>
-
-          <label class="chk" style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text)">
-            <input type="checkbox" id="c-logo-enable" style="width:auto"> <span data-i18n="studio.logo">Center logo</span>
-          </label>
-          <div id="c-logo-tools" hidden>
-            <input type="file" id="c-logo-file" accept="image/*">
-            <label data-i18n="studio.logoSize">Logo size (%)</label>
+        <details>
+          <summary data-i18n="studio.library">Library</summary>
+          <div class="acc-content">
             <div class="row" style="margin-top:0">
-              <input type="range" id="c-logo-size" min="10" max="25" value="18" style="flex:1">
-              <span class="muted" id="c-logo-size-v" style="min-width:44px;text-align:right">18%</span>
+              <button class="btn sm" id="c-save-design" data-i18n="studio.save">Save</button>
+              <button class="btn sm ghost" id="c-export-json" data-i18n="studio.export">Export</button>
+              <label class="btn sm ghost" style="margin:0;font-size:11.5px;font-weight:600;color:var(--text);background:transparent;border:1px solid var(--glass-border-lo)">
+                <span data-i18n="studio.import">Import</span><input type="file" id="c-import-json" accept=".json" hidden>
+              </label>
             </div>
+            <input type="text" id="c-lib-search" placeholder="Search…" style="margin-top:10px" aria-label="Search library">
+            <div class="muted" id="c-lib-usage" style="font-size:10.5px;margin:6px 0;font-family:var(--mono)"></div>
+            <div class="lib-grid" id="c-lib-grid"></div>
           </div>
-        </div>
-
-        <div class="card accordion">
-          <details open>
-            <summary data-i18n="studio.quality">Quality check</summary>
-            <div class="acc-content" id="c-quality">
-              <div class="gauge-wrap">
-                <div class="gauge" id="q-gauge"><span class="gauge-val" id="q-gauge-val">0%</span></div>
-                <div style="flex:1;font-size:12px;line-height:1.9">
-                  <div style="display:flex;justify-content:space-between">Contrast <span id="q-contrast" style="font-family:var(--mono)">-</span></div>
-                  <div style="display:flex;justify-content:space-between">Version <span id="q-version" style="font-family:var(--mono)">-</span></div>
-                  <div style="display:flex;justify-content:space-between">Capacity <span id="q-capacity" style="font-family:var(--mono)">-</span></div>
-                  <div style="display:flex;justify-content:space-between">EC Level <span id="q-ec" style="font-family:var(--mono)">-</span></div>
-                </div>
-              </div>
-              <div class="row" style="margin-top:10px">
-                <span class="qlights" aria-hidden="true"><span class="l" id="ql-r"></span><span class="l" id="ql-y"></span><span class="l" id="ql-g"></span></span>
-                <span id="c-decode-result" class="status" style="margin:0;flex:1;font-size:11px"></span>
-              </div>
-              <div id="c-quality-warn" class="status warn" style="font-size:11px;margin-top:6px;display:none"></div>
-            </div>
-          </details>
-
-          <details>
-            <summary data-i18n="studio.templates">Templates</summary>
-            <div class="acc-content"><div class="tpl-grid" id="c-templates"></div></div>
-          </details>
-
-          <details>
-            <summary data-i18n="studio.batch">Batch generate</summary>
-            <div class="acc-content">
-              <textarea id="c-batch-text" placeholder="One line per QR code" style="min-height:80px"></textarea>
-              <div class="row" style="margin-top:8px">
-                <button class="btn sm" id="c-batch-gen" data-i18n="studio.batchGen">Generate ZIP</button>
-                <label class="btn sm ghost" style="margin:0;font-size:11.5px;font-weight:600;color:var(--text);background:transparent;border:1px solid var(--glass-border-lo)">
-                  <span data-i18n="studio.batchCsv">Import CSV</span><input type="file" id="c-batch-csv" accept=".csv,text/csv" hidden>
-                </label>
-              </div>
-              <div id="c-batch-status" class="muted" style="font-size:11px;margin-top:6px"></div>
-            </div>
-          </details>
-
-          <details>
-            <summary data-i18n="studio.library">Library</summary>
-            <div class="acc-content">
-              <div class="row" style="margin-top:0">
-                <button class="btn sm" id="c-save-design" data-i18n="studio.save">Save</button>
-                <button class="btn sm ghost" id="c-export-json" data-i18n="studio.export">Export</button>
-                <label class="btn sm ghost" style="margin:0;font-size:11.5px;font-weight:600;color:var(--text);background:transparent;border:1px solid var(--glass-border-lo)">
-                  <span data-i18n="studio.import">Import</span><input type="file" id="c-import-json" accept=".json" hidden>
-                </label>
-              </div>
-              <input type="text" id="c-lib-search" placeholder="Search…" style="margin-top:10px" aria-label="Search library">
-              <div class="muted" id="c-lib-usage" style="font-size:10.5px;margin:6px 0;font-family:var(--mono)"></div>
-              <div class="lib-grid" id="c-lib-grid"></div>
-            </div>
-          </details>
-        </div>
+        </details>
       </div>
     </div>
   </div>
@@ -1013,80 +1136,101 @@ canvas.qr:fullscreen{
     <button data-sub="send" class="on" data-i18n="p2p.send">Send</button>
     <button data-sub="recv" data-i18n="p2p.recv">Receive</button>
   </div>
-  <div id="p2p-send">
-    <div id="ps-status" class="status">No session yet</div>
-    <div class="row">
-      <button class="btn pri" id="ps-create" data-i18n="p2p.create">Create session</button>
-      <button class="btn" id="ps-end" hidden data-i18n="p2p.end">End session</button>
-    </div>
-    <div id="ps-session" hidden>
-      <div class="grid stagger">
-        <div>
-          <div class="code" id="ps-code"></div>
-          <div class="row"><button class="btn sm" id="ps-copy" data-i18n="p2p.copyCode">Copy code</button></div>
-          <label class="chk" style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12px;color:var(--text)">
-            <input type="checkbox" id="ps-pin-on" style="width:auto"> <span data-i18n="p2p.pin">PIN protect</span>
-          </label>
-          <input type="text" id="ps-pin" placeholder="PIN (4-8 digits)" maxlength="8" hidden style="margin-top:8px" inputmode="numeric">
-          <div class="pv"><canvas id="ps-qr" class="qr" width="10" height="10"></canvas></div>
+  <div class="p2p-wrap">
+    <div class="p2p-inner">
+
+      <div id="p2p-send">
+        <div id="ps-status" class="status" style="text-align:center">No session yet</div>
+        <div class="p2p-hero card" id="ps-hero">
+          <div class="p2p-icon">
+            <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </div>
+          <div class="p2p-title" data-i18n="p2p.createTitle">Start a P2P session</div>
+          <div class="p2p-sub" data-i18n="p2p.createSub">Create a session, then show the QR code or share the 6-letter code with the receiver.</div>
+          <button class="btn pri" id="ps-create" data-i18n="p2p.create">Create session</button>
         </div>
-        <div id="ps-tools" hidden>
-          <div class="card">
-            <h2 data-i18n="p2p.files">Files</h2>
-            <input id="ps-files" type="file" multiple />
-            <div class="row">
-              <button class="btn sm" id="ps-cancel" data-i18n="p2p.cancel">Stop all</button>
-              <button class="btn sm" id="ps-pause" data-i18n="p2p.pause">Pause</button>
+        <div id="ps-session" hidden>
+          <div class="p2p-session">
+            <div class="code" id="ps-code" style="text-align:center"></div>
+            <div class="row" style="margin:0; width:100%; max-width:340px;">
+              <button class="btn sm" id="ps-copy" data-i18n="p2p.copyCode" style="flex:1">Copy code</button>
+              <button class="btn sm" id="ps-end" hidden data-i18n="p2p.end" style="flex:1">End session</button>
             </div>
-            <div id="ps-list"></div>
+            <div class="pv" style="width:100%; max-width:340px; aspect-ratio:1; padding:14px;">
+              <canvas id="ps-qr" class="qr" width="10" height="10" style="width:100%;height:100%;object-fit:contain;"></canvas>
+            </div>
+            <label class="chk" style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12px;color:var(--text);justify-content:center;">
+              <input type="checkbox" id="ps-pin-on" style="width:auto"> <span data-i18n="p2p.pin">PIN protect</span>
+            </label>
+            <input type="text" id="ps-pin" placeholder="PIN (4-8 digits)" maxlength="8" hidden style="max-width:300px;margin:0 auto;text-align:center" inputmode="numeric">
           </div>
-          <div class="card">
-            <h2 data-i18n="p2p.text">Text / Chat</h2>
-            <textarea id="ps-text" placeholder="Text to send" style="min-height:60px"></textarea>
-            <div class="row"><button class="btn pri" id="ps-sendtxt" data-i18n="p2p.sendTxt">Send text</button></div>
-            <div class="chat" id="ps-chat"></div>
+          <div id="ps-tools" hidden style="width:100%;margin-top:14px">
+            <div class="p2p-send-grid">
+              <div class="card">
+                <h2 data-i18n="p2p.files">Files</h2>
+                <input id="ps-files" type="file" multiple />
+                <div class="row">
+                  <button class="btn sm" id="ps-cancel" data-i18n="p2p.cancel">Stop all</button>
+                  <button class="btn sm" id="ps-pause" data-i18n="p2p.pause">Pause</button>
+                </div>
+                <div id="ps-list"></div>
+              </div>
+              <div class="card">
+                <h2 data-i18n="p2p.text">Text / Chat</h2>
+                <textarea id="ps-text" placeholder="Text to send" style="min-height:60px"></textarea>
+                <div class="row"><button class="btn pri" id="ps-sendtxt" data-i18n="p2p.sendTxt">Send text</button></div>
+                <div class="chat" id="ps-chat"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-  <div id="p2p-recv" hidden>
-    <div id="pr-status" class="status">Not connected</div>
-    <div id="pr-connect" class="grid stagger">
-      <div>
-        <div class="cam" id="pr-cam"></div>
-        <div class="row">
-          <button class="btn pri" id="pr-start" data-i18n="p2p.startCam">Start camera</button>
-          <button class="btn" id="pr-stop" hidden data-i18n="qrtx.stop">Stop</button>
+
+      <div id="p2p-recv" hidden>
+        <div id="pr-status" class="status" style="text-align:center">Not connected</div>
+        <div id="pr-connect">
+          <div class="p2p-recv-hero card">
+            <div class="p2p-icon">
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            </div>
+            <div class="p2p-title" data-i18n="p2p.recvTitle">Join a session</div>
+            <div class="p2p-sub" data-i18n="p2p.recvSub">Scan the sender's QR code, or enter the 6-letter code manually.</div>
+            <div class="cam" id="pr-cam" style="width:100%; max-width:340px; aspect-ratio:4/3;"></div>
+            <div class="row" style="width:100%; max-width:340px; margin:0;">
+              <button class="btn pri" id="pr-start" data-i18n="p2p.startCam" style="flex:1">Start camera</button>
+              <button class="btn" id="pr-stop" hidden data-i18n="qrtx.stop" style="flex:1">Stop</button>
+            </div>
+          </div>
+          <div class="card" style="margin-top:14px;">
+            <label for="pr-code" style="margin-top:0" data-i18n="p2p.orCode">Or type code</label>
+            <div class="row" style="margin-top:0; gap:8px;">
+              <input id="pr-code" placeholder="ABC123" maxlength="16" style="font-family:var(--mono);text-transform:uppercase;letter-spacing:2px;text-align:center;font-size:18px;padding:14px;" />
+              <button class="btn pri" id="pr-go" data-i18n="p2p.connect" style="min-width:110px;">Connect</button>
+            </div>
+            <input type="text" id="pr-pin" placeholder="PIN (if required)" maxlength="8" style="margin-top:8px;text-align:center;" inputmode="numeric">
+            <div class="muted" style="font-size:11px;margin-top:8px;text-align:center">6-character code · excludes 0/O/1/I</div>
+          </div>
+        </div>
+        <div id="pr-live" hidden>
+          <div class="row">
+            <label class="chk" style="display:flex;align-items:center;gap:6px;margin:0;text-transform:none;letter-spacing:0;font-size:12px;color:var(--text)">
+              <input id="pr-auto" type="checkbox" style="width:auto"> <span data-i18n="p2p.autoSave">Save automatically</span>
+            </label>
+            <button class="btn sm" id="pr-save-all" data-i18n="p2p.saveAll">Save all</button>
+            <button class="btn sm" id="pr-end" data-i18n="p2p.disconnect">Disconnect</button>
+          </div>
+          <div class="p2p-recv-grid" style="margin-top:14px">
+            <div><h2 style="font-size:11px;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px" data-i18n="p2p.incoming">Files</h2><div id="pr-list"></div></div>
+            <div>
+              <h2 style="font-size:11px;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px" data-i18n="p2p.text">Text / Chat</h2>
+              <div class="chat" id="pr-chat"></div>
+              <textarea id="pr-text" placeholder="Reply…" style="min-height:60px;margin-top:8px"></textarea>
+              <div class="row"><button class="btn pri" id="pr-sendtxt" data-i18n="p2p.sendTxt">Send text</button></div>
+            </div>
+          </div>
         </div>
       </div>
-      <div>
-        <label for="pr-code" style="margin-top:0" data-i18n="p2p.orCode">Or type code</label>
-        <div class="row" style="margin-top:0">
-          <input id="pr-code" placeholder="ABC123" maxlength="16" style="font-family:var(--mono);text-transform:uppercase;letter-spacing:2px" />
-          <button class="btn pri" id="pr-go" data-i18n="p2p.connect">Connect</button>
-        </div>
-        <input type="text" id="pr-pin" placeholder="PIN (if required)" maxlength="8" style="margin-top:8px" inputmode="numeric">
-        <div class="muted" style="font-size:11px;margin-top:8px">6-character code · excludes 0/O/1/I</div>
-      </div>
-    </div>
-    <div id="pr-live" hidden>
-      <div class="row">
-        <label class="chk" style="display:flex;align-items:center;gap:6px;margin:0;text-transform:none;letter-spacing:0;font-size:12px;color:var(--text)">
-          <input id="pr-auto" type="checkbox" style="width:auto"> <span data-i18n="p2p.autoSave">Save automatically</span>
-        </label>
-        <button class="btn sm" id="pr-save-all" data-i18n="p2p.saveAll">Save all</button>
-        <button class="btn sm" id="pr-end" data-i18n="p2p.disconnect">Disconnect</button>
-      </div>
-      <div class="grid">
-        <div><h2 style="font-size:11px;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px" data-i18n="p2p.incoming">Files</h2><div id="pr-list"></div></div>
-        <div>
-          <h2 style="font-size:11px;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px" data-i18n="p2p.text">Text / Chat</h2>
-          <div class="chat" id="pr-chat"></div>
-          <textarea id="pr-text" placeholder="Reply…" style="min-height:60px;margin-top:8px"></textarea>
-          <div class="row"><button class="btn pri" id="pr-sendtxt" data-i18n="p2p.sendTxt">Send text</button></div>
-        </div>
-      </div>
+
     </div>
   </div>
 </section>
@@ -1303,6 +1447,7 @@ const I18N = {
     'scanner.continuous': 'Continuous', 'scanner.single': 'Single', 'scanner.upload': 'Or upload image (drag & drop)',
     'scanner.drop': 'Drop images here · or Ctrl+V paste', 'scanner.history': 'History', 'scanner.clear': 'Clear',
     'scanner.found': 'QR Found!', 'scanner.password': 'Wi-Fi Password', 'scanner.showPass': 'Show', 'scanner.hidePass': 'Hide',
+    'scanner.openUrl': 'Open this link?', 'scanner.open': 'Open link', 'scanner.copy': 'Copy',
     'qrtx.send': 'Send', 'qrtx.recv': 'Receive', 'qrtx.file': 'File', 'qrtx.chunk': 'Chunk size', 'qrtx.dwell': 'Dwell (ms)',
     'qrtx.loop': 'Loop', 'qrtx.encrypt': 'Encrypt (AES-GCM)', 'qrtx.start': 'Start', 'qrtx.stop': 'Stop', 'qrtx.pause': 'Pause',
     'qrtx.resume': 'Resume', 'qrtx.fullscreen': 'Fullscreen', 'qrtx.startRecv': 'Start camera', 'qrtx.reset': 'Reset', 'qrtx.download': 'Download file',
@@ -1311,6 +1456,10 @@ const I18N = {
     'p2p.startCam': 'Start camera', 'p2p.orCode': 'Or type code', 'p2p.connect': 'Connect', 'p2p.autoSave': 'Save automatically',
     'p2p.saveAll': 'Save all', 'p2p.disconnect': 'Disconnect', 'p2p.incoming': 'Files', 'p2p.pinReq': 'Peer requires PIN, please enter',
     'p2p.pause': 'Pause', 'p2p.resume': 'Resume',
+    'p2p.createTitle': 'Start a P2P session',
+    'p2p.createSub': 'Create a session, then show the QR code or share the 6-letter code with the receiver.',
+    'p2p.recvTitle': 'Join a session',
+    'p2p.recvSub': 'Scan the sender\'s QR code, or enter the 6-letter code manually.',
     'type.text': 'Text', 'type.url': 'Website URL', 'type.wifi': 'Wi-Fi', 'type.email': 'Email',
     'type.sms': 'SMS', 'type.phone': 'Phone call', 'type.geo': 'Location', 'type.vcard': 'Contact (vCard 3.0)',
     'type.vcard4': 'Contact (vCard 4.0)', 'type.mecard': 'Contact (MeCard)',
@@ -2651,12 +2800,6 @@ function initStudio() {
     if (await confirmDialog('Reset', 'Reset all settings?', 'Reset')) resetStudio();
   });
 
-  $('toggle-preview-btn').addEventListener('click', () => {
-    const card = $('studio-preview-card');
-    card.classList.toggle('collapsed');
-    $('toggle-preview-btn').textContent = card.classList.contains('collapsed') ? '▲' : '▼';
-  });
-
   updateSavedList();
   buildStudioFields();
   pushHistory();
@@ -3006,6 +3149,43 @@ function saveHistory() {
   try { localStorage.setItem(SCAN_KEY, JSON.stringify(scanHistory.slice(0, 100))); } catch (e) {}
 }
 
+/* Scanner result overlay: auto-stop camera + prompt for URL */
+function showScanResultOverlay(text) {
+  const cls = classifyScan(text);
+  const root = mk('div', { className: 'scan-result-overlay' });
+  const card = mk('div', { className: 'scan-result-card' });
+  card.appendChild(mk('div', { className: 'src-type', textContent: cls.label }));
+  card.appendChild(mk('div', { className: 'src-text', textContent: text }));
+  const actions = mk('div', { className: 'actions' });
+  const closeOverlay = () => { if (root.parentNode) root.parentNode.removeChild(root); };
+
+  if (cls.type === 'URL') {
+    const openBtn = mk('button', { className: 'btn pri', textContent: 'Open link' });
+    openBtn.addEventListener('click', () => {
+      closeOverlay();
+      window.open(text, '_blank', 'noopener,noreferrer');
+    });
+    const copyBtn = mk('button', { className: 'btn ghost', textContent: 'Copy' });
+    copyBtn.addEventListener('click', () => { copyText(text); });
+    const cancelBtn = mk('button', { className: 'btn ghost', textContent: 'Cancel' });
+    cancelBtn.addEventListener('click', closeOverlay);
+    actions.appendChild(openBtn);
+    actions.appendChild(copyBtn);
+    actions.appendChild(cancelBtn);
+  } else {
+    const copyBtn = mk('button', { className: 'btn pri', textContent: 'Copy' });
+    copyBtn.addEventListener('click', () => { copyText(text); closeOverlay(); });
+    const closeBtn = mk('button', { className: 'btn ghost', textContent: 'Close' });
+    closeBtn.addEventListener('click', closeOverlay);
+    actions.appendChild(copyBtn);
+    actions.appendChild(closeBtn);
+  }
+  card.appendChild(actions);
+  root.appendChild(card);
+  document.body.appendChild(root);
+  root.addEventListener('click', (e) => { if (e.target === root) closeOverlay(); });
+}
+
 function addScanResult(text) {
   if (!text) return;
   const now = Date.now();
@@ -3019,7 +3199,22 @@ function addScanResult(text) {
   $('scan-status').textContent = t('status.found');
   if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
   toast(t('scanner.found'));
-  if (scanMode === 'single') setTimeout(() => Cam.stop(), 200);
+  if (scanMode === 'single') {
+    // Auto-stop camera and show result overlay
+    setTimeout(() => {
+      Cam.stop();
+      showScanResultOverlay(text);
+    }, 300);
+  } else {
+    // In continuous mode, still stop the camera when a URL is found to prompt
+    const cls = classifyScan(text);
+    if (cls.type === 'URL') {
+      setTimeout(() => {
+        Cam.stop();
+        showScanResultOverlay(text);
+      }, 300);
+    }
+  }
 }
 
 async function scanImageFile(file) {
@@ -3540,6 +3735,7 @@ function initP2P() {
     P.pinRequired = $('ps-pin-on').checked;
     P.pin = P.pinRequired ? ($('ps-pin').value.trim() || null) : null;
     $('ps-code').textContent = code;
+    $('ps-hero').hidden = true;
     $('ps-session').hidden = false;
     $('ps-create').hidden = true;
     $('ps-end').hidden = false;
@@ -3614,6 +3810,7 @@ function initP2P() {
   $('ps-end').addEventListener('click', () => {
     p2pTeardown();
     $('ps-session').hidden = true;
+    $('ps-hero').hidden = false;
     $('ps-create').hidden = false;
     $('ps-end').hidden = true;
     $('ps-tools').hidden = true;
