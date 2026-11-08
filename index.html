@@ -1170,7 +1170,7 @@ function mk(tag, props, kids) {
 
 function addRipple(e) {
   const btn = e.currentTarget;
-  if (!btn || !btn.getBoundingClientRect) return;
+  if (!btn || typeof btn.getBoundingClientRect !== 'function') return;
   if (btn.disabled) return;
   const rect = btn.getBoundingClientRect();
   const r = document.createElement('span');
@@ -3489,8 +3489,6 @@ function handlePeerData(d) {
 async function sendFileP2P(file, conn, fileId) {
   if (P.aborted) throw new Error('Aborted');
   const CHUNK = 16384;
-  const total = Math.ceil(file.size / CHUNK);
-  
   const buf = await file.arrayBuffer();
   const hash = CRC(new Uint8Array(buf));
 
@@ -3505,31 +3503,27 @@ async function sendFileP2P(file, conn, fileId) {
   item.appendChild(nameEl); item.appendChild(statusEl); item.appendChild(bar);
   $('ps-list').appendChild(item);
 
-  const reader = file.stream().getReader();
-  let offset = 0;
+  const total = Math.ceil(buf.byteLength / CHUNK);
   let seq = 0;
-  while (true) {
+  for (let offset = 0; offset < buf.byteLength; offset += CHUNK) {
     if (P.aborted) throw new Error('Aborted');
     while (P.paused) await sleep(100);
-    const { done, value } = await reader.read();
-    if (done) break;
+    const slice = new Uint8Array(buf, offset, Math.min(CHUNK, buf.byteLength - offset));
     while (conn.dataChannel && conn.dataChannel.bufferedAmount > 1024 * 1024) {
       if (P.aborted) throw new Error('Aborted');
       await sleep(30);
     }
-    const packet = JSON.stringify({ seq: seq++, data: toB64(value) });
-    conn.send(packet);
-    offset += value.length;
-    const pct = Math.round((offset / file.size) * 100);
+    conn.send(JSON.stringify({ seq: seq++, data: toB64(slice) }));
+    const pct = Math.round(((offset + slice.length) / buf.byteLength) * 100);
     requestAnimationFrame(() => {
       fill.style.width = pct + '%';
-      statusEl.textContent = pct + '% · ' + fmt(offset);
+      statusEl.textContent = pct + '% · ' + fmt(offset + slice.length);
     });
   }
   if (P.aborted) throw new Error('Aborted');
   conn.send(JSON.stringify({ t: 'fileend', id: fileId }));
   item.classList.add('done');
-  statusEl.textContent = '✓ ' + fmt(file.size);
+  statusEl.textContent = '✓ ' + fmt(buf.byteLength);
 }
 
 function initP2P() {
@@ -3671,11 +3665,15 @@ function initP2P() {
   mountCam($('pr-cam'));
   $('pr-start').addEventListener('click', async () => {
     try {
-      await Cam.start($('pr-cam'), 'pr', (t) => {
-        const code = t.toUpperCase();
-        if (code.startsWith(PREFIX) && code.length >= PREFIX.length + 4) {
+      await Cam.start($('pr-cam'), 'pr', (txt) => {
+        const raw = String(txt).trim();
+        if (!raw) return;
+        let code = raw.toUpperCase();
+        if (code.startsWith('QRX-')) code = code.slice(4);
+        else if (code.startsWith(PREFIX.toUpperCase())) code = code.slice(PREFIX.length);
+        if (code.length >= 4 && /^[A-Z2-9]+$/.test(code)) {
           Cam.stop();
-          $('pr-code').value = code.slice(PREFIX.length);
+          $('pr-code').value = code;
           $('pr-go').click();
         }
       });
@@ -3685,7 +3683,8 @@ function initP2P() {
 
   $('pr-go').addEventListener('click', () => {
     let code = $('pr-code').value.toUpperCase().trim();
-    if (code.startsWith(PREFIX)) code = code.slice(PREFIX.length);
+    if (code.startsWith('QRX-')) code = code.slice(4);
+    else if (code.startsWith(PREFIX.toUpperCase())) code = code.slice(PREFIX.length);
     if (!code) return;
     if (R.peer) { try { R.peer.destroy(); } catch (e) {} }
     const peer = new Peer({ config: { iceServers: ICE } });
@@ -3715,23 +3714,23 @@ function initP2P() {
         $('pr-status').className = 'status warn';
       });
       let currentMeta = null;
+      let receivedChunks = 0;
       c.on('data', async (d) => {
         if (typeof d === 'string') {
           try {
             const m = JSON.parse(d);
             if (m.t === 'meta') {
               currentMeta = m;
+              receivedChunks = 0;
               R.files.set(m.id, { meta: m, chunks: new Map(), done: false });
               renderRecvFiles();
             } else if (m.t === 'fileend') {
               const f = R.files.get(m.id);
               if (f && !f.done) {
                 const arr = [];
-                const totalChunks = Math.ceil(f.meta.size / 16384);
-                for (let i = 0; i < totalChunks; i++) {
-                  if (f.chunks.has(i)) arr.push(f.chunks.get(i));
-                }
-                const blob = new Blob(arr);
+                const seqs = Array.from(f.chunks.keys()).sort((a,b)=>a-b);
+                seqs.forEach(sq => arr.push(f.chunks.get(sq)));
+                const blob = new Blob(arr, { type: 'application/octet-stream' });
                 const buf = await blob.arrayBuffer();
                 const hash = CRC(new Uint8Array(buf));
                 if (hash === f.meta.hash) {
@@ -3741,8 +3740,11 @@ function initP2P() {
                   renderRecvFiles();
                   toast('Verified');
                   c.send(JSON.stringify({ t: 'ack', id: m.id }));
-                } else toast('CRC mismatch');
+                } else {
+                  toast('CRC mismatch (' + f.meta.size + ' vs ' + buf.byteLength + ')');
+                }
               }
+              currentMeta = null;
             } else if (m.t === 'text') {
               appendChat($('pr-chat'), 'them', m.text);
             } else if (m.t === 'auth_ok') {
@@ -3751,17 +3753,17 @@ function initP2P() {
               $('pr-status').textContent = 'Wrong PIN';
               $('pr-status').className = 'status err';
               try { c.close(); } catch (e) {}
+            } else if (m.seq !== undefined && m.data !== undefined) {
+              if (currentMeta) {
+                const f = R.files.get(currentMeta.id);
+                if (f) {
+                  f.chunks.set(m.seq, fromB64(m.data));
+                  receivedChunks++;
+                  renderRecvFilesProgress(currentMeta.id);
+                }
+              }
             }
-          } catch (e) {}
-        } else {
-          if (currentMeta) {
-            try {
-              const p = JSON.parse(d);
-              const f = R.files.get(currentMeta.id);
-              if (f) f.chunks.set(p.seq, fromB64(p.data));
-              renderRecvFilesProgress(currentMeta.id);
-            } catch(e) {}
-          }
+          } catch (e) { console.warn('p2p parse', e); }
         }
       });
     });
@@ -3806,7 +3808,8 @@ function initP2P() {
     if (!item) return;
     const fill = item.querySelector('.bar i');
     const st = item.querySelector('.muted');
-    const received = f.chunks.size * 16384;
+    let received = 0;
+    f.chunks.forEach(c => received += c.length);
     if (fill) fill.style.width = Math.min(100, Math.round(received / f.meta.size * 100)) + '%';
     if (st) st.textContent = fmt(received) + ' / ' + fmt(f.meta.size);
   }
