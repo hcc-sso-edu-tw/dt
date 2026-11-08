@@ -1166,12 +1166,11 @@ function toB64(u) {
 }
 const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
-const CRC = (() => {
+const CRC_TABLE = (() => {
   const t = new Uint32Array(256);
   for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
-  return (b) => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  return t;
 })();
-
 function crc32Update(crc, buf) {
   let c = crc ^ 0xFFFFFFFF;
   for (let i = 0; i < buf.length; i++) {
@@ -1179,11 +1178,7 @@ function crc32Update(crc, buf) {
   }
   return (c ^ 0xFFFFFFFF) >>> 0;
 }
-const CRC_TABLE = (() => {
-  const t = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
-  return t;
-})();
+const CRC = (b) => crc32Update(0, b);
 
 const Icons = {
   copy: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
@@ -1324,7 +1319,6 @@ async function promptDialog(title, defaultValue) {
 }
 
 async function copyText(text) {
-  const icon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--ok)" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>';
   try { await navigator.clipboard.writeText(text); toast(t('common.copied')); return true; } catch (e) {}
   const a = document.createElement('textarea');
   a.value = text; a.style.position = 'fixed'; a.style.opacity = '0';
@@ -3682,8 +3676,6 @@ function initP2P() {
               handlePeerData(d);
             }
           } catch (e) {}
-        } else if (c.authenticated) {
-          // Binary data handling
         }
       });
       
@@ -3811,7 +3803,8 @@ function initP2P() {
               const f = R.files.get(m.id);
               if (f && !f.done) {
                 const arr = [];
-                for (let i = 0; i < f.meta.size / 16384 + 1; i++) {
+                const totalChunks = Math.ceil(f.meta.size / 16384);
+                for (let i = 0; i < totalChunks; i++) {
                   if (f.chunks.has(i)) arr.push(f.chunks.get(i));
                 }
                 const blob = new Blob(arr);
