@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant" data-theme="light">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -257,7 +257,7 @@ nav button:active{transform:scale(.96)}
   .head-in{flex-wrap:wrap; border-radius:var(--radius); gap:10px; padding:12px}
   .head-in > .brand{flex:1 1 auto; min-width:0}
   .head-in > .icon-btn{width:44px; height:44px}
-  #helpBtn, #langBtn, #theme{order:2}
+  #helpBtn, #theme{order:2}
   nav{order:3; flex-basis:100%; margin-left:0; margin-top:6px; justify-content:center; overflow-x:auto; padding-bottom:4px}
   nav button{padding:10px 12px; font-size:12px}
 }
@@ -339,8 +339,9 @@ main{padding:14px 0 90px; position:relative; overflow-x:hidden;}
   .studio-preview-card.collapsed { max-height: 48px; overflow: hidden; padding: 8px 12px; }
   .studio-preview-card.collapsed .canvas-container,
   .studio-preview-card.collapsed p,
-  .studio-preview-card.collapsed .row { display: none; }
+  .studio-preview-card.collapsed .row:not(:first-child) { display: none; }
   .studio-preview-card .toggle-collapse { display: block; margin: 0 auto; }
+  .studio-preview-card.collapsed .toggle-collapse { margin-bottom: 0; }
 }
 .studio-preview-card .toggle-collapse { display: none; }
 
@@ -731,7 +732,6 @@ canvas.qr:fullscreen{
       <button class="icon-btn" id="helpBtn" aria-label="Shortcuts" title="Shortcuts (?)">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.7 2.2c-.9.5-1.2 1-1.2 1.8"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>
       </button>
-      <button class="icon-btn" id="langBtn" aria-label="Language" title="Language">EN</button>
       <button class="icon-btn" id="theme" aria-label="Toggle theme" title="Theme">
         <svg viewBox="0 0 24 24"><path d="M12 3v1M12 20v1M4.2 4.2l.7.7M19.1 19.1l.7.7M3 12h1M20 12h1M4.2 19.8l.7-.7M19.1 4.9l.7-.7"/><circle cx="12" cy="12" r="4"/></svg>
       </button>
@@ -742,179 +742,7 @@ canvas.qr:fullscreen{
 <main class="shell">
 <section id="tab-studio" class="panel on" role="tabpanel" aria-labelledby="nav">
   <div class="grid stagger">
-    <div>
-      <div class="card">
-        <h2 data-i18n="studio.content">Content</h2>
-        <label for="c-type" data-i18n="studio.type">Type</label>
-        <select id="c-type"></select>
-        <div id="c-fields"></div>
-        <div class="muted" id="c-bytes" style="margin-top:8px;font-family:var(--mono);font-size:11px"></div>
-      </div>
-
-      <div class="card">
-        <h2 data-i18n="studio.design">Design</h2>
-        <div class="seg" id="c-canvas-ratio" style="margin-top:12px" role="radiogroup">
-          <button data-r="1:1" class="on">1:1</button>
-          <button data-r="3:4">3:4</button>
-          <button data-r="16:9">16:9</button>
-        </div>
-
-        <label data-i18n="studio.background">Background</label>
-        <div class="row" style="margin-top:0">
-          <input type="color" id="c-bg-color" value="#ffffff" aria-label="Background color">
-          <button class="btn sm ghost" id="c-bg-img-btn" data-i18n="studio.upload">Upload image</button>
-          <button class="btn sm ghost" id="c-bg-img-clear" hidden data-i18n="studio.clear">Clear</button>
-          <input type="file" id="c-bg-img" accept="image/*" hidden>
-        </div>
-
-        <label data-i18n="studio.qrSize">QR size (%)</label>
-        <div class="row" style="margin-top:0">
-          <input type="range" id="c-qr-size" min="20" max="80" value="60" style="flex:1">
-          <span class="muted" id="c-qr-size-v" style="min-width:44px;text-align:right">60%</span>
-        </div>
-
-        <label data-i18n="studio.frameColor">QR frame color &amp; radius</label>
-        <div class="row" style="margin-top:0">
-          <input type="color" id="c-frame-color" value="#ffffff">
-          <input type="range" id="c-frame-radius" min="0" max="30" value="8" style="flex:1" aria-label="Frame radius">
-          <span class="muted" id="c-frame-radius-v" style="min-width:44px;text-align:right">8px</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2 data-i18n="studio.style">QR Style</h2>
-        <label data-i18n="studio.foreground">Foreground</label>
-        <div class="row" style="margin-top:0">
-          <input type="color" id="c-fg" value="#141414" aria-label="Foreground color">
-          <input type="text" id="c-fg-hex" value="#141414" style="flex:1;font-family:var(--mono)" aria-label="Foreground hex">
-        </div>
-        <div class="rec-colors" id="rec-colors"></div>
-        <label class="chk" style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text)">
-          <input type="checkbox" id="c-gradient-on" style="width:auto"> <span data-i18n="studio.gradient">Gradient foreground</span>
-        </label>
-        <div id="c-gradient-tools" hidden>
-          <div class="row" style="margin-top:8px">
-            <input type="color" id="c-fg2" value="#3b5bdb">
-            <select id="c-grad-type" style="flex:1">
-              <option value="linear">Linear</option>
-              <option value="radial">Radial</option>
-            </select>
-          </div>
-          <div class="row">
-            <input type="range" id="c-grad-angle" min="0" max="360" value="135" style="flex:1">
-            <span class="muted" id="c-grad-angle-v" style="min-width:44px;text-align:right">135°</span>
-          </div>
-        </div>
-
-        <label data-i18n="studio.dotStyle">Dot style</label>
-        <div class="seg" id="c-dot-style">
-          <button data-v="square" class="on">■</button>
-          <button data-v="dots">●</button>
-          <button data-v="rounded">▢</button>
-          <button data-v="diamond">◆</button>
-          <button data-v="fluid">≈</button>
-          <button data-v="sketch" data-i18n="studio.sketch">Sketch</button>
-        </div>
-
-        <label data-i18n="studio.eyeFrame">Eye frame</label>
-        <div class="seg" id="c-eye-frame">
-          <button data-v="square" class="on">■</button>
-          <button data-v="rounded">▢</button>
-          <button data-v="circle">●</button>
-        </div>
-        <label data-i18n="studio.eyeDot">Eye dot</label>
-        <div class="seg" id="c-eye-dot">
-          <button data-v="square" class="on">■</button>
-          <button data-v="rounded">▢</button>
-          <button data-v="circle">●</button>
-          <button data-v="diamond">◆</button>
-        </div>
-        <div class="row" style="margin-top:10px">
-          <input type="color" id="c-eye-frame-color" value="#141414" aria-label="Eye frame color" title="Follows foreground by default">
-          <input type="color" id="c-eye-dot-color" value="#141414" aria-label="Eye dot color" title="Follows foreground by default">
-          <button class="btn xs ghost" id="c-eye-follow" style="flex:0 0 auto" title="Follow foreground color">↺</button>
-        </div>
-
-        <label data-i18n="studio.ec">Error correction</label>
-        <div class="seg" id="c-ec">
-          <button data-ec="L">L</button>
-          <button data-ec="M" class="on">M</button>
-          <button data-ec="Q">Q</button>
-          <button data-ec="H">H</button>
-        </div>
-
-        <label class="chk" style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text)">
-          <input type="checkbox" id="c-logo-enable" style="width:auto"> <span data-i18n="studio.logo">Center logo</span>
-        </label>
-        <div id="c-logo-tools" hidden>
-          <input type="file" id="c-logo-file" accept="image/*">
-          <label data-i18n="studio.logoSize">Logo size (%)</label>
-          <div class="row" style="margin-top:0">
-            <input type="range" id="c-logo-size" min="10" max="25" value="18" style="flex:1">
-            <span class="muted" id="c-logo-size-v" style="min-width:44px;text-align:right">18%</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card accordion">
-        <details open>
-          <summary data-i18n="studio.quality">Quality check</summary>
-          <div class="acc-content" id="c-quality">
-            <div class="gauge-wrap">
-              <div class="gauge" id="q-gauge"><span class="gauge-val" id="q-gauge-val">0%</span></div>
-              <div style="flex:1;font-size:12px;line-height:1.9">
-                <div style="display:flex;justify-content:space-between">Contrast <span id="q-contrast" style="font-family:var(--mono)">-</span></div>
-                <div style="display:flex;justify-content:space-between">Version <span id="q-version" style="font-family:var(--mono)">-</span></div>
-                <div style="display:flex;justify-content:space-between">Capacity <span id="q-capacity" style="font-family:var(--mono)">-</span></div>
-                <div style="display:flex;justify-content:space-between">EC Level <span id="q-ec" style="font-family:var(--mono)">-</span></div>
-              </div>
-            </div>
-            <div class="row" style="margin-top:10px">
-              <span class="qlights" aria-hidden="true"><span class="l" id="ql-r"></span><span class="l" id="ql-y"></span><span class="l" id="ql-g"></span></span>
-              <span id="c-decode-result" class="status" style="margin:0;flex:1;font-size:11px"></span>
-            </div>
-            <div id="c-quality-warn" class="status warn" style="font-size:11px;margin-top:6px;display:none"></div>
-          </div>
-        </details>
-
-        <details>
-          <summary data-i18n="studio.templates">Templates</summary>
-          <div class="acc-content"><div class="tpl-grid" id="c-templates"></div></div>
-        </details>
-
-        <details>
-          <summary data-i18n="studio.batch">Batch generate</summary>
-          <div class="acc-content">
-            <textarea id="c-batch-text" placeholder="One line per QR code" style="min-height:80px"></textarea>
-            <div class="row" style="margin-top:8px">
-              <button class="btn sm" id="c-batch-gen" data-i18n="studio.batchGen">Generate ZIP</button>
-              <label class="btn sm ghost" style="margin:0;font-size:11.5px;font-weight:600;color:var(--text);background:transparent;border:1px solid var(--glass-border-lo)">
-                <span data-i18n="studio.batchCsv">Import CSV</span><input type="file" id="c-batch-csv" accept=".csv,text/csv" hidden>
-              </label>
-            </div>
-            <div id="c-batch-status" class="muted" style="font-size:11px;margin-top:6px"></div>
-          </div>
-        </details>
-
-        <details>
-          <summary data-i18n="studio.library">Library</summary>
-          <div class="acc-content">
-            <div class="row" style="margin-top:0">
-              <button class="btn sm" id="c-save-design" data-i18n="studio.save">Save</button>
-              <button class="btn sm ghost" id="c-export-json" data-i18n="studio.export">Export</button>
-              <label class="btn sm ghost" style="margin:0;font-size:11.5px;font-weight:600;color:var(--text);background:transparent;border:1px solid var(--glass-border-lo)">
-                <span data-i18n="studio.import">Import</span><input type="file" id="c-import-json" accept=".json" hidden>
-              </label>
-            </div>
-            <input type="text" id="c-lib-search" placeholder="Search…" style="margin-top:10px" aria-label="Search library">
-            <div class="muted" id="c-lib-usage" style="font-size:10.5px;margin:6px 0;font-family:var(--mono)"></div>
-            <div class="lib-grid" id="c-lib-grid"></div>
-          </div>
-        </details>
-      </div>
-    </div>
-
-    <div>
+    <div class="studio-preview-wrapper" style="display:contents;">
       <div class="card studio-preview-card" id="studio-preview-card">
         <button class="btn xs ghost toggle-collapse" id="toggle-preview-btn" aria-label="Toggle preview">▼</button>
         <div class="canvas-container" id="preview-container">
@@ -926,7 +754,8 @@ canvas.qr:fullscreen{
         </div>
         <div class="row">
           <button class="btn sm" id="c-export-svg">SVG</button>
-          <button class="btn sm" id="c-export-transparent" data-i18n="studio.exportTransparent">Transparent</button>
+          <button class="btn sm" id="c-preview-transparent" data-i18n="studio.previewTransparent">Preview Transparent</button>
+          <button class="btn sm" id="c-export-transparent" data-i18n="studio.exportTransparent">Export Transparent</button>
           <button class="btn sm" id="c-export-copy" data-i18n="studio.copyImg">Copy image</button>
         </div>
         <div class="row">
@@ -944,6 +773,179 @@ canvas.qr:fullscreen{
         </div>
         <div class="muted" style="font-size:10px;text-align:center;margin-top:8px;font-family:var(--mono)">
           <kbd>⌘S</kbd> save · <kbd>⌘E</kbd> export · <kbd>⌘Z</kbd> undo
+        </div>
+      </div>
+    </div>
+    
+    <div class="studio-settings-wrapper" style="display:contents;">
+      <div>
+        <div class="card">
+          <h2 data-i18n="studio.content">Content</h2>
+          <label for="c-type" data-i18n="studio.type">Type</label>
+          <select id="c-type"></select>
+          <div id="c-fields"></div>
+          <div class="muted" id="c-bytes" style="margin-top:8px;font-family:var(--mono);font-size:11px"></div>
+        </div>
+
+        <div class="card">
+          <h2 data-i18n="studio.design">Design</h2>
+          <div class="seg" id="c-canvas-ratio" style="margin-top:12px" role="radiogroup">
+            <button data-r="1:1" class="on">1:1</button>
+            <button data-r="3:4">3:4</button>
+            <button data-r="16:9">16:9</button>
+          </div>
+
+          <label data-i18n="studio.background">Background</label>
+          <div class="row" style="margin-top:0">
+            <input type="color" id="c-bg-color" value="#ffffff" aria-label="Background color">
+            <button class="btn sm ghost" id="c-bg-img-btn" data-i18n="studio.upload">Upload image</button>
+            <button class="btn sm ghost" id="c-bg-img-clear" hidden data-i18n="studio.clear">Clear</button>
+            <input type="file" id="c-bg-img" accept="image/*" hidden>
+          </div>
+
+          <label data-i18n="studio.qrSize">QR size (%)</label>
+          <div class="row" style="margin-top:0">
+            <input type="range" id="c-qr-size" min="20" max="80" value="60" style="flex:1">
+            <span class="muted" id="c-qr-size-v" style="min-width:44px;text-align:right">60%</span>
+          </div>
+
+          <label data-i18n="studio.frameColor">QR frame color &amp; radius</label>
+          <div class="row" style="margin-top:0">
+            <input type="color" id="c-frame-color" value="#ffffff">
+            <input type="range" id="c-frame-radius" min="0" max="30" value="8" style="flex:1" aria-label="Frame radius">
+            <span class="muted" id="c-frame-radius-v" style="min-width:44px;text-align:right">8px</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 data-i18n="studio.style">QR Style</h2>
+          <label data-i18n="studio.foreground">Foreground</label>
+          <div class="row" style="margin-top:0">
+            <input type="color" id="c-fg" value="#141414" aria-label="Foreground color">
+            <input type="text" id="c-fg-hex" value="#141414" style="flex:1;font-family:var(--mono)" aria-label="Foreground hex">
+          </div>
+          <div class="rec-colors" id="rec-colors"></div>
+          <label class="chk" style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text)">
+            <input type="checkbox" id="c-gradient-on" style="width:auto"> <span data-i18n="studio.gradient">Gradient foreground</span>
+          </label>
+          <div id="c-gradient-tools" hidden>
+            <div class="row" style="margin-top:8px">
+              <input type="color" id="c-fg2" value="#3b5bdb">
+              <select id="c-grad-type" style="flex:1">
+                <option value="linear">Linear</option>
+                <option value="radial">Radial</option>
+              </select>
+            </div>
+            <div class="row">
+              <input type="range" id="c-grad-angle" min="0" max="360" value="135" style="flex:1">
+              <span class="muted" id="c-grad-angle-v" style="min-width:44px;text-align:right">135°</span>
+            </div>
+          </div>
+
+          <label data-i18n="studio.dotStyle">Dot style</label>
+          <div class="seg" id="c-dot-style">
+            <button data-v="square" class="on">■</button>
+            <button data-v="dots">●</button>
+            <button data-v="rounded">▢</button>
+            <button data-v="diamond">◆</button>
+            <button data-v="fluid">≈</button>
+          </div>
+
+          <label data-i18n="studio.eyeFrame">Eye frame</label>
+          <div class="seg" id="c-eye-frame">
+            <button data-v="square" class="on">■</button>
+            <button data-v="rounded">▢</button>
+            <button data-v="circle">●</button>
+          </div>
+          <label data-i18n="studio.eyeDot">Eye dot</label>
+          <div class="seg" id="c-eye-dot">
+            <button data-v="square" class="on">■</button>
+            <button data-v="rounded">▢</button>
+            <button data-v="circle">●</button>
+            <button data-v="diamond">◆</button>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <input type="color" id="c-eye-frame-color" value="#141414" aria-label="Eye frame color" title="Follows foreground by default">
+            <input type="color" id="c-eye-dot-color" value="#141414" aria-label="Eye dot color" title="Follows foreground by default">
+            <button class="btn xs ghost" id="c-eye-follow" style="flex:0 0 auto" title="Follow foreground color">↺</button>
+          </div>
+
+          <label data-i18n="studio.ec">Error correction</label>
+          <div class="seg" id="c-ec">
+            <button data-ec="L">L</button>
+            <button data-ec="M" class="on">M</button>
+            <button data-ec="Q">Q</button>
+            <button data-ec="H">H</button>
+          </div>
+
+          <label class="chk" style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text)">
+            <input type="checkbox" id="c-logo-enable" style="width:auto"> <span data-i18n="studio.logo">Center logo</span>
+          </label>
+          <div id="c-logo-tools" hidden>
+            <input type="file" id="c-logo-file" accept="image/*">
+            <label data-i18n="studio.logoSize">Logo size (%)</label>
+            <div class="row" style="margin-top:0">
+              <input type="range" id="c-logo-size" min="10" max="25" value="18" style="flex:1">
+              <span class="muted" id="c-logo-size-v" style="min-width:44px;text-align:right">18%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card accordion">
+          <details open>
+            <summary data-i18n="studio.quality">Quality check</summary>
+            <div class="acc-content" id="c-quality">
+              <div class="gauge-wrap">
+                <div class="gauge" id="q-gauge"><span class="gauge-val" id="q-gauge-val">0%</span></div>
+                <div style="flex:1;font-size:12px;line-height:1.9">
+                  <div style="display:flex;justify-content:space-between">Contrast <span id="q-contrast" style="font-family:var(--mono)">-</span></div>
+                  <div style="display:flex;justify-content:space-between">Version <span id="q-version" style="font-family:var(--mono)">-</span></div>
+                  <div style="display:flex;justify-content:space-between">Capacity <span id="q-capacity" style="font-family:var(--mono)">-</span></div>
+                  <div style="display:flex;justify-content:space-between">EC Level <span id="q-ec" style="font-family:var(--mono)">-</span></div>
+                </div>
+              </div>
+              <div class="row" style="margin-top:10px">
+                <span class="qlights" aria-hidden="true"><span class="l" id="ql-r"></span><span class="l" id="ql-y"></span><span class="l" id="ql-g"></span></span>
+                <span id="c-decode-result" class="status" style="margin:0;flex:1;font-size:11px"></span>
+              </div>
+              <div id="c-quality-warn" class="status warn" style="font-size:11px;margin-top:6px;display:none"></div>
+            </div>
+          </details>
+
+          <details>
+            <summary data-i18n="studio.templates">Templates</summary>
+            <div class="acc-content"><div class="tpl-grid" id="c-templates"></div></div>
+          </details>
+
+          <details>
+            <summary data-i18n="studio.batch">Batch generate</summary>
+            <div class="acc-content">
+              <textarea id="c-batch-text" placeholder="One line per QR code" style="min-height:80px"></textarea>
+              <div class="row" style="margin-top:8px">
+                <button class="btn sm" id="c-batch-gen" data-i18n="studio.batchGen">Generate ZIP</button>
+                <label class="btn sm ghost" style="margin:0;font-size:11.5px;font-weight:600;color:var(--text);background:transparent;border:1px solid var(--glass-border-lo)">
+                  <span data-i18n="studio.batchCsv">Import CSV</span><input type="file" id="c-batch-csv" accept=".csv,text/csv" hidden>
+                </label>
+              </div>
+              <div id="c-batch-status" class="muted" style="font-size:11px;margin-top:6px"></div>
+            </div>
+          </details>
+
+          <details>
+            <summary data-i18n="studio.library">Library</summary>
+            <div class="acc-content">
+              <div class="row" style="margin-top:0">
+                <button class="btn sm" id="c-save-design" data-i18n="studio.save">Save</button>
+                <button class="btn sm ghost" id="c-export-json" data-i18n="studio.export">Export</button>
+                <label class="btn sm ghost" style="margin:0;font-size:11.5px;font-weight:600;color:var(--text);background:transparent;border:1px solid var(--glass-border-lo)">
+                  <span data-i18n="studio.import">Import</span><input type="file" id="c-import-json" accept=".json" hidden>
+                </label>
+              </div>
+              <input type="text" id="c-lib-search" placeholder="Search…" style="margin-top:10px" aria-label="Search library">
+              <div class="muted" id="c-lib-usage" style="font-size:10.5px;margin:6px 0;font-family:var(--mono)"></div>
+              <div class="lib-grid" id="c-lib-grid"></div>
+            </div>
+          </details>
         </div>
       </div>
     </div>
@@ -1079,7 +1081,10 @@ canvas.qr:fullscreen{
           <div class="card">
             <h2 data-i18n="p2p.files">Files</h2>
             <input id="ps-files" type="file" multiple />
-            <div class="row"><button class="btn sm" id="ps-cancel" data-i18n="p2p.cancel">Stop all</button></div>
+            <div class="row">
+              <button class="btn sm" id="ps-cancel" data-i18n="p2p.cancel">Stop all</button>
+              <button class="btn sm" id="ps-pause" data-i18n="p2p.pause">Pause</button>
+            </div>
             <div id="ps-list"></div>
           </div>
           <div class="card">
@@ -1165,6 +1170,19 @@ const CRC = (() => {
   const t = new Uint32Array(256);
   for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
   return (b) => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+})();
+
+function crc32Update(crc, buf) {
+  let c = crc ^ 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) {
+    c = (c >>> 8) ^ CRC_TABLE[(c ^ buf[i]) & 255];
+  }
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return t;
 })();
 
 const Icons = {
@@ -1324,121 +1342,72 @@ function saveBlob(blob, name) {
 }
 
 /* ============================================================
-   i18n
+   i18n (English Only)
    ============================================================ */
 const I18N = {
-  zh: {
-    'common.ok': '確定', 'common.cancel': '取消', 'common.copied': '已複製', 'common.copyFail': '複製失敗',
-    'common.save': '儲存', 'common.delete': '刪除', 'common.load': '載入',
-    'app.install': '安裝到主畫面', 'app.offline': '目前離線，部分功能受限',
-    'studio.content': '內容', 'studio.type': '類型', 'studio.design': '設計', 'studio.background': '背景',
-    'studio.upload': '上傳圖片', 'studio.clear': '清除', 'studio.qrSize': 'QR 大小 (%)', 'studio.frameColor': '白框顏色與圓角',
-    'studio.style': 'QR 樣式', 'studio.foreground': '前景色', 'studio.gradient': '漸層前景', 'studio.sketch': '手繪',
-    'studio.dotStyle': '點陣樣式', 'studio.eyeFrame': '定位點外框', 'studio.eyeDot': '定位點內點',
-    'studio.ec': '容錯率', 'studio.logo': '中央 Logo', 'studio.logoSize': 'Logo 大小 (%)',
-    'studio.quality': '品質檢查', 'studio.templates': '範本庫', 'studio.batch': '批次產生', 'studio.library': '收藏庫',
-    'studio.save': '儲存', 'studio.export': '匯出', 'studio.import': '匯入',
-    'studio.exportPng': '匯出設計 (PNG)', 'studio.copyImg': '複製圖片', 'studio.exportRes': '自訂解析度匯出', 'studio.pdf': 'PDF 列印版',
-    'studio.reset': '重置', 'studio.batchGen': '產生 ZIP', 'studio.batchCsv': '匯入 CSV', 'studio.exportTransparent': '透明匯出',
-    'scanner.title': '掃描器', 'scanner.start': '啟動相機', 'scanner.stop': '停止',
-    'scanner.continuous': '連續掃描', 'scanner.single': '單次掃描', 'scanner.upload': '或上傳圖片（也可拖放）',
-    'scanner.drop': '拖放圖片到此 · 或 Ctrl+V 貼上', 'scanner.history': '歷史記錄', 'scanner.clear': '清除',
-    'scanner.found': '掃描成功！', 'scanner.password': 'Wi-Fi 密碼', 'scanner.showPass': '顯示密碼', 'scanner.hidePass': '隱藏密碼',
-    'qrtx.send': '傳送', 'qrtx.recv': '接收', 'qrtx.file': '檔案', 'qrtx.chunk': '區塊大小', 'qrtx.dwell': '停留時間 (ms)',
-    'qrtx.loop': '循環', 'qrtx.encrypt': '加密 (AES-GCM)', 'qrtx.start': '開始', 'qrtx.stop': '停止', 'qrtx.pause': '暫停',
-    'qrtx.resume': '繼續', 'qrtx.fullscreen': '全螢幕', 'qrtx.startRecv': '啟動相機', 'qrtx.reset': '重置', 'qrtx.download': '下載檔案',
-    'p2p.send': '傳送', 'p2p.recv': '接收', 'p2p.create': '建立工作階段', 'p2p.end': '結束工作階段', 'p2p.copyCode': '複製代碼',
-    'p2p.pin': 'PIN 驗證', 'p2p.files': '檔案', 'p2p.cancel': '全部取消', 'p2p.text': '文字 / 聊天', 'p2p.sendTxt': '傳送文字',
-    'p2p.startCam': '啟動相機', 'p2p.orCode': '或輸入代碼', 'p2p.connect': '連線', 'p2p.autoSave': '自動儲存',
-    'p2p.saveAll': '全部儲存', 'p2p.disconnect': '中斷連線', 'p2p.incoming': '接收檔案', 'p2p.pinReq': '對方要求 PIN 驗證，請輸入',
-    'type.text': '文字', 'type.url': '網址', 'type.wifi': 'Wi-Fi', 'type.email': 'Email',
-    'type.sms': '簡訊', 'type.phone': '電話', 'type.geo': '位置', 'type.vcard': '聯絡人 (vCard 3.0)',
-    'type.vcard4': '聯絡人 (vCard 4.0)', 'type.mecard': '聯絡人 (MeCard)',
-    'type.crypto': '加密貨幣地址', 'type.social': '社群帳號', 'type.calendar': '行事曆事件',
-    'type.pay': '付款連結', 'type.applink': 'App 雙平台連結', 'type.line': 'LINE 官方帳號', 'type.whatsapp': 'WhatsApp', 'type.youtube': 'YouTube 影片', 'type.maps': 'Google Maps', 'type.otp': 'OTP 驗證器',
-    'field.text': '文字', 'field.url': 'URL', 'field.ssid': '網路名稱', 'field.pass': '密碼',
-    'field.sec': '加密方式', 'field.hid': '隱藏網路', 'field.to': '收件人', 'field.subject': '主旨',
-    'field.body': '內容', 'field.num': '電話號碼', 'field.msg': '簡訊內容', 'field.lat': '緯度', 'field.lng': '經度',
-    'field.fn': '名字', 'field.ln': '姓氏', 'field.org': '組織', 'field.title': '職稱', 'field.tel': '電話',
-    'field.mail': 'Email', 'field.web': '網站', 'field.adr': '地址', 'field.name': '姓名',
-    'field.chain': '鏈', 'field.addr': '地址', 'field.platform': '平台', 'field.handle': '使用者名稱 / ID',
-    'field.loc': '地點', 'field.start': '開始 (YYYYMMDDTHHmmss)', 'field.end': '結束 (YYYYMMDDTHHmmss)',
-    'field.desc': '說明', 'field.service': '服務', 'field.id': '帳號 / URL', 'field.ios': 'App Store URL',
-    'field.android': 'Google Play URL', 'field.label': '標籤', 'field.secret': '密鑰', 'field.issuer': '發行者', 'field.vid': '影片 ID',
-    'field.query': '搜尋關鍵字',
-    'status.enterContent': '請輸入內容以產生 QR', 'status.dataTooLarge': '資料量超過 QR 容量',
-    'status.reduceContent': '請縮短內容或降低容錯率', 'status.scannable': '可掃描',
-    'status.lowContrast': '對比偏低', 'status.cannotDecode': '無法解碼',
-    'status.processing': '處理中…', 'status.scanning': '掃描中…', 'status.found': '找到 QR',
-    'status.noQR': '找不到 QR', 'status.stopped': '已停止', 'status.waiting': '等待連線…',
-    'status.connected': '已連線', 'status.connecting': '連線中…', 'status.disconnected': '已中斷',
-    'status.receiving': '接收中', 'status.processingRx': '處理中…', 'status.complete': '完成！',
-    'status.passwordRequired': '需要密碼解密', 'status.decryptFailed': '解密失敗，請確認密碼',
-    'empty.scans': '尚無掃描記錄', 'empty.files': '尚未接收檔案', 'empty.lib': '收藏庫是空的'
-  },
-  en: {}
+  en: {
+    'common.ok': 'OK', 'common.cancel': 'Cancel', 'common.copied': 'Copied', 'common.copyFail': 'Copy failed',
+    'common.save': 'Save', 'common.delete': 'Delete', 'common.load': 'Load',
+    'app.install': 'Install to home screen', 'app.offline': 'You are offline, some features limited',
+    'studio.content': 'Content', 'studio.type': 'Type', 'studio.design': 'Design', 'studio.background': 'Background',
+    'studio.upload': 'Upload image', 'studio.clear': 'Clear', 'studio.qrSize': 'QR size (%)', 'studio.frameColor': 'QR frame color & radius',
+    'studio.style': 'QR Style', 'studio.foreground': 'Foreground', 'studio.gradient': 'Gradient foreground',
+    'studio.dotStyle': 'Dot style', 'studio.eyeFrame': 'Eye frame', 'studio.eyeDot': 'Eye dot',
+    'studio.ec': 'Error correction', 'studio.logo': 'Center logo', 'studio.logoSize': 'Logo size (%)',
+    'studio.quality': 'Quality check', 'studio.templates': 'Templates', 'studio.batch': 'Batch generate', 'studio.library': 'Library',
+    'studio.save': 'Save', 'studio.export': 'Export', 'studio.import': 'Import',
+    'studio.exportPng': 'Export PNG', 'studio.copyImg': 'Copy image', 'studio.exportRes': 'Export at resolution', 'studio.pdf': 'Print PDF',
+    'studio.reset': 'Reset', 'studio.batchGen': 'Generate ZIP', 'studio.batchCsv': 'Import CSV',
+    'studio.previewTransparent': 'Preview Transparent', 'studio.exportTransparent': 'Export Transparent',
+    'studio.exportFormat': 'Export Format', 'studio.jpegQuality': 'JPEG Quality',
+    'scanner.title': 'Scanner', 'scanner.start': 'Start camera', 'scanner.stop': 'Stop',
+    'scanner.continuous': 'Continuous', 'scanner.single': 'Single', 'scanner.upload': 'Or upload image (drag & drop)',
+    'scanner.drop': 'Drop images here · or Ctrl+V paste', 'scanner.history': 'History', 'scanner.clear': 'Clear',
+    'scanner.found': 'QR Found!', 'scanner.password': 'Wi-Fi Password', 'scanner.showPass': 'Show', 'scanner.hidePass': 'Hide',
+    'qrtx.send': 'Send', 'qrtx.recv': 'Receive', 'qrtx.file': 'File', 'qrtx.chunk': 'Chunk size', 'qrtx.dwell': 'Dwell (ms)',
+    'qrtx.loop': 'Loop', 'qrtx.encrypt': 'Encrypt (AES-GCM)', 'qrtx.start': 'Start', 'qrtx.stop': 'Stop', 'qrtx.pause': 'Pause',
+    'qrtx.resume': 'Resume', 'qrtx.fullscreen': 'Fullscreen', 'qrtx.startRecv': 'Start camera', 'qrtx.reset': 'Reset', 'qrtx.download': 'Download file',
+    'p2p.send': 'Send', 'p2p.recv': 'Receive', 'p2p.create': 'Create session', 'p2p.end': 'End session', 'p2p.copyCode': 'Copy code',
+    'p2p.pin': 'PIN protect', 'p2p.files': 'Files', 'p2p.cancel': 'Stop all', 'p2p.text': 'Text / Chat', 'p2p.sendTxt': 'Send text',
+    'p2p.startCam': 'Start camera', 'p2p.orCode': 'Or type code', 'p2p.connect': 'Connect', 'p2p.autoSave': 'Save automatically',
+    'p2p.saveAll': 'Save all', 'p2p.disconnect': 'Disconnect', 'p2p.incoming': 'Files', 'p2p.pinReq': 'Peer requires PIN, please enter',
+    'p2p.pause': 'Pause', 'p2p.resume': 'Resume',
+    'type.text': 'Text', 'type.url': 'Website URL', 'type.wifi': 'Wi-Fi', 'type.email': 'Email',
+    'type.sms': 'SMS', 'type.phone': 'Phone call', 'type.geo': 'Location', 'type.vcard': 'Contact (vCard 3.0)',
+    'type.vcard4': 'Contact (vCard 4.0)', 'type.mecard': 'Contact (MeCard)',
+    'type.crypto': 'Crypto address', 'type.social': 'Social profile', 'type.calendar': 'Calendar event',
+    'type.pay': 'Payment link', 'type.applink': 'App link (iOS + Android)', 'type.line': 'LINE Official', 'type.whatsapp': 'WhatsApp', 'type.youtube': 'YouTube Video', 'type.maps': 'Google Maps', 'type.otp': 'OTP Authenticator',
+    'field.text': 'Text', 'field.url': 'URL', 'field.ssid': 'Network name', 'field.pass': 'Password',
+    'field.sec': 'Security', 'field.hid': 'Hidden network', 'field.to': 'To', 'field.subject': 'Subject',
+    'field.body': 'Message', 'field.num': 'Phone number', 'field.msg': 'Message', 'field.lat': 'Latitude', 'field.lng': 'Longitude',
+    'field.fn': 'First name', 'field.ln': 'Last name', 'field.org': 'Organization', 'field.title': 'Job title', 'field.tel': 'Phone',
+    'field.mail': 'Email', 'field.web': 'Website', 'field.adr': 'Address', 'field.name': 'Name',
+    'field.chain': 'Chain', 'field.addr': 'Address', 'field.platform': 'Platform', 'field.handle': 'Username / ID',
+    'field.loc': 'Location', 'field.start': 'Start (YYYYMMDDTHHmmss)', 'field.end': 'End (YYYYMMDDTHHmmss)',
+    'field.desc': 'Description', 'field.service': 'Service', 'field.id': 'Account / URL', 'field.ios': 'App Store URL',
+    'field.android': 'Google Play URL', 'field.label': 'Label', 'field.secret': 'Secret', 'field.issuer': 'Issuer', 'field.vid': 'Video ID',
+    'field.query': 'Search query',
+    'status.enterContent': 'Enter content to generate QR', 'status.dataTooLarge': 'Data too large for QR',
+    'status.reduceContent': 'Reduce content or lower EC', 'status.scannable': 'Scannable',
+    'status.lowContrast': 'Low contrast', 'status.cannotDecode': 'Cannot decode',
+    'status.processing': 'Processing…', 'status.scanning': 'Scanning…', 'status.found': 'Found QR',
+    'status.noQR': 'No QR found', 'status.stopped': 'Stopped', 'status.waiting': 'Waiting for peer…',
+    'status.connected': 'Connected', 'status.connecting': 'Connecting…', 'status.disconnected': 'Disconnected',
+    'status.receiving': 'Receiving', 'status.processingRx': 'Processing…', 'status.complete': 'Complete!',
+    'status.passwordRequired': 'Password required', 'status.decryptFailed': 'Decryption failed, check password',
+    'empty.scans': 'No scans yet', 'empty.files': 'Nothing received', 'empty.lib': 'Library is empty',
+    'help.powerSave': 'Power Save', 'help.powerSaveDesc': 'Disable background animations and blur effects'
+  }
 };
-I18N.en = {
-  'common.ok': 'OK', 'common.cancel': 'Cancel', 'common.copied': 'Copied', 'common.copyFail': 'Copy failed',
-  'common.save': 'Save', 'common.delete': 'Delete', 'common.load': 'Load',
-  'app.install': 'Install to home screen', 'app.offline': 'You are offline, some features limited',
-  'studio.content': 'Content', 'studio.type': 'Type', 'studio.design': 'Design', 'studio.background': 'Background',
-  'studio.upload': 'Upload image', 'studio.clear': 'Clear', 'studio.qrSize': 'QR size (%)', 'studio.frameColor': 'QR frame color & radius',
-  'studio.style': 'QR Style', 'studio.foreground': 'Foreground', 'studio.gradient': 'Gradient foreground', 'studio.sketch': 'Sketch',
-  'studio.dotStyle': 'Dot style', 'studio.eyeFrame': 'Eye frame', 'studio.eyeDot': 'Eye dot',
-  'studio.ec': 'Error correction', 'studio.logo': 'Center logo', 'studio.logoSize': 'Logo size (%)',
-  'studio.quality': 'Quality check', 'studio.templates': 'Templates', 'studio.batch': 'Batch generate', 'studio.library': 'Library',
-  'studio.save': 'Save', 'studio.export': 'Export', 'studio.import': 'Import',
-  'studio.exportPng': 'Export PNG', 'studio.copyImg': 'Copy image', 'studio.exportRes': 'Export at resolution', 'studio.pdf': 'Print PDF',
-  'studio.reset': 'Reset', 'studio.batchGen': 'Generate ZIP', 'studio.batchCsv': 'Import CSV', 'studio.exportTransparent': 'Transparent',
-  'scanner.title': 'Scanner', 'scanner.start': 'Start camera', 'scanner.stop': 'Stop',
-  'scanner.continuous': 'Continuous', 'scanner.single': 'Single', 'scanner.upload': 'Or upload image (drag & drop)',
-  'scanner.drop': 'Drop images here · or Ctrl+V paste', 'scanner.history': 'History', 'scanner.clear': 'Clear',
-  'scanner.found': 'QR Found!', 'scanner.password': 'Wi-Fi Password', 'scanner.showPass': 'Show', 'scanner.hidePass': 'Hide',
-  'qrtx.send': 'Send', 'qrtx.recv': 'Receive', 'qrtx.file': 'File', 'qrtx.chunk': 'Chunk size', 'qrtx.dwell': 'Dwell (ms)',
-  'qrtx.loop': 'Loop', 'qrtx.encrypt': 'Encrypt (AES-GCM)', 'qrtx.start': 'Start', 'qrtx.stop': 'Stop', 'qrtx.pause': 'Pause',
-  'qrtx.resume': 'Resume', 'qrtx.fullscreen': 'Fullscreen', 'qrtx.startRecv': 'Start camera', 'qrtx.reset': 'Reset', 'qrtx.download': 'Download file',
-  'p2p.send': 'Send', 'p2p.recv': 'Receive', 'p2p.create': 'Create session', 'p2p.end': 'End session', 'p2p.copyCode': 'Copy code',
-  'p2p.pin': 'PIN protect', 'p2p.files': 'Files', 'p2p.cancel': 'Stop all', 'p2p.text': 'Text / Chat', 'p2p.sendTxt': 'Send text',
-  'p2p.startCam': 'Start camera', 'p2p.orCode': 'Or type code', 'p2p.connect': 'Connect', 'p2p.autoSave': 'Save automatically',
-  'p2p.saveAll': 'Save all', 'p2p.disconnect': 'Disconnect', 'p2p.incoming': 'Files', 'p2p.pinReq': 'Peer requires PIN, please enter',
-  'type.text': 'Text', 'type.url': 'Website URL', 'type.wifi': 'Wi-Fi', 'type.email': 'Email',
-  'type.sms': 'SMS', 'type.phone': 'Phone call', 'type.geo': 'Location', 'type.vcard': 'Contact (vCard 3.0)',
-  'type.vcard4': 'Contact (vCard 4.0)', 'type.mecard': 'Contact (MeCard)',
-  'type.crypto': 'Crypto address', 'type.social': 'Social profile', 'type.calendar': 'Calendar event',
-  'type.pay': 'Payment link', 'type.applink': 'App link (iOS + Android)', 'type.line': 'LINE Official', 'type.whatsapp': 'WhatsApp', 'type.youtube': 'YouTube Video', 'type.maps': 'Google Maps', 'type.otp': 'OTP Authenticator',
-  'field.text': 'Text', 'field.url': 'URL', 'field.ssid': 'Network name', 'field.pass': 'Password',
-  'field.sec': 'Security', 'field.hid': 'Hidden network', 'field.to': 'To', 'field.subject': 'Subject',
-  'field.body': 'Message', 'field.num': 'Phone number', 'field.msg': 'Message', 'field.lat': 'Latitude', 'field.lng': 'Longitude',
-  'field.fn': 'First name', 'field.ln': 'Last name', 'field.org': 'Organization', 'field.title': 'Job title', 'field.tel': 'Phone',
-  'field.mail': 'Email', 'field.web': 'Website', 'field.adr': 'Address', 'field.name': 'Name',
-  'field.chain': 'Chain', 'field.addr': 'Address', 'field.platform': 'Platform', 'field.handle': 'Username / ID',
-  'field.loc': 'Location', 'field.start': 'Start (YYYYMMDDTHHmmss)', 'field.end': 'End (YYYYMMDDTHHmmss)',
-  'field.desc': 'Description', 'field.service': 'Service', 'field.id': 'Account / URL', 'field.ios': 'App Store URL',
-  'field.android': 'Google Play URL', 'field.label': 'Label', 'field.secret': 'Secret', 'field.issuer': 'Issuer', 'field.vid': 'Video ID',
-  'field.query': 'Search query',
-  'status.enterContent': 'Enter content to generate QR', 'status.dataTooLarge': 'Data too large for QR',
-  'status.reduceContent': 'Reduce content or lower EC', 'status.scannable': 'Scannable',
-  'status.lowContrast': 'Low contrast', 'status.cannotDecode': 'Cannot decode',
-  'status.processing': 'Processing…', 'status.scanning': 'Scanning…', 'status.found': 'Found QR',
-  'status.noQR': 'No QR found', 'status.stopped': 'Stopped', 'status.waiting': 'Waiting for peer…',
-  'status.connected': 'Connected', 'status.connecting': 'Connecting…', 'status.disconnected': 'Disconnected',
-  'status.receiving': 'Receiving', 'status.processingRx': 'Processing…', 'status.complete': 'Complete!',
-  'status.passwordRequired': 'Password required', 'status.decryptFailed': 'Decryption failed, check password',
-  'empty.scans': 'No scans yet', 'empty.files': 'Nothing received', 'empty.lib': 'Library is empty'
-};
-let LANG = ((navigator.language || 'en').toLowerCase().startsWith('zh')) ? 'zh' : 'en';
-function t(key) { return (I18N[LANG] && I18N[LANG][key]) || I18N.en[key] || key; }
+let LANG = 'en';
+function t(key) { return I18N.en[key] || key; }
 function applyI18n() {
-  document.documentElement.lang = LANG === 'zh' ? 'zh-Hant' : 'en';
+  document.documentElement.lang = 'en';
   $$('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
-  $('langBtn').textContent = LANG === 'zh' ? 'EN' : '中';
-  $('langBtn').setAttribute('aria-label', LANG === 'zh' ? 'Switch to English' : '切換至中文');
-  if ($('tx-pause')) $('tx-pause').textContent = tx.paused ? t('qrtx.resume') : t('qrtx.pause');
 }
 
 /* ============================================================
-   THEME (Three-state)
+   THEME & SETTINGS
    ============================================================ */
 const SETTINGS_KEY = 'qrt-settings';
 let userSettings = {};
@@ -1453,6 +1422,21 @@ function applyTheme(mode) {
     html.setAttribute('data-theme', mode);
   }
   try { localStorage.setItem('qrt-theme', mode); } catch (e) {}
+  
+  const svg = $('theme').querySelector('svg');
+  if (mode === 'auto') {
+    svg.innerHTML = '<path d="M12 3v1M12 20v1M4.2 4.2l.7.7M19.1 19.1l.7.7M3 12h1M20 12h1M4.2 19.8l.7-.7M19.1 4.9l.7-.7"/><circle cx="12" cy="12" r="4"/>';
+    $('theme').setAttribute('aria-label', 'Theme: Auto');
+    $('theme').setAttribute('title', 'Theme: Auto');
+  } else if (mode === 'dark') {
+    svg.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+    $('theme').setAttribute('aria-label', 'Theme: Dark');
+    $('theme').setAttribute('title', 'Theme: Dark');
+  } else {
+    svg.innerHTML = '<circle cx="12" cy="12" r="4"/>';
+    $('theme').setAttribute('aria-label', 'Theme: Light');
+    $('theme').setAttribute('title', 'Theme: Light');
+  }
 }
 
 function initTheme() {
@@ -1472,11 +1456,13 @@ function initTheme() {
     if (cur === 'light') next = 'dark';
     else if (cur === 'dark') next = 'auto';
     applyTheme(next);
-    const svg = $('theme').querySelector('svg');
-    if (next === 'auto') svg.innerHTML = '<path d="M12 3v1M12 20v1M4.2 4.2l.7.7M19.1 19.1l.7.7M3 12h1M20 12h1M4.2 19.8l.7-.7M19.1 4.9l.7-.7"/><circle cx="12" cy="12" r="4"/>';
-    else if (next === 'dark') svg.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
-    else svg.innerHTML = '<circle cx="12" cy="12" r="4"/>';
   });
+}
+
+function applyPowerSave(on) {
+  document.body.classList.toggle('power-save', on);
+  userSettings.powerSave = on;
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(userSettings)); } catch(e) {}
 }
 
 /* ============================================================
@@ -1515,7 +1501,8 @@ const studio = {
   ec: 'M',
   logoEnabled: false, logoImg: null, logoDataUrl: null, logoSize: 18,
   text: '', matrix: null, type: 'text', fields: {},
-  transparentMode: false
+  transparentMode: false,
+  decodeOk: null
 };
 
 const undoStack = { stack: [], idx: -1 };
@@ -1572,7 +1559,10 @@ const TYPES = {
       if (!v.ssid) return '';
       const e = (s) => (s || '').replace(/([\\;,:"])/g, '\\$1');
       const type = v.sec === 'WPA3' ? 'SAE' : (v.sec || 'WPA');
-      return 'WIFI:T:' + type + ';S:' + e(v.ssid) + ';P:' + e(v.pass) + ';H:' + (v.hid ? 'true' : 'false') + ';;';
+      let str = 'WIFI:T:' + type + ';S:' + e(v.ssid) + ';';
+      if (v.sec !== 'nopass') str += 'P:' + e(v.pass) + ';';
+      if (v.hid) str += 'H:true;';
+      return str + ';';
     }
   },
   email: { l10n: 'type.email', f: [['to', 'field.to', 'text', 'name@example.com'], ['subject', 'field.subject'], ['body', 'field.body', 'area']], b: (v) => v.to ? 'mailto:' + v.to + '?subject=' + encodeURIComponent(v.subject || '') + '&body=' + encodeURIComponent(v.body || '') : '' },
@@ -1711,16 +1701,16 @@ function normalizeUrl(u) {
 function validateField(k, v) {
   if (!v) return '';
   if (k === 'to' || k === 'mail') {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return LANG === 'zh' ? 'Email 格式不正確' : 'Invalid email format';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Invalid email format';
   }
   if (k === 'num' || k === 'tel') {
-    if (!/^[+0-9 ()-]{3,}$/.test(v)) return LANG === 'zh' ? '電話號碼格式不正確' : 'Invalid phone number';
+    if (!/^[+0-9 ()-]{3,}$/.test(v)) return 'Invalid phone number';
   }
-  if (k === 'lat') { const n = +v; if (isNaN(n) || n < -90 || n > 90) return LANG === 'zh' ? '緯度需介於 -90 ~ 90' : 'Latitude must be -90..90'; }
-  if (k === 'lng') { const n = +v; if (isNaN(n) || n < -180 || n > 180) return LANG === 'zh' ? '經度需介於 -180 ~ 180' : 'Longitude must be -180..180'; }
+  if (k === 'lat') { const n = +v; if (isNaN(n) || n < -90 || n > 90) return 'Latitude must be -90..90'; }
+  if (k === 'lng') { const n = +v; if (isNaN(n) || n < -180 || n > 180) return 'Longitude must be -180..180'; }
   if (k === 'secret') {
     const s = v.toUpperCase();
-    if (s && !/^[A-Z2-7]+=*$/.test(s)) return LANG === 'zh' ? '無效的 Base32 密鑰' : 'Invalid Base32 secret';
+    if (s && !/^[A-Z2-7]+=*$/.test(s)) return 'Invalid Base32 secret';
   }
   return '';
 }
@@ -1983,25 +1973,47 @@ function scheduleAutoTest() {
   clearTimeout(autoTestTimer);
   autoTestTimer = setTimeout(async () => {
     const res = $('c-decode-result');
-    if (!studio.matrix) { setQLights(); res.textContent = ''; return; }
+    if (!studio.matrix) { setQLights(); res.textContent = ''; studio.decodeOk = null; updateQualityGauge(); return; }
     try {
       const cv = $('display-canvas');
       const ctx = cv.getContext('2d');
       const syms = await zbarWasm.scanImageData(ctx.getImageData(0, 0, cv.width, cv.height));
       if (syms.length > 0) {
+        studio.decodeOk = true;
         const ratio = contrastRatio(studio.fg, studio.frameColor);
         if (ratio >= 3) { setQLights('g'); res.textContent = '✓ ' + t('status.scannable'); res.className = 'status ok'; }
         else { setQLights('y'); res.textContent = '⚠ ' + t('status.lowContrast'); res.className = 'status warn'; }
       } else {
+        studio.decodeOk = false;
         setQLights('r'); res.textContent = '✗ ' + t('status.cannotDecode'); res.className = 'status err';
       }
-    } catch (e) { setQLights('r'); res.textContent = 'Error'; res.className = 'status err'; }
+    } catch (e) { studio.decodeOk = false; setQLights('r'); res.textContent = 'Error'; res.className = 'status err'; }
+    updateQualityGauge();
   }, 400);
 }
 function setQLights(state) {
   $('ql-r').className = 'l' + (state === 'r' ? ' r' : '');
   $('ql-y').className = 'l' + (state === 'y' ? ' y' : '');
   $('ql-g').className = 'l' + (state === 'g' ? ' g' : '');
+}
+
+function updateQualityGauge() {
+  const ratio = contrastRatio(studio.fg, studio.frameColor);
+  let score = 100;
+  if (ratio < 3) score -= 40;
+  else if (ratio < 4.5) score -= 15;
+  if (getEffectiveEC() === 'L') score -= 15;
+  else if (getEffectiveEC() === 'M') score -= 5;
+  if (studio.qrSize < 30) score -= 20;
+  if (studio.logoEnabled && studio.logoSize > 20) score -= 10;
+  
+  if (studio.decodeOk === false) score = Math.min(score, 30);
+  else if (studio.decodeOk === null) score = 0;
+  
+  score = clamp(score, 0, 100);
+  const gauge = $('q-gauge');
+  gauge.style.background = `conic-gradient(var(--${score>80?'ok':score>50?'warn':'err'}) ${score}%, rgba(128,128,128,.2) 0)`;
+  $('q-gauge-val').textContent = score + '%';
 }
 
 function renderStudio() {
@@ -2011,7 +2023,7 @@ function renderStudio() {
 
   let bytes = 0;
   try { bytes = new TextEncoder().encode(studio.text).length; } catch (e) {}
-  $('c-bytes').textContent = bytes ? (bytes + ' B / ' + (LANG === 'zh' ? '最大約 2953 B' : '~2953 B max')) : '';
+  $('c-bytes').textContent = bytes ? (bytes + ' B / ~2953 B max') : '';
 
   let m;
   try {
@@ -2026,12 +2038,14 @@ function renderStudio() {
       }
       $('c-info').textContent = '';
       studio.matrix = null;
-      ['c-export-png', 'c-export-svg', 'c-export-transparent', 'c-export-copy', 'c-export-custom', 'c-export-pdf'].forEach(id => { if ($(id)) $(id).disabled = true; });
+      studio.decodeOk = null;
+      ['c-export-png', 'c-export-svg', 'c-preview-transparent', 'c-export-transparent', 'c-export-copy', 'c-export-custom', 'c-export-pdf'].forEach(id => { if ($(id)) $(id).disabled = true; });
+      updateQualityGauge();
       return;
     }
     m = qrMatrix(studio.text, getEffectiveEC());
     studio.matrix = m;
-    ['c-export-png', 'c-export-svg', 'c-export-transparent', 'c-export-copy', 'c-export-custom', 'c-export-pdf'].forEach(id => { if ($(id)) $(id).disabled = false; });
+    ['c-export-png', 'c-export-svg', 'c-preview-transparent', 'c-export-transparent', 'c-export-copy', 'c-export-custom', 'c-export-pdf'].forEach(id => { if ($(id)) $(id).disabled = false; });
   } catch (e) {
     cv.width = 600; cv.height = 600;
     const cx = cv.getContext('2d');
@@ -2043,7 +2057,9 @@ function renderStudio() {
     }
     $('c-info').textContent = t('status.reduceContent');
     studio.matrix = null;
-    ['c-export-png', 'c-export-svg', 'c-export-transparent', 'c-export-copy', 'c-export-custom', 'c-export-pdf'].forEach(id => { if ($(id)) $(id).disabled = true; });
+    studio.decodeOk = null;
+    ['c-export-png', 'c-export-svg', 'c-preview-transparent', 'c-export-transparent', 'c-export-copy', 'c-export-custom', 'c-export-pdf'].forEach(id => { if ($(id)) $(id).disabled = true; });
+    updateQualityGauge();
     return;
   }
 
@@ -2107,26 +2123,11 @@ function renderStudio() {
   $('q-capacity').textContent = bytes + ' B';
   $('q-ec').textContent = getEffectiveEC();
 
-  // Quality Gauge
-  let score = 100;
-  if (ratio < 3) score -= 40;
-  else if (ratio < 4.5) score -= 15;
-  if (getEffectiveEC() === 'L') score -= 15;
-  else if (getEffectiveEC() === 'M') score -= 5;
-  if (studio.qrSize < 30) score -= 20;
-  if (studio.logoEnabled && studio.logoSize > 20) score -= 10;
-  // Deduct based on decode result
-  if ($('c-decode-result').textContent.includes('✗')) score = Math.min(score, 30);
-  score = clamp(score, 0, 100);
-  const gauge = $('q-gauge');
-  gauge.style.background = `conic-gradient(var(--${score>80?'ok':score>50?'warn':'err'}) ${score}%, rgba(128,128,128,.2) 0)`;
-  $('q-gauge-val').textContent = score + '%';
-
   const warns = [];
-  if (ratio < 3) warns.push(LANG === 'zh' ? '對比度過低，建議加深前景或加亮背景' : 'Contrast too low, darken foreground');
+  if (ratio < 3) warns.push('Contrast too low, darken foreground');
   const lum = (h) => { const c = h.replace('#', ''); const rgb = [0,2,4].map(i => parseInt(c.substr(i,2),16)); return 0.2126*rgb[0]/255 + 0.7152*rgb[1]/255 + 0.0722*rgb[2]/255; };
-  if (lum(studio.fg) > lum(studio.frameColor)) warns.push(LANG === 'zh' ? '前景比背景亮（反白）可能影響掃描' : 'Inverted (light FG on dark BG) may reduce scannability');
-  if (studio.logoEnabled && studio.logoSize > 20 && getEffectiveEC() !== 'H') warns.push(LANG === 'zh' ? 'Logo 過大，建議提高容錯率至 H' : 'Logo large, use EC H');
+  if (lum(studio.fg) > lum(studio.frameColor)) warns.push('Inverted (light FG on dark BG) may reduce scannability');
+  if (studio.logoEnabled && studio.logoSize > 20 && getEffectiveEC() !== 'H') warns.push('Logo large, use EC H');
   const we = $('c-quality-warn');
   if (warns.length) { we.textContent = '⚠ ' + warns.join(' · '); we.style.display = 'block'; }
   else we.style.display = 'none';
@@ -2141,6 +2142,7 @@ function resetStudio() {
     frameColor: '#ffffff', frameRadius: 8, dotStyle: 'square', eyeFrame: 'square', eyeDot: 'square',
     eyeFrameColor: null, eyeDotColor: null, ec: 'M',
     logoEnabled: false, logoImg: null, logoDataUrl: null, logoSize: 18,
+    transparentMode: false
   });
   $('c-type').value = 'text';
   buildStudioFields();
@@ -2159,8 +2161,9 @@ function resetStudio() {
   document.querySelectorAll('#c-eye-dot button').forEach(b => b.classList.toggle('on', b.dataset.v === 'square'));
   $('c-eye-frame-color').value = '#141414';
   $('c-eye-dot-color').value = '#141414';
+  $('preview-container').classList.remove('transparent-bg');
   renderStudio();
-  toast(LANG === 'zh' ? '已重置' : 'Reset done');
+  toast('Reset done');
 }
 
 function applyState(data) {
@@ -2393,7 +2396,6 @@ function initStudio() {
     reader.onload = () => {
       const img = new Image();
       img.onload = () => { 
-        // Resize to max 1024
         const max = 1024;
         let w = img.width, h = img.height;
         if (w > max || h > max) {
@@ -2507,28 +2509,63 @@ function initStudio() {
   $('c-logo-size').addEventListener('input', (e) => { studio.logoSize = +e.target.value; $('c-logo-size-v').textContent = studio.logoSize + '%'; scheduleStudio(); });
   $('c-logo-size').addEventListener('change', pushHistory);
 
-  $('c-export-png').addEventListener('click', () => {
-    const format = prompt('PNG/WebP/JPEG?', 'PNG');
-    if (!format) return;
-    const type = format.toUpperCase() === 'WEBP' ? 'image/webp' : format.toUpperCase() === 'JPEG' ? 'image/jpeg' : 'image/png';
-    $('display-canvas').toBlob((b) => { if (b) saveBlob(b, 'qr-design.' + (type === 'image/png' ? 'png' : type === 'image/webp' ? 'webp' : 'jpg')); }, type, 0.9);
-  });
+  const exportCanvas = async (isTransparent = false) => {
+    if (!studio.matrix) return;
+    
+    let format = 'png';
+    let quality = 0.92;
+    
+    if (!isTransparent) {
+      const choice = await dialog({
+        title: t('studio.exportFormat'),
+        choices: [
+          { label: 'PNG', value: 'png', default: true },
+          { label: 'WebP', value: 'webp' },
+          { label: 'JPEG', value: 'jpeg' }
+        ],
+        actions: [{ label: t('common.cancel'), value: null, kind: 'ghost' }]
+      });
+      if (!choice) return;
+      format = choice;
+      
+      if (format === 'jpeg') {
+        const qChoice = await dialog({
+          title: t('studio.jpegQuality'),
+          choices: [
+            { label: '95%', value: 0.95 },
+            { label: '85%', value: 0.85, default: true },
+            { label: '70%', value: 0.7 }
+          ],
+          actions: [{ label: t('common.cancel'), value: null, kind: 'ghost' }]
+        });
+        if (!qChoice) return;
+        quality = qChoice;
+      }
+    }
+
+    const cv = isTransparent ? renderToCanvas(1024, { transparent: true }) : renderToCanvas(1024, { transparent: false });
+    const mime = format === 'webp' ? 'image/webp' : format === 'jpeg' ? 'image/jpeg' : 'image/png';
+    const ext = format === 'webp' ? 'webp' : format === 'jpeg' ? 'jpg' : 'png';
+    cv.toBlob((b) => { if (b) saveBlob(b, 'qr-design.' + ext); }, mime, quality);
+  };
+
+  $('c-export-png').addEventListener('click', () => exportCanvas(false));
   $('c-export-custom').addEventListener('click', () => {
     if (!studio.matrix) return;
     const size = +$('c-resolution').value;
-    const cv = renderToCanvas(size);
+    const cv = renderToCanvas(size, { transparent: false });
     cv.toBlob((b) => saveBlob(b, 'qr-' + size + '.png'), 'image/png');
   });
-  $('c-export-transparent').addEventListener('click', () => {
-    if (!studio.matrix) return;
+  $('c-preview-transparent').addEventListener('click', () => {
     studio.transparentMode = !studio.transparentMode;
     $('preview-container').classList.toggle('transparent-bg', studio.transparentMode);
     renderStudio();
   });
+  $('c-export-transparent').addEventListener('click', () => exportCanvas(true));
   $('c-export-copy').addEventListener('click', async () => {
     if (!studio.matrix) return;
     try {
-      const cv = $('display-canvas');
+      const cv = renderToCanvas(1024, { transparent: false });
       const blob = await new Promise((r) => cv.toBlob(r, 'image/png'));
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
       toast(t('common.copied'));
@@ -2542,7 +2579,7 @@ function initStudio() {
   $('c-export-pdf').addEventListener('click', async () => {
     if (!studio.matrix) return;
     const choice = await dialog({
-      title: LANG === 'zh' ? 'PDF 尺寸' : 'PDF Size',
+      title: 'PDF Size',
       choices: [
         { label: '30 mm', value: 30 },
         { label: '50 mm', value: 50, default: true },
@@ -2553,27 +2590,19 @@ function initStudio() {
     if (!choice) return;
     const w = window.open('', '_blank');
     if (!w) { toast('Popup blocked'); return; }
-    const cv = $('display-canvas');
+    const cv = renderToCanvas(1024, { transparent: false });
     const dataUrl = cv.toDataURL('image/png');
     w.document.write(`<!DOCTYPE html><html><head><title>QR PDF</title><style>@page{size:${choice}mm ${choice}mm;margin:0}body{margin:0;padding:4mm;display:flex;align-items:center;justify-content:center}img{width:100%;height:100%;object-fit:contain}.cross{position:fixed;width:6mm;height:1px;background:#000}.cross.v{width:1px;height:6mm}.tl{top:2mm;left:0}.tl.v{top:0;left:2mm}.tr{top:2mm;right:0}.tr.v{top:0;right:2mm}.bl{bottom:2mm;left:0}.bl.v{bottom:0;left:2mm}.br{bottom:2mm;right:0}.br.v{bottom:0;right:2mm}</style></head><body><img src="${escapeHTML(dataUrl)}"><div class="cross tl"></div><div class="cross v tl"></div><div class="cross tr"></div><div class="cross v tr"></div><div class="cross bl"></div><div class="cross v bl"></div><div class="cross br"></div><div class="cross v br"></div><script>window.onload=()=>window.print()<\/script></body></html>`);
   });
 
   $('c-save-design').addEventListener('click', async () => {
-    const name = await promptDialog(LANG === 'zh' ? '為設計命名' : 'Name this design', 'Design ' + new Date().toLocaleDateString());
+    const name = await promptDialog('Name this design', 'Design ' + new Date().toLocaleDateString());
     if (!name) return;
     const state = snapshot();
     let thumb = '';
     try {
-      const cv = $('display-canvas');
-      const tc = document.createElement('canvas');
-      tc.width = 160; tc.height = 160;
-      const tcx = tc.getContext('2d');
-      tcx.fillStyle = '#fff'; tcx.fillRect(0, 0, 160, 160);
-      const sx = cv.width > cv.height ? (cv.width - cv.height) / 2 : 0;
-      const sy = cv.height > cv.width ? (cv.height - cv.width) / 2 : 0;
-      const ss = Math.min(cv.width, cv.height);
-      tcx.drawImage(cv, sx, sy, ss, ss, 0, 0, 160, 160);
-      thumb = tc.toDataURL('image/png');
+      const cv = renderToCanvas(160, { transparent: false });
+      thumb = cv.toDataURL('image/png');
     } catch (e) {}
     const data = { id: 'd' + Date.now(), name, ts: Date.now(), state, thumb };
     try {
@@ -2582,7 +2611,7 @@ function initStudio() {
       localStorage.setItem('qrt-designs', JSON.stringify(lib));
       updateSavedList(); toast(t('common.save'));
     } catch (e) {
-      toast(LANG === 'zh' ? '儲存空間已滿，請先匯出備份' : 'Storage full, export backup');
+      toast('Storage full, export backup');
       saveBlob(new Blob([JSON.stringify({ designs: JSON.parse(localStorage.getItem('qrt-designs') || '[]') }, null, 2)], { type: 'application/json' }), 'qrt-backup.json');
     }
   });
@@ -2596,8 +2625,8 @@ function initStudio() {
       try {
         const data = JSON.parse(ev.target.result);
         applyState(data);
-        pushHistory(); toast(LANG === 'zh' ? '已匯入' : 'Imported');
-      } catch (err) { toast(LANG === 'zh' ? '無效的 JSON' : 'Invalid JSON'); }
+        pushHistory(); toast('Imported');
+      } catch (err) { toast('Invalid JSON'); }
     };
     reader.readAsText(f);
     e.target.value = '';
@@ -2605,22 +2634,34 @@ function initStudio() {
   $('c-lib-search').addEventListener('input', updateSavedList);
   $('c-batch-gen').addEventListener('click', async () => {
     const lines = $('c-batch-text').value.split('\n').map(s => s.trim()).filter(Boolean);
-    if (!lines.length) { toast(LANG === 'zh' ? '請輸入內容' : 'Enter content'); return; }
+    if (!lines.length) { toast('Enter content'); return; }
     try {
       const files = {};
+      let failed = 0;
+      const ec = getEffectiveEC();
       for (let i = 0; i < lines.length; i++) {
-        const m = qrMatrix(lines[i], studio.ec);
-        // Temporarily set matrix for renderToCanvas, but use a local copy to avoid mutating main state
+        let m;
+        try {
+          m = qrMatrix(lines[i], ec);
+        } catch (e) {
+          failed++;
+          continue;
+        }
         const originalMatrix = studio.matrix;
-        studio.matrix = m;
-        const cv = renderToCanvas(512);
-        studio.matrix = originalMatrix; // Restore
-        const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
-        files['qr-' + String(i + 1).padStart(3, '0') + '.png'] = new Uint8Array(await blob.arrayBuffer());
+        try {
+          studio.matrix = m;
+          const cv = renderToCanvas(512, { transparent: false });
+          const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+          files['qr-' + String(i + 1).padStart(3, '0') + '.png'] = new Uint8Array(await blob.arrayBuffer());
+        } finally {
+          studio.matrix = originalMatrix;
+        }
       }
-      const zip = fflate.zipSync(files, { level: 6 });
-      saveBlob(new Blob([zip], { type: 'application/zip' }), 'qr-batch.zip');
-      $('c-batch-status').textContent = LANG === 'zh' ? '已產生 ' + lines.length + ' 個 QR' : lines.length + ' QRs generated';
+      if (Object.keys(files).length > 0) {
+        const zip = fflate.zipSync(files, { level: 6 });
+        saveBlob(new Blob([zip], { type: 'application/zip' }), 'qr-batch.zip');
+      }
+      $('c-batch-status').textContent = `${Object.keys(files).length} QRs generated, ${failed} failed`;
     } catch (e) { $('c-batch-status').textContent = 'Error: ' + e.message; }
   });
   $('c-batch-csv').addEventListener('change', async (e) => {
@@ -2630,7 +2671,7 @@ function initStudio() {
     const start = /text|content|url/i.test(lines[0]) ? 1 : 0;
     const vals = lines.slice(start).map(l => { const c = l.split(','); return c[0].replace(/^"|"$/g, ''); });
     $('c-batch-text').value = vals.join('\n');
-    toast((LANG === 'zh' ? '已載入 ' : 'Loaded ') + vals.length + (LANG === 'zh' ? ' 行' : ' rows'));
+    toast('Loaded ' + vals.length + ' rows');
   });
 
   const tplGrid = $('c-templates');
@@ -2654,7 +2695,7 @@ function initStudio() {
         if (tpl.style.frameColor) { studio.frameColor = tpl.style.frameColor; $('c-frame-color').value = tpl.style.frameColor; }
       }
       renderStudio(); pushHistory();
-      toast(LANG === 'zh' ? '已套用範本' : 'Template applied');
+      toast('Template applied');
     });
     tplGrid.appendChild(el);
   });
@@ -2677,7 +2718,7 @@ function initStudio() {
   });
 
   $('c-reset').addEventListener('click', async () => {
-    if (await confirmDialog(LANG === 'zh' ? '重置' : 'Reset', LANG === 'zh' ? '確定要重置所有設定？' : 'Reset all settings?', LANG === 'zh' ? '重置' : 'Reset')) resetStudio();
+    if (await confirmDialog('Reset', 'Reset all settings?', 'Reset')) resetStudio();
   });
 
   $('toggle-preview-btn').addEventListener('click', () => {
@@ -2729,7 +2770,7 @@ function updateSavedList() {
       const ren = mk('button', { innerHTML: Icons.edit, title: 'Rename' });
       ren.addEventListener('click', async (ev) => {
         ev.stopPropagation();
-        const newName = await promptDialog(LANG === 'zh' ? '重新命名' : 'Rename', d.name);
+        const newName = await promptDialog('Rename', d.name);
         if (!newName) return;
         d.name = newName;
         localStorage.setItem('qrt-designs', JSON.stringify(lib));
@@ -2768,7 +2809,7 @@ function updateSavedList() {
     }
     let total = 0;
     try { for (const k in localStorage) if (k.startsWith('qrt-')) total += (localStorage[k] || '').length; } catch (e) {}
-    $('c-lib-usage').textContent = (LANG === 'zh' ? '已使用 ' : 'Used ') + fmt(total * 2) + ' / ' + (LANG === 'zh' ? '約 5 MB' : '~5 MB');
+    $('c-lib-usage').textContent = 'Used ' + fmt(total * 2) + ' / ~5 MB';
   } catch (e) { console.warn(e); }
 }
 
@@ -2963,16 +3004,16 @@ function renderScanHistory() {
     act.appendChild(cp);
     if (cls.type === 'URL') {
       const domain = getDomain(item.text);
-      const op = mk('button', { className: 'btn xs', textContent: LANG === 'zh' ? '開啟' : 'Open' });
+      const op = mk('button', { className: 'btn xs', textContent: 'Open' });
       op.addEventListener('click', async () => {
         const warnings = [];
-        if (isShortUrl(item.text)) warnings.push(LANG === 'zh' ? '短網址：無法預覽目的地' : 'Short URL: destination unknown');
-        if (hasPunycode(item.text)) warnings.push(LANG === 'zh' ? 'Punycode 網域：可能為同形異義字攻擊' : 'Punycode domain: possible homograph attack');
+        if (isShortUrl(item.text)) warnings.push('Short URL: destination unknown');
+        if (hasPunycode(item.text)) warnings.push('Punycode domain: possible homograph attack');
         if (warnings.length) {
-          const ok = await confirmDialog(LANG === 'zh' ? '安全警告' : 'Security warning', warnings.join('\n') + '\n\n' + item.text, LANG === 'zh' ? '仍要開啟' : 'Open anyway');
+          const ok = await confirmDialog('Security warning', warnings.join('\n') + '\n\n' + item.text, 'Open anyway');
           if (!ok) return;
         } else {
-          const ok = await confirmDialog(LANG === 'zh' ? '開啟連結' : 'Open link', item.text, LANG === 'zh' ? '開啟' : 'Open');
+          const ok = await confirmDialog('Open link', item.text, 'Open');
           if (!ok) return;
         }
         window.open(item.text, '_blank', 'noopener,noreferrer');
@@ -2988,7 +3029,7 @@ function renderScanHistory() {
       act.appendChild(dl);
     }
     if (cls.type === 'WIFI') {
-      const info = mk('button', { className: 'btn xs', textContent: LANG === 'zh' ? '顯示密碼' : 'Show Pass' });
+      const info = mk('button', { className: 'btn xs', textContent: 'Show Pass' });
       info.addEventListener('click', async () => {
         const m = item.text.match(/S:([^;]*);.*?P:([^;]*);/);
         if (m) {
@@ -3053,8 +3094,7 @@ function addScanResult(text) {
   renderScanHistory();
   $('scan-status').textContent = t('status.found');
   if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-  const msg = mk('span', { innerHTML: Icons.check + ' ' + t('scanner.found') });
-  toast(msg.textContent);
+  toast(t('scanner.found'));
   if (scanMode === 'single') setTimeout(() => Cam.stop(), 200);
 }
 
@@ -3094,7 +3134,7 @@ function initScan() {
   }));
   $('scan-clear').addEventListener('click', async () => {
     if (!scanHistory.length) return;
-    if (await confirmDialog(LANG === 'zh' ? '清除歷史' : 'Clear history', LANG === 'zh' ? '確定要清除所有掃描記錄？' : 'Clear all scan history?', t('common.delete'))) {
+    if (await confirmDialog('Clear history', 'Clear all scan history?', t('common.delete'))) {
       scanHistory = []; localStorage.removeItem(SCAN_KEY); renderScanHistory();
     }
   });
@@ -3183,7 +3223,7 @@ async function deriveKey(password, salt, iter = 600000) {
 
 async function startTx() {
   const files = $('tx-file').files;
-  if (!files || !files.length) { toast(LANG === 'zh' ? '請選擇檔案' : 'Choose a file'); return; }
+  if (!files || !files.length) { toast('Choose a file'); return; }
   const my = ++tx.id; tx.run = true; tx.paused = false;
   $('tx-start').hidden = true; $('tx-pause').hidden = false; $('tx-stop').hidden = false;
 
@@ -3202,7 +3242,7 @@ async function startTx() {
   let payload = raw, encryptionInfo = null;
   if (encrypt) {
     const password = $('tx-password').value;
-    if (!password) { toast(LANG === 'zh' ? '請輸入密碼' : 'Enter password'); stopTx(); return; }
+    if (!password) { toast('Enter password'); stopTx(); return; }
     try {
       const salt = crypto.getRandomValues(new Uint8Array(16));
       const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -3344,7 +3384,7 @@ function initQrTx() {
           if (known) xorInto(restored, known);
         }
         rx.chunks.set(missing, restored);
-        toast(LANG === 'zh' ? '已用冗餘封包還原' : 'Recovered via parity');
+        toast('Recovered via parity');
       }
     }
     renderBlocks();
@@ -3443,7 +3483,7 @@ function initQrTx() {
             const m = JSON.parse(t);
             if (m.v !== 1 && m.v !== 2) return;
             if (m.tid !== currentTid) {
-              if (currentTid && m.tid !== currentTid) toast(LANG === 'zh' ? '切換到新檔案' : 'Switching to new file');
+              if (currentTid && m.tid !== currentTid) toast('Switching to new file');
               currentTid = m.tid;
               rx.meta = m;
               rx.chunks = new Map();
@@ -3451,7 +3491,7 @@ function initQrTx() {
               rx.blob = null;
               $('rx-done').hidden = true;
               $('rx-status').className = 'status';
-              $('rx-status').textContent = (LANG === 'zh' ? '接收 ' : 'Receiving ') + m.n + (m.enc ? ' 🔒' : '');
+              $('rx-status').textContent = 'Receiving ' + m.n + (m.enc ? ' 🔒' : '');
               $('rx-bar').style.width = '0%';
               renderBlocks();
             }
@@ -3523,7 +3563,7 @@ function handlePeerData(d) {
     try {
       const m = JSON.parse(d);
       if (m.t === 'text') appendChat($('ps-chat'), 'them', m.text);
-      else if (m.t === 'ack') toast(LANG === 'zh' ? '已收到' : 'Received by peer');
+      else if (m.t === 'ack') toast('Received by peer');
     } catch (e) {}
   }
 }
@@ -3533,7 +3573,6 @@ async function sendFileP2P(file, conn, fileId) {
   const CHUNK = 16384;
   const total = Math.ceil(file.size / CHUNK);
   
-  // Calculate CRC for validation
   const buf = await file.arrayBuffer();
   const hash = CRC(new Uint8Array(buf));
 
@@ -3578,6 +3617,10 @@ async function sendFileP2P(file, conn, fileId) {
 function initP2P() {
   wireSub('p2p-sub', 'p2p');
   $('ps-pin-on').addEventListener('change', (e) => { $('ps-pin').hidden = !e.target.checked; });
+  $('ps-pause').addEventListener('click', () => {
+    P.paused = !P.paused;
+    $('ps-pause').textContent = P.paused ? 'Resume' : 'Pause';
+  });
 
   function openSession(code) {
     p2pTeardown();
@@ -3598,13 +3641,13 @@ function initP2P() {
     peer.on('open', () => { $('ps-status').textContent = t('status.waiting'); });
     peer.on('error', (err) => {
       let reason = err.type;
-      if (err.type === 'unavailable-id') reason = LANG === 'zh' ? 'ID 衝突，重新產生代碼' : 'ID conflict, regenerating';
-      else if (err.type === 'network') reason = LANG === 'zh' ? '網路問題' : 'Network error';
-      else if (err.type === 'server-error') reason = LANG === 'zh' ? '伺服器不可用' : 'Server unavailable';
+      if (err.type === 'unavailable-id') reason = 'ID conflict, regenerating';
+      else if (err.type === 'network') reason = 'Network error';
+      else if (err.type === 'server-error') reason = 'Server unavailable';
       $('ps-status').textContent = 'Error: ' + reason;
       $('ps-status').className = 'status err';
       if (err.type === 'unavailable-id') {
-        toast(LANG === 'zh' ? '重新產生代碼' : 'New code generated');
+        toast('New code generated');
         setTimeout(() => { openSession(genCode(6)); }, 200);
       }
     });
@@ -3675,11 +3718,11 @@ function initP2P() {
   $('ps-cancel').addEventListener('click', () => {
     P.aborted = true;
     $('ps-list').innerHTML = '';
-    toast(LANG === 'zh' ? '已取消' : 'Cancelled');
+    toast('Cancelled');
     P.conns.forEach(c => { try { c.close(); } catch (e) {} });
     P.conns = [];
     $('ps-tools').hidden = true;
-    $('ps-status').textContent = LANG === 'zh' ? '已取消' : 'Cancelled';
+    $('ps-status').textContent = 'Cancelled';
     $('ps-status').className = 'status warn';
   });
 
@@ -3693,10 +3736,10 @@ function initP2P() {
         if (P.aborted) break;
         await sendFileP2P(files[i], c, 'f' + Date.now() + '_' + i);
       }
-      if (!P.aborted) toast(LANG === 'zh' ? '全部傳送完成' : 'All files sent');
+      if (!P.aborted) toast('All files sent');
     } catch (err) {
       if (P.aborted) return;
-      toast(LANG === 'zh' ? '傳輸中斷' : 'Transfer interrupted');
+      toast('Transfer interrupted');
     }
     e.target.value = '';
   });
@@ -3735,9 +3778,9 @@ function initP2P() {
     $('pr-status').className = 'status';
     peer.on('error', (err) => {
       let reason = err.type;
-      if (err.type === 'peer-unavailable') reason = LANG === 'zh' ? '找不到對方（代碼錯誤或已離線）' : 'Peer not found (bad code or offline)';
-      else if (err.type === 'network') reason = LANG === 'zh' ? '網路問題' : 'Network error';
-      else if (err.type === 'server-error') reason = LANG === 'zh' ? '伺服器不可用' : 'Server unavailable';
+      if (err.type === 'peer-unavailable') reason = 'Peer not found (bad code or offline)';
+      else if (err.type === 'network') reason = 'Network error';
+      else if (err.type === 'server-error') reason = 'Server unavailable';
       $('pr-status').textContent = 'Error: ' + reason;
       $('pr-status').className = 'status err';
     });
@@ -3779,16 +3822,16 @@ function initP2P() {
                   f.done = true;
                   if ($('pr-auto').checked) saveBlob(blob, f.meta.name);
                   renderRecvFiles();
-                  toast(LANG === 'zh' ? '驗證通過' : 'Verified');
+                  toast('Verified');
                   c.send(JSON.stringify({ t: 'ack', id: m.id }));
-                } else toast(LANG === 'zh' ? 'CRC 校驗失敗' : 'CRC mismatch');
+                } else toast('CRC mismatch');
               }
             } else if (m.t === 'text') {
               appendChat($('pr-chat'), 'them', m.text);
             } else if (m.t === 'auth_ok') {
-              toast(LANG === 'zh' ? 'PIN 驗證成功' : 'PIN verified');
+              toast('PIN verified');
             } else if (m.t === 'auth_fail') {
-              $('pr-status').textContent = LANG === 'zh' ? 'PIN 錯誤' : 'Wrong PIN';
+              $('pr-status').textContent = 'Wrong PIN';
               $('pr-status').className = 'status err';
               try { c.close(); } catch (e) {}
             }
@@ -3868,7 +3911,7 @@ function initP2P() {
     if (R.peer) { try { R.peer.destroy(); } catch (e) {} R.peer = null; }
     $('pr-live').hidden = true;
     $('pr-connect').hidden = false;
-    $('pr-status').textContent = LANG === 'zh' ? '尚未連線' : 'Not connected';
+    $('pr-status').textContent = 'Not connected';
     $('pr-status').className = 'status';
     $('pr-list').innerHTML = `<div class="empty-state">${Icons.emptyFile}<p>${t('empty.files')}</p></div>`;
     $('pr-chat').innerHTML = '';
@@ -3939,34 +3982,8 @@ function wireSub(id, prefix) {
    GLOBAL
    ============================================================ */
 function initGlobal() {
-  $('langBtn').addEventListener('click', () => {
-    LANG = LANG === 'zh' ? 'en' : 'zh';
-    applyI18n();
-    const typeSel = $('c-type');
-    const curVal = typeSel.value;
-    typeSel.innerHTML = '';
-    Object.keys(TYPES).forEach((k) => {
-      const opt = document.createElement('option');
-      opt.value = k;
-      opt.textContent = t(TYPES[k].l10n);
-      typeSel.appendChild(opt);
-    });
-    typeSel.value = curVal || 'text';
-    buildStudioFields();
-    renderStudio();
-    renderScanHistory();
-  });
-
   $('helpBtn').addEventListener('click', () => {
-    const rows = LANG === 'zh' ? [
-      ['1 – 4', '切換分頁'],
-      ['Ctrl/⌘ + S', '儲存設計'],
-      ['Ctrl/⌘ + E', '匯出 PNG'],
-      ['Ctrl/⌘ + Z', '復原'],
-      ['Ctrl/⌘ + Shift + Z', '重做'],
-      ['Ctrl/⌘ + V', '貼上圖片掃描'],
-      ['?', '顯示此說明'],
-    ] : [
+    const rows = [
       ['1 – 4', 'Switch tab'],
       ['Ctrl/⌘ + S', 'Save design'],
       ['Ctrl/⌘ + E', 'Export PNG'],
@@ -3982,8 +3999,18 @@ function initGlobal() {
       row.appendChild(mk('span', { textContent: v, style: 'text-align:right' }));
       list.appendChild(row);
     });
+    
+    const psRow = mk('label', { className: 'chk', style: 'display:flex;align-items:center;gap:8px;margin-top:16px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text)' });
+    const psCheck = mk('input', { type: 'checkbox', style: 'width:auto' });
+    psCheck.checked = userSettings.powerSave || false;
+    psCheck.addEventListener('change', () => applyPowerSave(psCheck.checked));
+    psRow.appendChild(psCheck);
+    psRow.appendChild(document.createTextNode(t('help.powerSave')));
+    list.appendChild(psRow);
+    list.appendChild(mk('div', { className: 'muted', style: 'font-size:11px;margin-top:4px', textContent: t('help.powerSaveDesc') }));
+
     dialog({
-      title: LANG === 'zh' ? '快捷鍵' : 'Keyboard shortcuts',
+      title: 'Keyboard shortcuts',
       children: [list],
       actions: [{ label: t('common.ok'), value: true, kind: 'pri' }],
     });
@@ -4136,6 +4163,7 @@ function initGlobal() {
    ============================================================ */
 async function boot() {
   initTheme();
+  applyPowerSave(userSettings.powerSave || false);
   
   const libs = { QRCode: () => window.QRCode, pako: () => window.pako, zbar: () => window.zbarWasm, Peer: () => window.Peer, fflate: () => window.fflate };
   const t0 = Date.now();
