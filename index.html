@@ -13,9 +13,6 @@
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
 <style>
-/* ============================================================
-   DESIGN TOKENS
-   ============================================================ */
 :root{
   --accent:#3b5bdb; --accent-2:#7048e8;
   --ok:#10b981; --warn:#f59e0b; --err:#e5484d;
@@ -83,9 +80,6 @@ button,input,select,textarea{font-family:inherit}
 ::selection{background:var(--accent-soft);color:var(--accent-ink)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-/* ============================================================
-   ANIMATED BACKGROUND
-   ============================================================ */
 .bg-stage{
   position:fixed; inset:0; z-index:-1; overflow:hidden;
   background:
@@ -120,9 +114,6 @@ html[data-theme="dark"] .bg-blob.b3{background:radial-gradient(circle, #8a3bff 0
 }
 .power-save .glass::after { display: none; }
 
-/* ============================================================
-   GLASS BASE CLASSES
-   ============================================================ */
 .glass{
   position:relative; border-radius:var(--radius);
   border:1px solid transparent;
@@ -163,9 +154,6 @@ html[data-theme="dark"] .bg-blob.b3{background:radial-gradient(circle, #8a3bff 0
   .bg-blob{animation:none!important}
 }
 
-/* ============================================================
-   LOADER
-   ============================================================ */
 #loader{position:fixed; inset:0; z-index:200; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; background:var(--bg-root); transition:opacity .5s var(--ease), visibility .5s}
 #loader.done{opacity:0; visibility:hidden; pointer-events:none}
 .lattice{display:grid; grid-template-columns:repeat(3, 16px); gap:8px}
@@ -191,9 +179,6 @@ html[data-theme="dark"] .bg-blob.b3{background:radial-gradient(circle, #8a3bff 0
 .lattice span:nth-child(9)::after{animation-delay:.24s}
 #loader .msg{font:600 11px/1 var(--mono); letter-spacing:.18em; text-transform:uppercase; color:var(--text-muted)}
 
-/* ============================================================
-   APP SHELL / HEADER
-   ============================================================ */
 .shell{max-width:1180px; margin:0 auto; padding:0 20px; padding-left:max(20px, var(--safe-l)); padding-right:max(20px, var(--safe-r))}
 header{
   position:sticky; top:0; z-index:30;
@@ -274,9 +259,6 @@ main{padding:14px 0 90px; position:relative; overflow-x:hidden;}
 .grid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); gap:20px; align-items:start}
 @media (max-width:920px){.grid{grid-template-columns:minmax(0,1fr)}}
 
-/* ============================================================
-   CARDS
-   ============================================================ */
 .card{
   border-radius:var(--radius); padding:18px; margin-bottom:14px;
   background:linear-gradient(135deg, var(--glass-2-a), var(--glass-2-b));
@@ -307,7 +289,6 @@ main{padding:14px 0 90px; position:relative; overflow-x:hidden;}
 }
 .card h2::before{content:''; width:6px; height:6px; border-radius:2px; background:linear-gradient(135deg, var(--accent), var(--accent-2)); flex:none; box-shadow:0 0 10px var(--accent-soft)}
 
-/* Accordion */
 .accordion details{border-bottom:1px solid var(--glass-border-lo); padding:10px 0}
 .accordion details:last-child{border-bottom:0; padding-bottom:0}
 .accordion summary{
@@ -321,9 +302,6 @@ main{padding:14px 0 90px; position:relative; overflow-x:hidden;}
 .acc-content{padding-top:12px; animation:fadeUp .3s var(--ease)}
 @keyframes fadeUp{from{opacity:0; transform:translateY(6px)}to{opacity:1; transform:none}}
 
-/* ============================================================
-   STUDIO PREVIEW
-   ============================================================ */
 .studio-preview-card{padding:20px; transition:all .3s var(--ease);}
 @media (max-width:920px){
   .studio-preview-card{
@@ -370,9 +348,6 @@ canvas#display-canvas{
 }
 canvas#display-canvas:hover{transform:scale(1.01)}
 
-/* ============================================================
-   FORMS
-   ============================================================ */
 label{display:block; font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin:13px 0 6px; color:var(--text-muted)}
 label:first-child{margin-top:0}
 input, select, textarea{
@@ -408,15 +383,11 @@ select{appearance:none; -webkit-appearance:none; background-image:url("data:imag
 .row>*{flex:1; min-width:0}
 .row .btn, .row .icon-btn, .row input[type=color]{flex:0 1 auto}
 
-/* Recommended Colors */
 .rec-colors{display:flex; gap:6px; overflow-x:auto; padding:4px 0; margin-top:6px; scrollbar-width:none}
 .rec-colors::-webkit-scrollbar{display:none}
 .rc-btn{width:28px; height:28px; border-radius:50%; border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.2); cursor:pointer; flex-shrink:0; transition:transform .2s}
 .rc-btn:hover{transform:scale(1.15)}
 
-/* ============================================================
-   BUTTONS
-   ============================================================ */
 .btn{
   padding:11px 16px; border-radius:var(--radius-xs);
   background:linear-gradient(135deg, var(--glass-3-a), var(--glass-3-b));
@@ -449,16 +420,12 @@ select{appearance:none; -webkit-appearance:none; background-image:url("data:imag
 .btn.ghost:hover:not(:disabled){background:linear-gradient(135deg, var(--glass-1-a), var(--glass-1-b))}
 .btn.danger{color:var(--err); border-color:color-mix(in srgb, var(--err) 30%, transparent)}
 
-/* Ripple Effect */
 .ripple {
   position: absolute; border-radius: 50%; background: rgba(255,255,255,0.4);
   transform: scale(0); animation: rippleAnim 0.6s linear; pointer-events: none;
 }
 @keyframes rippleAnim { to { transform: scale(4); opacity: 0; } }
 
-/* ============================================================
-   SEGMENTED & SWATCHES
-   ============================================================ */
 .sub, .seg{display:inline-flex; gap:3px; padding:4px; border-radius:var(--pill); background:linear-gradient(135deg, var(--glass-1-a), var(--glass-1-b)); border:1px solid var(--glass-border-lo); box-shadow:var(--glass-inset-2); flex-wrap:wrap}
 .seg{width:100%; border-radius:var(--radius-xs)}
 .seg button, .sub button{
@@ -475,9 +442,6 @@ select{appearance:none; -webkit-appearance:none; background-image:url("data:imag
 html[data-theme="dark"] .seg button.on, html[data-theme="dark"] .sub button.on{background:linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,.06))}
 .seg button:active, .sub button:active{transform:scale(.97)}
 
-/* ============================================================
-   CAMERA & PREVIEW
-   ============================================================ */
 .pv{
   display:flex; justify-content:center; align-items:center;
   border:1px solid var(--glass-border-lo); border-radius:var(--radius-sm);
@@ -519,9 +483,6 @@ canvas.qr{max-width:100%; height:auto; image-rendering:pixelated; border-radius:
 .cam.live .scan-line{display:block; animation:scanLine 2.2s var(--ease) infinite}
 @keyframes scanLine{0%,100%{top:16%}50%{top:84%}}
 
-/* ============================================================
-   MISC / STATUS
-   ============================================================ */
 .status{font:600 12px/1.5 var(--mono); margin:10px 0; color:var(--text-muted); min-height:20px}
 .status.err{color:var(--err)}
 .status.ok{color:var(--ok)}
@@ -563,19 +524,14 @@ canvas.qr{max-width:100%; height:auto; image-rendering:pixelated; border-radius:
 .block-grid .bk.par.on{background:var(--accent); box-shadow:0 0 6px color-mix(in srgb, var(--accent) 60%, transparent)}
 .block-grid .bk.miss{background:color-mix(in srgb, var(--err) 30%, transparent)}
 
-/* Quality Gauge */
 .gauge-wrap{display:flex; align-items:center; gap:12px; margin:10px 0;}
 .gauge{width:48px; height:48px; border-radius:50%; background:conic-gradient(var(--ok) 0%, rgba(128,128,128,.2) 0); display:grid; place-items:center; position:relative;}
 .gauge::after{content:''; position:absolute; inset:6px; border-radius:50%; background:var(--glass-2-a); backdrop-filter:blur(4px);}
 .gauge-val{position:relative; z-index:1; font:700 12px/1 var(--mono); color:var(--text);}
 
-/* Empty State */
 .empty-state{display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px 10px; color:var(--text-muted); text-align:center; gap:12px}
 .empty-state svg{width:60px; height:60px; opacity:.4; stroke:currentColor; fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round}
 
-/* ============================================================
-   TOASTS & DIALOGS
-   ============================================================ */
 #toasts{position:fixed; left:50%; bottom:calc(22px + var(--safe-b)); transform:translateX(-50%); z-index:120; display:flex; flex-direction:column-reverse; gap:8px; align-items:center; pointer-events:none; max-width:calc(100vw - 24px)}
 .toast{
   background:linear-gradient(135deg, var(--glass-3-a), var(--glass-3-b));
@@ -627,9 +583,6 @@ canvas.qr{max-width:100%; height:auto; image-rendering:pixelated; border-radius:
 .dialog .choices { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .dialog .choices button { width: 100%; justify-content: center; }
 
-/* ============================================================
-   LIBRARY GRID
-   ============================================================ */
 .lib-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; margin-top:12px}
 .lib-card{
   border:1px solid var(--glass-border-lo); border-radius:var(--radius-xs); overflow:hidden;
@@ -1146,9 +1099,6 @@ canvas.qr:fullscreen{
 
 <script>
 "use strict";
-/* ============================================================
-   UTILITIES
-   ============================================================ */
 const $ = (id) => document.getElementById(id);
 const $$ = (sel, root) => (root || document).querySelectorAll(sel);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -1220,6 +1170,7 @@ function mk(tag, props, kids) {
 
 function addRipple(e) {
   const btn = e.currentTarget;
+  if (!btn || !btn.getBoundingClientRect) return;
   if (btn.disabled) return;
   const rect = btn.getBoundingClientRect();
   const r = document.createElement('span');
@@ -1232,9 +1183,6 @@ function addRipple(e) {
   setTimeout(() => r.remove(), 600);
 }
 
-/* ============================================================
-   TOASTS & DIALOGS
-   ============================================================ */
 function toast(msg, dur = 2400) {
   const host = $('toasts');
   const t = mk('div', { className: 'toast', textContent: msg });
@@ -1335,9 +1283,6 @@ function saveBlob(blob, name) {
   setTimeout(() => URL.revokeObjectURL(u), 15000);
 }
 
-/* ============================================================
-   i18n (English Only)
-   ============================================================ */
 const I18N = {
   en: {
     'common.ok': 'OK', 'common.cancel': 'Cancel', 'common.copied': 'Copied', 'common.copyFail': 'Copy failed',
@@ -1400,9 +1345,6 @@ function applyI18n() {
   $$('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
 }
 
-/* ============================================================
-   THEME & SETTINGS
-   ============================================================ */
 const SETTINGS_KEY = 'qrt-settings';
 let userSettings = {};
 try { userSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch(e) {}
@@ -1459,9 +1401,6 @@ function applyPowerSave(on) {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(userSettings)); } catch(e) {}
 }
 
-/* ============================================================
-   QR MATRIX (LRU Cache)
-   ============================================================ */
 const matrixCache = new Map();
 function qrMatrix(text, ec) {
   const key = text + '|' + ec;
@@ -1483,9 +1422,6 @@ function qrMatrix(text, ec) {
   return res;
 }
 
-/* ============================================================
-   STUDIO
-   ============================================================ */
 const studio = {
   ratio: '1:1', bgColor: '#ffffff', bgImage: null, bgImageSrc: '',
   qrSize: 60, fg: '#141414', fg2: '#3b5bdb', gradient: false, gradType: 'linear', gradAngle: 135,
@@ -2807,9 +2743,6 @@ function updateSavedList() {
   } catch (e) { console.warn(e); }
 }
 
-/* ============================================================
-   CAMERA (shared)
-   ============================================================ */
 function mountCam(host) {
   host.innerHTML = '';
   const vid = mk('div', { className: 'vid' });
@@ -2944,9 +2877,6 @@ function camUI() {
   });
 }
 
-/* ============================================================
-   SCANNER
-   ============================================================ */
 const SCAN_KEY = 'qrt-scan-history';
 let scanHistory = [];
 let scanMode = 'continuous';
@@ -3172,9 +3102,6 @@ function initScan() {
   });
 }
 
-/* ============================================================
-   QR TRANSFER
-   ============================================================ */
 const tx = { run: false, paused: false, id: 0, current: null };
 
 function xorInto(target, source) {
@@ -3511,9 +3438,6 @@ function initQrTx() {
   $('rx-stop').addEventListener('click', () => Cam.stop());
 }
 
-/* ============================================================
-   P2P
-   ============================================================ */
 const ICE = [{ urls: 'stun:stun.l.google.com:19302' }];
 const PREFIX = 'qrx-';
 const P = { peer: null, conns: [], pinRequired: false, pin: null, aborted: false, failedAttempts: 0, paused: false };
@@ -3924,9 +3848,6 @@ function drawFlatQR(cv, text, ec, size, margin) {
   if (tx.current) tx.current.lastText = text;
 }
 
-/* ============================================================
-   TABS
-   ============================================================ */
 let curTab = 'studio';
 let lastTabIdx = 0;
 const TAB_ORDER = ['studio', 'scan', 'qrtx', 'p2p'];
@@ -3971,9 +3892,6 @@ function wireSub(id, prefix) {
   }));
 }
 
-/* ============================================================
-   GLOBAL
-   ============================================================ */
 function initGlobal() {
   $('helpBtn').addEventListener('click', () => {
     const rows = [
@@ -4073,9 +3991,6 @@ function initGlobal() {
   window.addEventListener('beforeunload', () => { Cam.stop(); p2pTeardown(); });
 }
 
-/* ============================================================
-   PWA
-   ============================================================ */
 (async function setupPWA() {
   function makePngIcon(size) {
     const cv = document.createElement('canvas');
@@ -4151,9 +4066,6 @@ function initGlobal() {
   }
 })();
 
-/* ============================================================
-   BOOT
-   ============================================================ */
 async function boot() {
   initTheme();
   applyPowerSave(userSettings.powerSave || false);
