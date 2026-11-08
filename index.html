@@ -114,9 +114,14 @@ html[data-theme="dark"] .bg-blob.b3{background:radial-gradient(circle, #8a3bff 0
   .bg-blob{width:80vmax; height:80vmax; filter:blur(40px); opacity:.6}
   html[data-theme="dark"] .bg-blob{filter:blur(40px)}
 }
+.power-save .bg-blob { animation: none !important; filter: blur(20px) !important; opacity: 0.3 !important; }
+.power-save .glass, .power-save .head-in, .power-save .card, .power-save .toast, .power-save .dialog {
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+}
+.power-save .glass::after { display: none; }
 
 /* ============================================================
-   GLASS BASE CLASSES & SVG REFRACTION
+   GLASS BASE CLASSES
    ============================================================ */
 .glass{
   position:relative; border-radius:var(--radius);
@@ -147,15 +152,7 @@ html[data-theme="dark"] .bg-blob.b3{background:radial-gradient(circle, #8a3bff 0
   .glass-2{backdrop-filter:blur(var(--glass-blur-2)) saturate(var(--glass-sat));-webkit-backdrop-filter:blur(var(--glass-blur-2)) saturate(var(--glass-sat))}
   .glass-3{backdrop-filter:blur(var(--glass-blur-3)) saturate(var(--glass-sat));-webkit-backdrop-filter:blur(var(--glass-blur-3)) saturate(var(--glass-sat))}
 }
-/* Refraction Layer */
-.glass-refraction {
-  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  z-index: 3; opacity: 0.6; mix-blend-mode: overlay;
-  backdrop-filter: url(#refraction-filter);
-  -webkit-backdrop-filter: url(#refraction-filter);
-}
-@media (prefers-reduced-transparency: reduce), (prefers-reduced-motion: reduce) {
-  .glass-refraction { display: none !important; }
+@media (prefers-reduced-transparency: reduce){
   :root{--glass-1-a:#f6f7fb;--glass-1-b:#f1f3f9;--glass-2-a:#fbfbfd;--glass-2-b:#f4f5fa;--glass-3-a:#ffffff;--glass-3-b:#f8f9fc}
   html[data-theme="dark"]{--glass-1-a:#1a1c2e;--glass-1-b:#141627;--glass-2-a:#22243a;--glass-2-b:#1b1d30;--glass-3-a:#2a2c46;--glass-3-b:#20223a}
   .glass{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
@@ -327,24 +324,41 @@ main{padding:14px 0 90px; position:relative; overflow-x:hidden;}
 /* ============================================================
    STUDIO PREVIEW
    ============================================================ */
-.studio-preview-card{position:sticky; top:82px; padding:20px}
+.studio-preview-card{padding:20px; transition:all .3s var(--ease);}
 @media (max-width:920px){
-  .studio-preview-card{position:sticky; bottom:0; top:auto; z-index:20; padding:12px; border-radius:var(--radius) var(--radius) 0 0; box-shadow:0 -10px 40px rgba(0,0,0,.2); margin:0 -14px; border-bottom:none;}
-  .studio-preview-card .canvas-container{min-height:200px; margin-bottom:8px;}
-  .studio-preview-card canvas#display-canvas{max-height:200px;}
+  .studio-preview-card{
+    position:sticky; top:calc(var(--safe-t) + 74px); z-index:20;
+    padding:12px; max-height:36vh; overflow-y:auto; margin-bottom:14px;
+    border-radius:var(--radius-sm);
+    box-shadow:0 10px 30px rgba(0,0,0,0.15);
+  }
+  .studio-preview-card .canvas-container{min-height:120px; max-height:200px; margin-bottom:8px;}
+  .studio-preview-card canvas#display-canvas{max-height:100%;}
+  .studio-preview-card .row { flex-wrap: wrap; gap: 4px; }
+  .studio-preview-card .btn { padding: 6px 10px; font-size: 11px; min-height: 32px; }
+  .studio-preview-card.collapsed { max-height: 48px; overflow: hidden; padding: 8px 12px; }
+  .studio-preview-card.collapsed .canvas-container,
+  .studio-preview-card.collapsed p,
+  .studio-preview-card.collapsed .row { display: none; }
+  .studio-preview-card .toggle-collapse { display: block; margin: 0 auto; }
 }
+.studio-preview-card .toggle-collapse { display: none; }
+
 .canvas-container{
   display:flex; justify-content:center; align-items:center;
   border-radius:var(--radius-sm); padding:14px; margin-bottom:14px;
   min-height:300px; overflow:hidden; position:relative;
   background-color:#fff;
+  border:1px solid var(--glass-border-lo);
+  box-shadow:inset 0 1px 0 var(--glass-border-lo);
+  transition: background .2s;
+}
+.canvas-container.transparent-bg {
   background-image:linear-gradient(45deg, #eee 25%, transparent 25%), linear-gradient(-45deg, #eee 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #eee 75%), linear-gradient(-45deg, transparent 75%, #eee 75%);
   background-size:20px 20px;
   background-position:0 0, 0 10px, 10px -10px, -10px 0px;
-  border:1px solid var(--glass-border-lo);
-  box-shadow:inset 0 1px 0 var(--glass-border-lo);
 }
-html[data-theme="dark"] .canvas-container{
+html[data-theme="dark"] .canvas-container.transparent-bg{
   background-color:#1a1a1a;
   background-image:linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
 }
@@ -480,7 +494,7 @@ canvas.qr{max-width:100%; height:auto; image-rendering:pixelated; border-radius:
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);
 }
 .vid{position:relative; overflow:hidden; min-height:230px; display:grid; place-items:center}
-.vid video{display:block; width:100%; max-height:400px; object-fit:cover}
+.vid video{display:block; width:100%; max-height:400px; object-fit:contain; background:#000;}
 .vid .idle{position:absolute; inset:0; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; background:#0a0a0f; color:#666; font:600 11px/1.6 var(--mono); letter-spacing:.14em; text-transform:uppercase}
 .cam.live .vid .idle{display:none}
 .cam .scan-frame{
@@ -592,7 +606,7 @@ canvas.qr{max-width:100%; height:auto; image-rendering:pixelated; border-radius:
   width:100%; max-width:420px; padding:22px; border-radius:var(--radius);
   background:linear-gradient(135deg, var(--glass-3-a), var(--glass-3-b));
   border:1px solid transparent; box-shadow:var(--glass-shadow), var(--glass-inset);
-  position:relative; overflow:hidden;
+  position:relative; overflow:hidden; max-height:90vh; overflow-y:auto;
   animation:dialogIn .35s var(--spring) both;
 }
 .dialog::before{
@@ -609,6 +623,8 @@ canvas.qr{max-width:100%; height:auto; image-rendering:pixelated; border-radius:
 .dialog p{font-size:13.5px; line-height:1.6; color:var(--text-muted); margin-bottom:16px; white-space:pre-wrap}
 .dialog .row{margin-top:16px; margin-bottom:0}
 .dialog .row .btn{flex:1}
+.dialog .choices { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.dialog .choices button { width: 100%; justify-content: center; }
 
 /* ============================================================
    LIBRARY GRID
@@ -686,14 +702,6 @@ canvas.qr:fullscreen{
 </style>
 </head>
 <body>
-
-<!-- SVG Refraction Filter -->
-<svg style="width:0;height:0;position:absolute;" aria-hidden="true">
-  <filter id="refraction-filter">
-    <feTurbulence type="fractalNoise" baseFrequency="0.01 0.02" numOctaves="1" result="noise" />
-    <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G" />
-  </filter>
-</svg>
 
 <div class="bg-stage" aria-hidden="true">
   <div class="bg-blob b1"></div>
@@ -805,6 +813,7 @@ canvas.qr:fullscreen{
           <button data-v="rounded">▢</button>
           <button data-v="diamond">◆</button>
           <button data-v="fluid">≈</button>
+          <button data-v="sketch" data-i18n="studio.sketch">Sketch</button>
         </div>
 
         <label data-i18n="studio.eyeFrame">Eye frame</label>
@@ -906,8 +915,9 @@ canvas.qr:fullscreen{
     </div>
 
     <div>
-      <div class="card studio-preview-card">
-        <div class="canvas-container">
+      <div class="card studio-preview-card" id="studio-preview-card">
+        <button class="btn xs ghost toggle-collapse" id="toggle-preview-btn" aria-label="Toggle preview">▼</button>
+        <div class="canvas-container" id="preview-container">
           <canvas id="display-canvas" width="600" height="600" aria-label="QR code preview"></canvas>
         </div>
         <p id="c-info" class="muted" style="margin-bottom:14px;font-family:var(--mono);font-size:11px;text-align:center"></p>
@@ -916,7 +926,7 @@ canvas.qr:fullscreen{
         </div>
         <div class="row">
           <button class="btn sm" id="c-export-svg">SVG</button>
-          <button class="btn sm" id="c-export-transparent">Transparent</button>
+          <button class="btn sm" id="c-export-transparent" data-i18n="studio.exportTransparent">Transparent</button>
           <button class="btn sm" id="c-export-copy" data-i18n="studio.copyImg">Copy image</button>
         </div>
         <div class="row">
@@ -1144,7 +1154,6 @@ function escapeHTML(str) {
   return String(str).replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s]));
 }
 
-// Chunked base64
 function toB64(u) {
   let out = '', chunk = 0x8000;
   for (let i = 0; i < u.length; i += chunk) out += String.fromCharCode.apply(null, u.subarray(i, i + chunk));
@@ -1158,7 +1167,6 @@ const CRC = (() => {
   return (b) => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
 })();
 
-// SVG Icons (Replacing emojis)
 const Icons = {
   copy: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
   check: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--ok)" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>',
@@ -1181,7 +1189,10 @@ const Icons = {
   close: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>',
   torch: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2H6v6l2 2v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V10l2-2V2z"/><path d="M10 12h4"/></svg>',
   torchOn: '<svg viewBox="0 0 24 24" width="16" height="16" fill="var(--accent)" stroke="currentColor" stroke-width="2"><path d="M18 2H6v6l2 2v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V10l2-2V2z"/><path d="M10 12h4" stroke="#fff"/></svg>',
-  flip: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3L4 7l4 4"/><path d="M16 21l4-4-4-4"/><path d="M4 7h16"/><path d="M20 17H4"/></svg>'
+  flip: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3L4 7l4 4"/><path d="M16 21l4-4-4-4"/><path d="M4 7h16"/><path d="M20 17H4"/></svg>',
+  instagram: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg>',
+  paypal: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 21h3a2 2 0 0 0 2-2v-3h3a5 5 0 0 0 5-5V7a2 2 0 0 0-2-2h-3"/><path d="M7 21V7a2 2 0 0 1 2-2h3"/></svg>',
+  telegram: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>'
 };
 
 function mk(tag, props, kids) {
@@ -1219,7 +1230,7 @@ function toast(msg, dur = 2400) {
 }
 
 let dialogFocusTrap = null;
-function dialog({ title, message, input, inputPlaceholder, inputType, actions, children }) {
+function dialog({ title, message, input, inputPlaceholder, inputType, actions, children, choices }) {
   return new Promise((resolve) => {
     const root = $('dialog-root');
     root.innerHTML = '';
@@ -1227,6 +1238,17 @@ function dialog({ title, message, input, inputPlaceholder, inputType, actions, c
     const box = mk('div', { className: 'dialog' });
     if (title) box.appendChild(mk('h3', { textContent: title }));
     if (message) box.appendChild(mk('p', { textContent: message }));
+    
+    if (choices && choices.length) {
+      const list = mk('div', { className: 'choices' });
+      choices.forEach(c => {
+        const btn = mk('button', { className: 'btn sm' + (c.default ? ' pri' : ''), textContent: c.label });
+        btn.addEventListener('click', () => close(c.value));
+        list.appendChild(btn);
+      });
+      box.appendChild(list);
+    }
+    
     if (children && children.length) children.forEach(c => box.appendChild(c));
     let inputEl = null;
     if (input) {
@@ -1311,23 +1333,24 @@ const I18N = {
     'app.install': '安裝到主畫面', 'app.offline': '目前離線，部分功能受限',
     'studio.content': '內容', 'studio.type': '類型', 'studio.design': '設計', 'studio.background': '背景',
     'studio.upload': '上傳圖片', 'studio.clear': '清除', 'studio.qrSize': 'QR 大小 (%)', 'studio.frameColor': '白框顏色與圓角',
-    'studio.style': 'QR 樣式', 'studio.foreground': '前景色', 'studio.gradient': '漸層前景',
+    'studio.style': 'QR 樣式', 'studio.foreground': '前景色', 'studio.gradient': '漸層前景', 'studio.sketch': '手繪',
     'studio.dotStyle': '點陣樣式', 'studio.eyeFrame': '定位點外框', 'studio.eyeDot': '定位點內點',
     'studio.ec': '容錯率', 'studio.logo': '中央 Logo', 'studio.logoSize': 'Logo 大小 (%)',
     'studio.quality': '品質檢查', 'studio.templates': '範本庫', 'studio.batch': '批次產生', 'studio.library': '收藏庫',
     'studio.save': '儲存', 'studio.export': '匯出', 'studio.import': '匯入',
     'studio.exportPng': '匯出設計 (PNG)', 'studio.copyImg': '複製圖片', 'studio.exportRes': '自訂解析度匯出', 'studio.pdf': 'PDF 列印版',
-    'studio.reset': '重置', 'studio.batchGen': '產生 ZIP', 'studio.batchCsv': '匯入 CSV',
+    'studio.reset': '重置', 'studio.batchGen': '產生 ZIP', 'studio.batchCsv': '匯入 CSV', 'studio.exportTransparent': '透明匯出',
     'scanner.title': '掃描器', 'scanner.start': '啟動相機', 'scanner.stop': '停止',
     'scanner.continuous': '連續掃描', 'scanner.single': '單次掃描', 'scanner.upload': '或上傳圖片（也可拖放）',
     'scanner.drop': '拖放圖片到此 · 或 Ctrl+V 貼上', 'scanner.history': '歷史記錄', 'scanner.clear': '清除',
+    'scanner.found': '掃描成功！', 'scanner.password': 'Wi-Fi 密碼', 'scanner.showPass': '顯示密碼', 'scanner.hidePass': '隱藏密碼',
     'qrtx.send': '傳送', 'qrtx.recv': '接收', 'qrtx.file': '檔案', 'qrtx.chunk': '區塊大小', 'qrtx.dwell': '停留時間 (ms)',
     'qrtx.loop': '循環', 'qrtx.encrypt': '加密 (AES-GCM)', 'qrtx.start': '開始', 'qrtx.stop': '停止', 'qrtx.pause': '暫停',
     'qrtx.resume': '繼續', 'qrtx.fullscreen': '全螢幕', 'qrtx.startRecv': '啟動相機', 'qrtx.reset': '重置', 'qrtx.download': '下載檔案',
     'p2p.send': '傳送', 'p2p.recv': '接收', 'p2p.create': '建立工作階段', 'p2p.end': '結束工作階段', 'p2p.copyCode': '複製代碼',
     'p2p.pin': 'PIN 驗證', 'p2p.files': '檔案', 'p2p.cancel': '全部取消', 'p2p.text': '文字 / 聊天', 'p2p.sendTxt': '傳送文字',
     'p2p.startCam': '啟動相機', 'p2p.orCode': '或輸入代碼', 'p2p.connect': '連線', 'p2p.autoSave': '自動儲存',
-    'p2p.saveAll': '全部儲存', 'p2p.disconnect': '中斷連線', 'p2p.incoming': '接收檔案',
+    'p2p.saveAll': '全部儲存', 'p2p.disconnect': '中斷連線', 'p2p.incoming': '接收檔案', 'p2p.pinReq': '對方要求 PIN 驗證，請輸入',
     'type.text': '文字', 'type.url': '網址', 'type.wifi': 'Wi-Fi', 'type.email': 'Email',
     'type.sms': '簡訊', 'type.phone': '電話', 'type.geo': '位置', 'type.vcard': '聯絡人 (vCard 3.0)',
     'type.vcard4': '聯絡人 (vCard 4.0)', 'type.mecard': '聯絡人 (MeCard)',
@@ -1341,8 +1364,7 @@ const I18N = {
     'field.chain': '鏈', 'field.addr': '地址', 'field.platform': '平台', 'field.handle': '使用者名稱 / ID',
     'field.loc': '地點', 'field.start': '開始 (YYYYMMDDTHHmmss)', 'field.end': '結束 (YYYYMMDDTHHmmss)',
     'field.desc': '說明', 'field.service': '服務', 'field.id': '帳號 / URL', 'field.ios': 'App Store URL',
-    'field.android': 'Google Play URL', 'field.iban': 'IBAN', 'field.bic': 'BIC', 'field.amount': '金額',
-    'field.label': '標籤', 'field.secret': '密鑰', 'field.issuer': '發行者', 'field.vid': '影片 ID',
+    'field.android': 'Google Play URL', 'field.label': '標籤', 'field.secret': '密鑰', 'field.issuer': '發行者', 'field.vid': '影片 ID',
     'field.query': '搜尋關鍵字',
     'status.enterContent': '請輸入內容以產生 QR', 'status.dataTooLarge': '資料量超過 QR 容量',
     'status.reduceContent': '請縮短內容或降低容錯率', 'status.scannable': '可掃描',
@@ -1362,23 +1384,24 @@ I18N.en = {
   'app.install': 'Install to home screen', 'app.offline': 'You are offline, some features limited',
   'studio.content': 'Content', 'studio.type': 'Type', 'studio.design': 'Design', 'studio.background': 'Background',
   'studio.upload': 'Upload image', 'studio.clear': 'Clear', 'studio.qrSize': 'QR size (%)', 'studio.frameColor': 'QR frame color & radius',
-  'studio.style': 'QR Style', 'studio.foreground': 'Foreground', 'studio.gradient': 'Gradient foreground',
+  'studio.style': 'QR Style', 'studio.foreground': 'Foreground', 'studio.gradient': 'Gradient foreground', 'studio.sketch': 'Sketch',
   'studio.dotStyle': 'Dot style', 'studio.eyeFrame': 'Eye frame', 'studio.eyeDot': 'Eye dot',
   'studio.ec': 'Error correction', 'studio.logo': 'Center logo', 'studio.logoSize': 'Logo size (%)',
   'studio.quality': 'Quality check', 'studio.templates': 'Templates', 'studio.batch': 'Batch generate', 'studio.library': 'Library',
   'studio.save': 'Save', 'studio.export': 'Export', 'studio.import': 'Import',
   'studio.exportPng': 'Export PNG', 'studio.copyImg': 'Copy image', 'studio.exportRes': 'Export at resolution', 'studio.pdf': 'Print PDF',
-  'studio.reset': 'Reset', 'studio.batchGen': 'Generate ZIP', 'studio.batchCsv': 'Import CSV',
+  'studio.reset': 'Reset', 'studio.batchGen': 'Generate ZIP', 'studio.batchCsv': 'Import CSV', 'studio.exportTransparent': 'Transparent',
   'scanner.title': 'Scanner', 'scanner.start': 'Start camera', 'scanner.stop': 'Stop',
   'scanner.continuous': 'Continuous', 'scanner.single': 'Single', 'scanner.upload': 'Or upload image (drag & drop)',
   'scanner.drop': 'Drop images here · or Ctrl+V paste', 'scanner.history': 'History', 'scanner.clear': 'Clear',
+  'scanner.found': 'QR Found!', 'scanner.password': 'Wi-Fi Password', 'scanner.showPass': 'Show', 'scanner.hidePass': 'Hide',
   'qrtx.send': 'Send', 'qrtx.recv': 'Receive', 'qrtx.file': 'File', 'qrtx.chunk': 'Chunk size', 'qrtx.dwell': 'Dwell (ms)',
   'qrtx.loop': 'Loop', 'qrtx.encrypt': 'Encrypt (AES-GCM)', 'qrtx.start': 'Start', 'qrtx.stop': 'Stop', 'qrtx.pause': 'Pause',
   'qrtx.resume': 'Resume', 'qrtx.fullscreen': 'Fullscreen', 'qrtx.startRecv': 'Start camera', 'qrtx.reset': 'Reset', 'qrtx.download': 'Download file',
   'p2p.send': 'Send', 'p2p.recv': 'Receive', 'p2p.create': 'Create session', 'p2p.end': 'End session', 'p2p.copyCode': 'Copy code',
   'p2p.pin': 'PIN protect', 'p2p.files': 'Files', 'p2p.cancel': 'Stop all', 'p2p.text': 'Text / Chat', 'p2p.sendTxt': 'Send text',
   'p2p.startCam': 'Start camera', 'p2p.orCode': 'Or type code', 'p2p.connect': 'Connect', 'p2p.autoSave': 'Save automatically',
-  'p2p.saveAll': 'Save all', 'p2p.disconnect': 'Disconnect', 'p2p.incoming': 'Files',
+  'p2p.saveAll': 'Save all', 'p2p.disconnect': 'Disconnect', 'p2p.incoming': 'Files', 'p2p.pinReq': 'Peer requires PIN, please enter',
   'type.text': 'Text', 'type.url': 'Website URL', 'type.wifi': 'Wi-Fi', 'type.email': 'Email',
   'type.sms': 'SMS', 'type.phone': 'Phone call', 'type.geo': 'Location', 'type.vcard': 'Contact (vCard 3.0)',
   'type.vcard4': 'Contact (vCard 4.0)', 'type.mecard': 'Contact (MeCard)',
@@ -1392,8 +1415,7 @@ I18N.en = {
   'field.chain': 'Chain', 'field.addr': 'Address', 'field.platform': 'Platform', 'field.handle': 'Username / ID',
   'field.loc': 'Location', 'field.start': 'Start (YYYYMMDDTHHmmss)', 'field.end': 'End (YYYYMMDDTHHmmss)',
   'field.desc': 'Description', 'field.service': 'Service', 'field.id': 'Account / URL', 'field.ios': 'App Store URL',
-  'field.android': 'Google Play URL', 'field.iban': 'IBAN', 'field.bic': 'BIC', 'field.amount': 'Amount',
-  'field.label': 'Label', 'field.secret': 'Secret', 'field.issuer': 'Issuer', 'field.vid': 'Video ID',
+  'field.android': 'Google Play URL', 'field.label': 'Label', 'field.secret': 'Secret', 'field.issuer': 'Issuer', 'field.vid': 'Video ID',
   'field.query': 'Search query',
   'status.enterContent': 'Enter content to generate QR', 'status.dataTooLarge': 'Data too large for QR',
   'status.reduceContent': 'Reduce content or lower EC', 'status.scannable': 'Scannable',
@@ -1416,21 +1438,46 @@ function applyI18n() {
 }
 
 /* ============================================================
-   THEME
+   THEME (Three-state)
    ============================================================ */
-(function initTheme() {
+const SETTINGS_KEY = 'qrt-settings';
+let userSettings = {};
+try { userSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch(e) {}
+
+function applyTheme(mode) {
+  const html = document.documentElement;
+  if (mode === 'auto') {
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    html.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  } else {
+    html.setAttribute('data-theme', mode);
+  }
+  try { localStorage.setItem('qrt-theme', mode); } catch (e) {}
+}
+
+function initTheme() {
   let saved = null;
   try { saved = localStorage.getItem('qrt-theme'); } catch (e) {}
-  const preferDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const theme = saved || (preferDark ? 'dark' : 'light');
-  document.documentElement.setAttribute('data-theme', theme);
-  $('theme').addEventListener('click', () => {
-    const cur = document.documentElement.getAttribute('data-theme');
-    const next = cur === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    try { localStorage.setItem('qrt-theme', next); } catch (e) {}
+  const mode = saved || userSettings.theme || 'auto';
+  applyTheme(mode);
+  
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    const cur = localStorage.getItem('qrt-theme');
+    if (cur === 'auto' || !cur) applyTheme('auto');
   });
-})();
+
+  $('theme').addEventListener('click', () => {
+    const cur = localStorage.getItem('qrt-theme') || 'auto';
+    let next = 'light';
+    if (cur === 'light') next = 'dark';
+    else if (cur === 'dark') next = 'auto';
+    applyTheme(next);
+    const svg = $('theme').querySelector('svg');
+    if (next === 'auto') svg.innerHTML = '<path d="M12 3v1M12 20v1M4.2 4.2l.7.7M19.1 19.1l.7.7M3 12h1M20 12h1M4.2 19.8l.7-.7M19.1 4.9l.7-.7"/><circle cx="12" cy="12" r="4"/>';
+    else if (next === 'dark') svg.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+    else svg.innerHTML = '<circle cx="12" cy="12" r="4"/>';
+  });
+}
 
 /* ============================================================
    QR MATRIX (LRU Cache)
@@ -1468,6 +1515,7 @@ const studio = {
   ec: 'M',
   logoEnabled: false, logoImg: null, logoDataUrl: null, logoSize: 18,
   text: '', matrix: null, type: 'text', fields: {},
+  transparentMode: false
 };
 
 const undoStack = { stack: [], idx: -1 };
@@ -1505,16 +1553,26 @@ function scheduleStudio() {
   studioRAF = requestAnimationFrame(() => { studioRAF = null; renderStudio(); scheduleAutoTest(); });
 }
 
+function mulberry32(a) {
+  return function() {
+    var t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+}
+
 const TYPES = {
   text: { l10n: 'type.text', f: [['text', 'field.text', 'area']], b: (v) => v.text || '' },
   url: { l10n: 'type.url', f: [['url', 'field.url', 'text', 'https://example.com']], b: (v) => v.url ? normalizeUrl(v.url) : '' },
   wifi: {
     l10n: 'type.wifi',
-    f: [['ssid', 'field.ssid'], ['pass', 'field.pass'], ['sec', 'field.sec', 'sel', ['WPA', 'WPA3', 'WEP', 'nopass', 'EAP']], ['hid', 'field.hid', 'chk']],
+    f: [['ssid', 'field.ssid'], ['pass', 'field.pass'], ['sec', 'field.sec', 'sel', ['WPA', 'WPA3', 'WEP', 'nopass']], ['hid', 'field.hid', 'chk']],
     b: (v) => {
       if (!v.ssid) return '';
       const e = (s) => (s || '').replace(/([\\;,:"])/g, '\\$1');
-      return 'WIFI:T:' + (v.sec || 'WPA') + ';S:' + e(v.ssid) + ';P:' + e(v.pass) + ';H:' + (v.hid ? 'true' : 'false') + ';;';
+      const type = v.sec === 'WPA3' ? 'SAE' : (v.sec || 'WPA');
+      return 'WIFI:T:' + type + ';S:' + e(v.ssid) + ';P:' + e(v.pass) + ';H:' + (v.hid ? 'true' : 'false') + ';;';
     }
   },
   email: { l10n: 'type.email', f: [['to', 'field.to', 'text', 'name@example.com'], ['subject', 'field.subject'], ['body', 'field.body', 'area']], b: (v) => v.to ? 'mailto:' + v.to + '?subject=' + encodeURIComponent(v.subject || '') + '&body=' + encodeURIComponent(v.body || '') : '' },
@@ -1635,7 +1693,11 @@ const TYPES = {
   otp: {
     l10n: 'type.otp',
     f: [['label', 'field.label'], ['secret', 'field.secret'], ['issuer', 'field.issuer']],
-    b: (v) => v.secret ? `otpauth://totp/${encodeURIComponent(v.issuer || 'App')}:${encodeURIComponent(v.label || 'User')}?secret=${v.secret}&issuer=${encodeURIComponent(v.issuer || 'App')}` : ''
+    b: (v) => {
+      const s = (v.secret || '').toUpperCase();
+      if (!s || !/^[A-Z2-7]+=*$/.test(s)) return '';
+      return `otpauth://totp/${encodeURIComponent(v.issuer || 'App')}:${encodeURIComponent(v.label || 'User')}?secret=${s}&issuer=${encodeURIComponent(v.issuer || 'App')}`;
+    }
   }
 };
 
@@ -1656,6 +1718,10 @@ function validateField(k, v) {
   }
   if (k === 'lat') { const n = +v; if (isNaN(n) || n < -90 || n > 90) return LANG === 'zh' ? '緯度需介於 -90 ~ 90' : 'Latitude must be -90..90'; }
   if (k === 'lng') { const n = +v; if (isNaN(n) || n < -180 || n > 180) return LANG === 'zh' ? '經度需介於 -180 ~ 180' : 'Longitude must be -180..180'; }
+  if (k === 'secret') {
+    const s = v.toUpperCase();
+    if (s && !/^[A-Z2-7]+=*$/.test(s)) return LANG === 'zh' ? '無效的 Base32 密鑰' : 'Invalid Base32 secret';
+  }
   return '';
 }
 
@@ -1694,6 +1760,7 @@ function buildStudioFields() {
     errEl.id = 'err-' + k;
     box.appendChild(errEl);
     el.addEventListener('input', () => {
+      if (k === 'secret') el.value = el.value.toUpperCase();
       const err = validateField(k, el.value.trim());
       errEl.textContent = err;
       errEl.style.display = err ? 'block' : 'none';
@@ -1758,7 +1825,7 @@ function makeFill(cx, x0, y0, w, h, color, gradient) {
   cx.fillStyle = g;
 }
 
-function drawDotModule(cx, x, y, size, style) {
+function drawDotModule(cx, x, y, size, style, r, c) {
   const s = size;
   switch (style) {
     case 'dots':
@@ -1788,12 +1855,13 @@ function drawDotModule(cx, x, y, size, style) {
       cx.fill(); break;
     }
     case 'sketch': {
-      const jitter = s * 0.15;
+      const rand = mulberry32(r * 1000 + c);
+      const j = s * 0.15;
       cx.beginPath();
-      cx.moveTo(x + Math.random()*jitter, y + Math.random()*jitter);
-      cx.lineTo(x + s - Math.random()*jitter, y + Math.random()*jitter);
-      cx.lineTo(x + s - Math.random()*jitter, y + s - Math.random()*jitter);
-      cx.lineTo(x + Math.random()*jitter, y + s - Math.random()*jitter);
+      cx.moveTo(x + rand()*j, y + rand()*j);
+      cx.lineTo(x + s - rand()*j, y + rand()*j);
+      cx.lineTo(x + s - rand()*j, y + s - rand()*j);
+      cx.lineTo(x + rand()*j, y + s - rand()*j);
       cx.closePath();
       cx.fill(); break;
     }
@@ -1873,7 +1941,7 @@ function drawQRToCanvas(cx, matrix, qx, qy, qrSize, opts) {
     for (let c = 0; c < n; c++) {
       if (isFinder(r, c, n) >= 0) continue;
       if (!matrix.dark(r, c)) continue;
-      drawDotModule(cx, qx + c * cell, qy + r * cell, cell, dotStyle);
+      drawDotModule(cx, qx + c * cell, qy + r * cell, cell, dotStyle, r, c);
     }
   }
   const eyeS = cell * 7;
@@ -1886,12 +1954,16 @@ function renderToCanvas(size, opts = {}) {
   const cv = document.createElement('canvas');
   cv.width = size; cv.height = size;
   const cx = cv.getContext('2d');
+  const mat = opts.matrix || studio.matrix;
+  if (!mat) return cv;
+  
   if (!opts.transparent) {
     cx.fillStyle = studio.frameColor;
     cx.fillRect(0, 0, size, size);
   }
   const inner = size * 0.9;
-  drawQRToCanvas(cx, studio.matrix, (size - inner) / 2, (size - inner) / 2, inner, opts);
+  drawQRToCanvas(cx, mat, (size - inner) / 2, (size - inner) / 2, inner, opts);
+  
   if (studio.logoEnabled && studio.logoImg) {
     const lSide = inner * (clamp(studio.logoSize, 10, 25) / 100);
     const lx = (size - lSide) / 2, ly = (size - lSide) / 2;
@@ -1946,12 +2018,12 @@ function renderStudio() {
     if (!studio.text) {
       cv.width = 600; cv.height = 600;
       const cx = cv.getContext('2d');
-      cx.fillStyle = studio.bgColor;
-      cx.fillRect(0, 0, 600, 600);
-      cx.fillStyle = '#999';
-      cx.font = '16px sans-serif';
-      cx.textAlign = 'center';
-      cx.fillText(t('status.enterContent'), 300, 300);
+      cx.clearRect(0, 0, 600, 600);
+      if (!studio.transparentMode) {
+        cx.fillStyle = studio.bgColor; cx.fillRect(0, 0, 600, 600);
+        cx.fillStyle = '#999'; cx.font = '16px sans-serif'; cx.textAlign = 'center';
+        cx.fillText(t('status.enterContent'), 300, 300);
+      }
       $('c-info').textContent = '';
       studio.matrix = null;
       ['c-export-png', 'c-export-svg', 'c-export-transparent', 'c-export-copy', 'c-export-custom', 'c-export-pdf'].forEach(id => { if ($(id)) $(id).disabled = true; });
@@ -1963,12 +2035,12 @@ function renderStudio() {
   } catch (e) {
     cv.width = 600; cv.height = 600;
     const cx = cv.getContext('2d');
-    cx.fillStyle = studio.bgColor;
-    cx.fillRect(0, 0, 600, 600);
-    cx.fillStyle = '#e5484d';
-    cx.font = '16px sans-serif';
-    cx.textAlign = 'center';
-    cx.fillText(t('status.dataTooLarge'), 300, 300);
+    cx.clearRect(0, 0, 600, 600);
+    if (!studio.transparentMode) {
+      cx.fillStyle = studio.bgColor; cx.fillRect(0, 0, 600, 600);
+      cx.fillStyle = '#e5484d'; cx.font = '16px sans-serif'; cx.textAlign = 'center';
+      cx.fillText(t('status.dataTooLarge'), 300, 300);
+    }
     $('c-info').textContent = t('status.reduceContent');
     studio.matrix = null;
     ['c-export-png', 'c-export-svg', 'c-export-transparent', 'c-export-copy', 'c-export-custom', 'c-export-pdf'].forEach(id => { if ($(id)) $(id).disabled = true; });
@@ -1981,14 +2053,17 @@ function renderStudio() {
   cv.width = cw; cv.height = ch;
 
   const cx = cv.getContext('2d');
-  cx.fillStyle = studio.bgColor;
-  cx.fillRect(0, 0, cw, ch);
-
-  if (studio.bgImage) {
-    const scale = Math.max(cw / studio.bgImage.width, ch / studio.bgImage.height);
-    const iw = studio.bgImage.width * scale;
-    const ih = studio.bgImage.height * scale;
-    cx.drawImage(studio.bgImage, (cw - iw) / 2, (ch - ih) / 2, iw, ih);
+  cx.clearRect(0, 0, cw, ch);
+  
+  if (!studio.transparentMode) {
+    cx.fillStyle = studio.bgColor;
+    cx.fillRect(0, 0, cw, ch);
+    if (studio.bgImage) {
+      const scale = Math.max(cw / studio.bgImage.width, ch / studio.bgImage.height);
+      const iw = studio.bgImage.width * scale;
+      const ih = studio.bgImage.height * scale;
+      cx.drawImage(studio.bgImage, (cw - iw) / 2, (ch - ih) / 2, iw, ih);
+    }
   }
 
   const qrSize = Math.min(cw, ch) * (studio.qrSize / 100);
@@ -1997,11 +2072,13 @@ function renderStudio() {
   const qx = (cw - totPx) / 2;
   const qy = (ch - totPx) / 2;
 
-  cx.fillStyle = studio.frameColor;
-  const r = Math.min(clamp(studio.frameRadius, 0, 30), totPx / 2);
-  cx.beginPath();
-  if (cx.roundRect) cx.roundRect(qx, qy, totPx, totPx, r); else cx.rect(qx, qy, totPx, totPx);
-  cx.fill();
+  if (!studio.transparentMode) {
+    cx.fillStyle = studio.frameColor;
+    const r = Math.min(clamp(studio.frameRadius, 0, 30), totPx / 2);
+    cx.beginPath();
+    if (cx.roundRect) cx.roundRect(qx, qy, totPx, totPx, r); else cx.rect(qx, qy, totPx, totPx);
+    cx.fill();
+  }
 
   drawQRToCanvas(cx, m, qx + marginPx, qy + marginPx, qrSize);
 
@@ -2010,10 +2087,12 @@ function renderStudio() {
     const lSide = qrSize * logoPct;
     const lx = qx + marginPx + (qrSize - lSide) / 2;
     const ly = qy + marginPx + (qrSize - lSide) / 2;
-    cx.fillStyle = studio.frameColor;
-    cx.beginPath();
-    if (cx.roundRect) cx.roundRect(lx - 5, ly - 5, lSide + 10, lSide + 10, 8); else cx.rect(lx - 5, ly - 5, lSide + 10, lSide + 10);
-    cx.fill();
+    if (!studio.transparentMode) {
+      cx.fillStyle = studio.frameColor;
+      cx.beginPath();
+      if (cx.roundRect) cx.roundRect(lx - 5, ly - 5, lSide + 10, lSide + 10, 8); else cx.rect(lx - 5, ly - 5, lSide + 10, lSide + 10);
+      cx.fill();
+    }
     cx.drawImage(studio.logoImg, lx, ly, lSide, lSide);
   }
 
@@ -2030,10 +2109,14 @@ function renderStudio() {
 
   // Quality Gauge
   let score = 100;
-  if (ratio < 3) score = 20;
-  else if (ratio < 4.5) score = 70;
-  if (studio.logoEnabled && getEffectiveEC() === 'H') score -= 10;
+  if (ratio < 3) score -= 40;
+  else if (ratio < 4.5) score -= 15;
+  if (getEffectiveEC() === 'L') score -= 15;
+  else if (getEffectiveEC() === 'M') score -= 5;
   if (studio.qrSize < 30) score -= 20;
+  if (studio.logoEnabled && studio.logoSize > 20) score -= 10;
+  // Deduct based on decode result
+  if ($('c-decode-result').textContent.includes('✗')) score = Math.min(score, 30);
   score = clamp(score, 0, 100);
   const gauge = $('q-gauge');
   gauge.style.background = `conic-gradient(var(--${score>80?'ok':score>50?'warn':'err'}) ${score}%, rgba(128,128,128,.2) 0)`;
@@ -2044,7 +2127,6 @@ function renderStudio() {
   const lum = (h) => { const c = h.replace('#', ''); const rgb = [0,2,4].map(i => parseInt(c.substr(i,2),16)); return 0.2126*rgb[0]/255 + 0.7152*rgb[1]/255 + 0.0722*rgb[2]/255; };
   if (lum(studio.fg) > lum(studio.frameColor)) warns.push(LANG === 'zh' ? '前景比背景亮（反白）可能影響掃描' : 'Inverted (light FG on dark BG) may reduce scannability');
   if (studio.logoEnabled && studio.logoSize > 20 && getEffectiveEC() !== 'H') warns.push(LANG === 'zh' ? 'Logo 過大，建議提高容錯率至 H' : 'Logo large, use EC H');
-  if (studio.logoEnabled && studio.logoSize > 25) warns.push(LANG === 'zh' ? 'Logo 遮蔽面積過大' : 'Logo covers too much');
   const we = $('c-quality-warn');
   if (warns.length) { we.textContent = '⚠ ' + warns.join(' · '); we.style.display = 'block'; }
   else we.style.display = 'none';
@@ -2170,9 +2252,9 @@ const TEMPLATES = [
   { name: 'Restaurant menu', icon: Icons.link, type: 'url', fields: { url: 'https://example.com/menu' }, style: { fg: '#0b6b3a', dotStyle: 'dots', eyeFrame: 'circle', ec: 'M' } },
   { name: 'Wi-Fi stand', icon: Icons.wifi, type: 'wifi', fields: { ssid: 'MyCafe', pass: 'guest1234', sec: 'WPA' }, style: { fg: '#1e40af', dotStyle: 'fluid', eyeFrame: 'rounded', ec: 'M' } },
   { name: 'Event poster', icon: Icons.calendar, type: 'calendar', fields: { title: 'Launch Party', loc: 'Taipei 101', start: '20250601T190000', end: '20250601T220000', desc: 'See you there!' }, style: { fg: '#be185d', dotStyle: 'diamond', eyeFrame: 'circle', ec: 'M' } },
-  { name: 'Instagram', icon: Icons.text, type: 'social', fields: { platform: 'Instagram', handle: 'yourname' }, style: { fg: '#833ab4', fg2: '#fd1d1d', gradient: true, dotStyle: 'dots', ec: 'M' } },
-  { name: 'PayPal', icon: Icons.text, type: 'pay', fields: { service: 'PayPal.me', id: 'yourname' }, style: { fg: '#003087', dotStyle: 'rounded', ec: 'M' } },
-  { name: 'Telegram', icon: Icons.text, type: 'social', fields: { platform: 'Telegram', handle: 'yourname' }, style: { fg: '#0088cc', dotStyle: 'dots', eyeFrame: 'circle', ec: 'M' } },
+  { name: 'Instagram', icon: Icons.instagram, type: 'social', fields: { platform: 'Instagram', handle: 'yourname' }, style: { fg: '#833ab4', fg2: '#fd1d1d', gradient: true, dotStyle: 'dots', ec: 'M' } },
+  { name: 'PayPal', icon: Icons.paypal, type: 'pay', fields: { service: 'PayPal.me', id: 'yourname' }, style: { fg: '#003087', dotStyle: 'rounded', ec: 'M' } },
+  { name: 'Telegram', icon: Icons.telegram, type: 'social', fields: { platform: 'Telegram', handle: 'yourname' }, style: { fg: '#0088cc', dotStyle: 'dots', eyeFrame: 'circle', ec: 'M' } },
   { name: 'Location', icon: Icons.map, type: 'geo', fields: { lat: '25.0330', lng: '121.5654' }, style: { fg: '#c2410c', dotStyle: 'fluid', ec: 'M' } },
 ];
 
@@ -2209,23 +2291,24 @@ function buildSVG() {
     logoDef = `<image href="${studio.logoDataUrl}" x="${lx}" y="${ly}" width="${lSide}" height="${lSide}" />`;
   }
 
-  function dotPath(x, y, s, style) {
+  function dotPath(x, y, s, style, r, c) {
     switch (style) {
       case 'dots':
         return `<circle cx="${x + s/2}" cy="${y + s/2}" r="${s/2*0.92}"/>`;
       case 'rounded': {
-        const r = s * 0.28;
-        return `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${r}"/>`;
+        const rx = s * 0.28;
+        return `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${rx}"/>`;
       }
       case 'diamond':
         return `<polygon points="${x + s/2},${y + s*0.02} ${x + s*0.98},${y + s/2} ${x + s/2},${y + s*0.98} ${x + s*0.02},${y + s/2}"/>`;
       case 'fluid': {
-        const r = s * 0.42;
-        return `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${r}"/>`;
+        const rx = s * 0.42;
+        return `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${rx}"/>`;
       }
       case 'sketch': {
+        const rand = mulberry32(r * 1000 + c);
         const j = s * 0.15;
-        return `<polygon points="${x+Math.random()*j},${y+Math.random()*j} ${x+s-Math.random()*j},${y+Math.random()*j} ${x+s-Math.random()*j},${y+s-Math.random()*j} ${x+Math.random()*j},${y+s-Math.random()*j}"/>`;
+        return `<polygon points="${x+rand()*j},${y+rand()*j} ${x+s-rand()*j},${y+rand()*j} ${x+s-rand()*j},${y+s-rand()*j} ${x+rand()*j},${y+s-rand()*j}"/>`;
       }
       default:
         return `<rect x="${x}" y="${y}" width="${s + 0.4}" height="${s + 0.4}"/>`;
@@ -2264,7 +2347,7 @@ function buildSVG() {
     for (let c = 0; c < n; c++) {
       if (isFinder(r, c, n) >= 0) continue;
       if (!m.dark(r, c)) continue;
-      modulePaths += dotPath(off + c * cell, off + r * cell, cell, studio.dotStyle);
+      modulePaths += dotPath(off + c * cell, off + r * cell, cell, studio.dotStyle, r, c);
     }
   }
 
@@ -2274,7 +2357,13 @@ function buildSVG() {
     eyeSVG(off + (n - 7) * cell, off, eyeS, studio.eyeFrame, studio.eyeDot) +
     eyeSVG(off, off + (n - 7) * cell, eyeS, studio.eyeFrame, studio.eyeDot);
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><defs>${defs}</defs><rect width="100%" height="100%" fill="${studio.frameColor}"/><g fill="${fillRef}">${modulePaths}</g>${eyes}${logoDef}</svg>`;
+  let bgImg = '';
+  if (studio.bgImageSrc && !studio.transparentMode) {
+    bgImg = `<image href="${studio.bgImageSrc}" x="0" y="0" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice" />`;
+  }
+  const bgRect = studio.transparentMode ? '' : `<rect width="100%" height="100%" fill="${studio.frameColor}"/>`;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><defs>${defs}</defs>${bgImg}${bgRect}<g fill="${fillRef}">${modulePaths}</g>${eyes}${logoDef}</svg>`;
   return svg;
 }
 
@@ -2303,7 +2392,23 @@ function initStudio() {
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
-      img.onload = () => { studio.bgImage = img; studio.bgImageSrc = reader.result; $('c-bg-img-clear').hidden = false; renderStudio(); pushHistory(); };
+      img.onload = () => { 
+        // Resize to max 1024
+        const max = 1024;
+        let w = img.width, h = img.height;
+        if (w > max || h > max) {
+          const ratio = Math.min(max / w, max / h);
+          w *= ratio; h *= ratio;
+        }
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        const resized = new Image();
+        resized.onload = () => {
+          studio.bgImage = resized; studio.bgImageSrc = cv.toDataURL('image/jpeg', 0.8); $('c-bg-img-clear').hidden = false; renderStudio(); pushHistory();
+        };
+        resized.src = cv.toDataURL('image/jpeg', 0.8);
+      };
       img.src = reader.result;
     };
     reader.readAsDataURL(f);
@@ -2377,14 +2482,36 @@ function initStudio() {
   $('c-logo-file').addEventListener('change', (e) => {
     const f = e.target.files[0]; if (!f) return;
     const reader = new FileReader();
-    reader.onload = () => { const img = new Image(); img.onload = () => { studio.logoImg = img; studio.logoDataUrl = reader.result; renderStudio(); pushHistory(); }; img.src = reader.result; };
+    reader.onload = () => { 
+      const img = new Image(); 
+      img.onload = () => { 
+        const max = 1024;
+        let w = img.width, h = img.height;
+        if (w > max || h > max) {
+          const ratio = Math.min(max / w, max / h);
+          w *= ratio; h *= ratio;
+        }
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        const resized = new Image();
+        resized.onload = () => {
+          studio.logoImg = resized; studio.logoDataUrl = cv.toDataURL('image/png'); renderStudio(); pushHistory(); 
+        };
+        resized.src = cv.toDataURL('image/png');
+      }; 
+      img.src = reader.result; 
+    };
     reader.readAsDataURL(f);
   });
   $('c-logo-size').addEventListener('input', (e) => { studio.logoSize = +e.target.value; $('c-logo-size-v').textContent = studio.logoSize + '%'; scheduleStudio(); });
   $('c-logo-size').addEventListener('change', pushHistory);
 
   $('c-export-png').addEventListener('click', () => {
-    $('display-canvas').toBlob((b) => { if (b) saveBlob(b, 'qr-design.png'); }, 'image/png');
+    const format = prompt('PNG/WebP/JPEG?', 'PNG');
+    if (!format) return;
+    const type = format.toUpperCase() === 'WEBP' ? 'image/webp' : format.toUpperCase() === 'JPEG' ? 'image/jpeg' : 'image/png';
+    $('display-canvas').toBlob((b) => { if (b) saveBlob(b, 'qr-design.' + (type === 'image/png' ? 'png' : type === 'image/webp' ? 'webp' : 'jpg')); }, type, 0.9);
   });
   $('c-export-custom').addEventListener('click', () => {
     if (!studio.matrix) return;
@@ -2394,8 +2521,9 @@ function initStudio() {
   });
   $('c-export-transparent').addEventListener('click', () => {
     if (!studio.matrix) return;
-    const cv = renderToCanvas(1024, { transparent: true });
-    cv.toBlob((b) => saveBlob(b, 'qr-transparent.png'), 'image/png');
+    studio.transparentMode = !studio.transparentMode;
+    $('preview-container').classList.toggle('transparent-bg', studio.transparentMode);
+    renderStudio();
   });
   $('c-export-copy').addEventListener('click', async () => {
     if (!studio.matrix) return;
@@ -2413,19 +2541,21 @@ function initStudio() {
   });
   $('c-export-pdf').addEventListener('click', async () => {
     if (!studio.matrix) return;
-    const sizeOpts = [30, 50, 80];
     const choice = await dialog({
       title: LANG === 'zh' ? 'PDF 尺寸' : 'PDF Size',
-      children: [mk('div', { style: 'display:flex;gap:10px;justify-content:center;' }, sizeOpts.map(s => mk('button', { className: 'btn sm', textContent: s + 'mm', onclick: () => dialog.close(s) })))],
+      choices: [
+        { label: '30 mm', value: 30 },
+        { label: '50 mm', value: 50, default: true },
+        { label: '80 mm', value: 80 }
+      ],
       actions: [{ label: t('common.cancel'), value: null, kind: 'ghost' }]
     });
-    // Note: dialog() does not return the choice directly via inner buttons, so we use a simpler prompt for now
-    const mmSize = 50; // Default fallback
+    if (!choice) return;
     const w = window.open('', '_blank');
     if (!w) { toast('Popup blocked'); return; }
     const cv = $('display-canvas');
     const dataUrl = cv.toDataURL('image/png');
-    w.document.write(`<!DOCTYPE html><html><head><title>QR PDF</title><style>@page{size:${mmSize}mm ${mmSize}mm;margin:0}body{margin:0;padding:4mm;display:flex;align-items:center;justify-content:center}img{width:100%;height:100%;object-fit:contain}.cross{position:fixed;width:6mm;height:1px;background:#000}.cross.v{width:1px;height:6mm}.tl{top:2mm;left:0}.tl.v{top:0;left:2mm}.tr{top:2mm;right:0}.tr.v{top:0;right:2mm}.bl{bottom:2mm;left:0}.bl.v{bottom:0;left:2mm}.br{bottom:2mm;right:0}.br.v{bottom:0;right:2mm}</style></head><body><img src="${escapeHTML(dataUrl)}"><div class="cross tl"></div><div class="cross v tl"></div><div class="cross tr"></div><div class="cross v tr"></div><div class="cross bl"></div><div class="cross v bl"></div><div class="cross br"></div><div class="cross v br"></div><script>window.onload=()=>window.print()<\/script></body></html>`);
+    w.document.write(`<!DOCTYPE html><html><head><title>QR PDF</title><style>@page{size:${choice}mm ${choice}mm;margin:0}body{margin:0;padding:4mm;display:flex;align-items:center;justify-content:center}img{width:100%;height:100%;object-fit:contain}.cross{position:fixed;width:6mm;height:1px;background:#000}.cross.v{width:1px;height:6mm}.tl{top:2mm;left:0}.tl.v{top:0;left:2mm}.tr{top:2mm;right:0}.tr.v{top:0;right:2mm}.bl{bottom:2mm;left:0}.bl.v{bottom:0;left:2mm}.br{bottom:2mm;right:0}.br.v{bottom:0;right:2mm}</style></head><body><img src="${escapeHTML(dataUrl)}"><div class="cross tl"></div><div class="cross v tl"></div><div class="cross tr"></div><div class="cross v tr"></div><div class="cross bl"></div><div class="cross v bl"></div><div class="cross br"></div><div class="cross v br"></div><script>window.onload=()=>window.print()<\/script></body></html>`);
   });
 
   $('c-save-design').addEventListener('click', async () => {
@@ -2480,8 +2610,11 @@ function initStudio() {
       const files = {};
       for (let i = 0; i < lines.length; i++) {
         const m = qrMatrix(lines[i], studio.ec);
+        // Temporarily set matrix for renderToCanvas, but use a local copy to avoid mutating main state
+        const originalMatrix = studio.matrix;
         studio.matrix = m;
         const cv = renderToCanvas(512);
+        studio.matrix = originalMatrix; // Restore
         const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
         files['qr-' + String(i + 1).padStart(3, '0') + '.png'] = new Uint8Array(await blob.arrayBuffer());
       }
@@ -2526,7 +2659,6 @@ function initStudio() {
     tplGrid.appendChild(el);
   });
 
-  // Recommended Colors
   const recColors = [
     ['#141414', '#ffffff'], ['#3b5bdb', '#ffffff'], ['#10b981', '#ffffff'],
     ['#e5484d', '#ffffff'], ['#f59e0b', '#ffffff'], ['#7048e8', '#ffffff'],
@@ -2548,6 +2680,12 @@ function initStudio() {
     if (await confirmDialog(LANG === 'zh' ? '重置' : 'Reset', LANG === 'zh' ? '確定要重置所有設定？' : 'Reset all settings?', LANG === 'zh' ? '重置' : 'Reset')) resetStudio();
   });
 
+  $('toggle-preview-btn').addEventListener('click', () => {
+    const card = $('studio-preview-card');
+    card.classList.toggle('collapsed');
+    $('toggle-preview-btn').textContent = card.classList.contains('collapsed') ? '▲' : '▼';
+  });
+
   updateSavedList();
   buildStudioFields();
   pushHistory();
@@ -2563,8 +2701,10 @@ function updateSavedList() {
       grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">${Icons.emptyLib}<p>${t('empty.lib')}</p></div>`;
       return;
     }
+    let count = 0;
     lib.forEach((d, i) => {
       if (q && !d.name.toLowerCase().includes(q)) return;
+      count++;
       const card = mk('div', { className: 'lib-card' });
       if (d.thumb) {
         const img = mk('img', { className: 'thumb', src: d.thumb, alt: d.name });
@@ -2623,6 +2763,9 @@ function updateSavedList() {
       });
       grid.appendChild(card);
     });
+    if (count === 0 && q) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">${Icons.emptyLib}<p>No matches</p></div>`;
+    }
     let total = 0;
     try { for (const k in localStorage) if (k.startsWith('qrt-')) total += (localStorage[k] || '').length; } catch (e) {}
     $('c-lib-usage').textContent = (LANG === 'zh' ? '已使用 ' : 'Used ') + fmt(total * 2) + ' / ' + (LANG === 'zh' ? '約 5 MB' : '~5 MB');
@@ -2717,10 +2860,16 @@ const Cam = {
     const cv = document.createElement('canvas');
     const cx = cv.getContext('2d', { willReadFrequently: true });
     let lastScan = 0;
+    let emptyCount = 0;
+    let bd = null;
+    if ('BarcodeDetector' in window) {
+      try { bd = new BarcodeDetector({ formats: ['qr_code', 'ean_13', 'code_128'] }); } catch(e) {}
+    }
     const tick = async (ts) => {
       if (!this.run || my !== this.id) return;
       if (document.hidden) { this.raf = requestAnimationFrame(tick); return; }
-      if (ts - lastScan < 100) { this.raf = requestAnimationFrame(tick); return; }
+      const interval = emptyCount > 5 ? 250 : 100;
+      if (ts - lastScan < interval) { this.raf = requestAnimationFrame(tick); return; }
       lastScan = ts;
       try {
         if (v.videoWidth) {
@@ -2728,19 +2877,21 @@ const Cam = {
           cv.width = v.videoWidth * sc; cv.height = v.videoHeight * sc;
           cx.drawImage(v, 0, 0, cv.width, cv.height);
           let syms = [];
-          if ('BarcodeDetector' in window) {
+          if (bd) {
             try {
-              const bd = new BarcodeDetector({ formats: ['qr_code', 'ean_13', 'code_128'] });
               const barcodes = await bd.detect(cv);
               syms = barcodes.map(b => ({ decode: () => b.rawValue }));
-            } catch (e) {}
+            } catch (e) { bd = null; }
           }
           if (!syms.length) {
             syms = await zbarWasm.scanImageData(cx.getImageData(0, 0, cv.width, cv.height));
           }
           if (my !== this.id) return;
-          for (const s of syms) {
-            onText(s.decode());
+          if (syms.length > 0) {
+            emptyCount = 0;
+            for (const s of syms) onText(s.decode());
+          } else {
+            emptyCount++;
           }
         }
       } catch (e) {}
@@ -2838,10 +2989,28 @@ function renderScanHistory() {
     }
     if (cls.type === 'WIFI') {
       const info = mk('button', { className: 'btn xs', textContent: LANG === 'zh' ? '顯示密碼' : 'Show Pass' });
-      info.addEventListener('click', () => {
+      info.addEventListener('click', async () => {
         const m = item.text.match(/S:([^;]*);.*?P:([^;]*);/);
         if (m) {
-          toast('SSID: ' + m[1] + ' · Pass: ' + m[2]);
+          const pwd = m[2];
+          const box = mk('div', { style: 'font-size:14px;font-family:var(--mono);margin:10px 0;display:flex;align-items:center;gap:8px;justify-content:center' });
+          const span = mk('span', { textContent: '••••••' });
+          const toggle = mk('button', { className: 'btn xs ghost', innerHTML: Icons.eye });
+          let shown = false;
+          toggle.addEventListener('click', () => {
+            shown = !shown;
+            span.textContent = shown ? pwd : '••••••';
+            toggle.innerHTML = shown ? Icons.eyeOff : Icons.eye;
+          });
+          const copyBtn = mk('button', { className: 'btn xs', innerHTML: Icons.copy });
+          copyBtn.addEventListener('click', () => copyText(pwd));
+          box.appendChild(span); box.appendChild(toggle); box.appendChild(copyBtn);
+          await dialog({
+            title: t('scanner.password'),
+            message: 'SSID: ' + m[1],
+            children: [box],
+            actions: [{ label: t('common.ok'), value: true, kind: 'pri' }]
+          });
         }
       });
       act.appendChild(info);
@@ -2883,7 +3052,9 @@ function addScanResult(text) {
   saveHistory();
   renderScanHistory();
   $('scan-status').textContent = t('status.found');
-  if (navigator.vibrate) navigator.vibrate(60);
+  if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+  const msg = mk('span', { innerHTML: Icons.check + ' ' + t('scanner.found') });
+  toast(msg.textContent);
   if (scanMode === 'single') setTimeout(() => Cam.stop(), 200);
 }
 
@@ -3073,13 +3244,13 @@ async function startTx() {
       pass++;
       while (tx.paused && my === tx.id) await sleep(100);
       if (my !== tx.id) return;
-      drawFlatQR(cv, meta, 'L', tx.current.size, 2);
+      drawFlatQR(cv, meta, 'L', tx.current.size, 4);
       $('tx-status').textContent = 'Pass ' + pass + ': header';
       await sleep(Math.max(+$('tx-dwell').value || 150, 400));
       for (let i = 0; i < total; i++) {
         while (tx.paused && my === tx.id) await sleep(100);
         if (my !== tx.id) return;
-        drawFlatQR(cv, i + ',' + toB64(gz.subarray(i * cs, (i + 1) * cs)), 'L', tx.current.size, 2);
+        drawFlatQR(cv, i + ',' + toB64(gz.subarray(i * cs, (i + 1) * cs)), 'L', tx.current.size, 4);
         $('tx-bar').style.width = Math.round(((i + 1) / total) * 100) + '%';
         $('tx-status').textContent = 'Pass ' + pass + ' · ' + (i + 1) + '/' + total;
         await sleep(clamp(+$('tx-dwell').value || 150, 20, 2000));
@@ -3088,7 +3259,7 @@ async function startTx() {
         while (tx.paused && my === tx.id) await sleep(100);
         if (my !== tx.id) return;
         const p = parities[i];
-        drawFlatQR(cv, 'P' + i + ',' + p.idx + ',' + p.count + ',' + toB64(p.data), 'L', tx.current.size, 2);
+        drawFlatQR(cv, 'P' + i + ',' + p.idx + ',' + p.count + ',' + toB64(p.data), 'L', tx.current.size, 4);
         $('tx-status').textContent = 'Pass ' + pass + ' · parity ' + (i + 1) + '/' + parities.length;
         await sleep(clamp(+$('tx-dwell').value || 150, 20, 2000));
       }
@@ -3116,7 +3287,7 @@ function initQrTx() {
         if (tx.current) {
           const curText = tx.current.lastText;
           tx.current.size = 1000;
-          if (curText) drawFlatQR(cv, curText, 'L', 1000, 2);
+          if (curText) drawFlatQR(cv, curText, 'L', 1000, 4);
         }
         await cv.requestFullscreen();
       }
@@ -3311,7 +3482,7 @@ function initQrTx() {
    ============================================================ */
 const ICE = [{ urls: 'stun:stun.l.google.com:19302' }];
 const PREFIX = 'qrx-';
-const P = { peer: null, conns: [], pinRequired: false, pin: null, aborted: false, failedAttempts: 0 };
+const P = { peer: null, conns: [], pinRequired: false, pin: null, aborted: false, failedAttempts: 0, paused: false };
 const R = { peer: null, conn: null, files: new Map(), chat: [], pin: null };
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -3344,6 +3515,7 @@ function p2pTeardown() {
   P.peer = null;
   P.aborted = true;
   P.failedAttempts = 0;
+  P.paused = false;
 }
 
 function handlePeerData(d) {
@@ -3360,19 +3532,10 @@ async function sendFileP2P(file, conn, fileId) {
   if (P.aborted) throw new Error('Aborted');
   const CHUNK = 16384;
   const total = Math.ceil(file.size / CHUNK);
-  let hash = '';
-
-  const hasher = {
-    async update(buf) {
-      // Incremental hashing is complex in pure JS without a library, using full hash fallback for simplicity in this single file version.
-    },
-    async digest() {
-      const buf = await file.arrayBuffer();
-      const h = await crypto.subtle.digest('SHA-256', buf);
-      return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-  };
-  hash = await hasher.digest();
+  
+  // Calculate CRC for validation
+  const buf = await file.arrayBuffer();
+  const hash = CRC(new Uint8Array(buf));
 
   conn.send(JSON.stringify({ t: 'meta', id: fileId, name: file.name, size: file.size, hash: hash }));
 
@@ -3387,15 +3550,18 @@ async function sendFileP2P(file, conn, fileId) {
 
   const reader = file.stream().getReader();
   let offset = 0;
+  let seq = 0;
   while (true) {
     if (P.aborted) throw new Error('Aborted');
+    while (P.paused) await sleep(100);
     const { done, value } = await reader.read();
     if (done) break;
     while (conn.dataChannel && conn.dataChannel.bufferedAmount > 1024 * 1024) {
       if (P.aborted) throw new Error('Aborted');
       await sleep(30);
     }
-    conn.send(value);
+    const packet = JSON.stringify({ seq: seq++, data: toB64(value) });
+    conn.send(packet);
     offset += value.length;
     const pct = Math.round((offset / file.size) * 100);
     requestAnimationFrame(() => {
@@ -3423,7 +3589,7 @@ function initP2P() {
     $('ps-create').hidden = true;
     $('ps-end').hidden = false;
     $('ps-tools').hidden = true;
-    drawFlatQR($('ps-qr'), PREFIX + code, 'L', 300, 3);
+    drawFlatQR($('ps-qr'), PREFIX + code, 'L', 300, 4);
     $('ps-status').textContent = t('status.waiting');
     $('ps-status').className = 'status';
 
@@ -3443,12 +3609,14 @@ function initP2P() {
       }
     });
     peer.on('connection', (c) => {
-      if (P.pinRequired) {
-        let authAttempts = 0;
-        c.on('data', (d) => {
-          if (typeof d === 'string') {
-            try {
-              const m = JSON.parse(d);
+      c.authenticated = false;
+      c.authAttempts = 0;
+      
+      c.on('data', (d) => {
+        if (typeof d === 'string') {
+          try {
+            const m = JSON.parse(d);
+            if (!c.authenticated) {
               if (m.t === 'auth') {
                 if (m.pin === P.pin) {
                   c.send(JSON.stringify({ t: 'auth_ok' }));
@@ -3457,33 +3625,34 @@ function initP2P() {
                   $('ps-tools').hidden = false;
                   $('ps-status').textContent = t('status.connected');
                   $('ps-status').className = 'status ok';
-                  c.on('data', handlePeerData);
                 } else {
-                  authAttempts++;
-                  if (authAttempts >= 3) {
+                  c.authAttempts++;
+                  if (c.authAttempts >= 3) {
                     c.send(JSON.stringify({ t: 'auth_fail' }));
                     try { c.close(); } catch (e) {}
                   } else {
                     c.send(JSON.stringify({ t: 'auth_fail' }));
                   }
                 }
-              } else if (!c.authenticated) {
-                // Ignore non-auth messages before auth
               }
-            } catch (e) {}
-          } else if (!c.authenticated) {
-            // Ignore binary data before auth
-          }
-        });
-      } else {
-        c.authenticated = true;
-        P.conns.push(c);
-        $('ps-tools').hidden = false;
-        $('ps-status').textContent = t('status.connected');
-        $('ps-status').className = 'status ok';
-        c.on('open', () => { c.on('data', handlePeerData); });
-      }
-      c.on('open', () => { if (!P.pinRequired) c.on('data', handlePeerData); });
+            } else {
+              handlePeerData(d);
+            }
+          } catch (e) {}
+        } else if (c.authenticated) {
+          // Binary data handling
+        }
+      });
+      
+      c.on('open', () => {
+        if (!P.pinRequired) {
+          c.authenticated = true;
+          P.conns.push(c);
+          $('ps-tools').hidden = false;
+          $('ps-status').textContent = t('status.connected');
+          $('ps-status').className = 'status ok';
+        }
+      });
     });
   }
 
@@ -3593,23 +3762,26 @@ function initP2P() {
             const m = JSON.parse(d);
             if (m.t === 'meta') {
               currentMeta = m;
-              R.files.set(m.id, { meta: m, chunks: [], done: false });
+              R.files.set(m.id, { meta: m, chunks: new Map(), done: false });
               renderRecvFiles();
             } else if (m.t === 'fileend') {
               const f = R.files.get(m.id);
               if (f && !f.done) {
-                const blob = new Blob(f.chunks);
+                const arr = [];
+                for (let i = 0; i < f.meta.size / 16384 + 1; i++) {
+                  if (f.chunks.has(i)) arr.push(f.chunks.get(i));
+                }
+                const blob = new Blob(arr);
                 const buf = await blob.arrayBuffer();
-                const hash = await crypto.subtle.digest('SHA-256', buf);
-                const hashHex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-                if (hashHex === f.meta.hash) {
+                const hash = CRC(new Uint8Array(buf));
+                if (hash === f.meta.hash) {
                   f.blob = blob;
                   f.done = true;
                   if ($('pr-auto').checked) saveBlob(blob, f.meta.name);
                   renderRecvFiles();
                   toast(LANG === 'zh' ? '驗證通過' : 'Verified');
                   c.send(JSON.stringify({ t: 'ack', id: m.id }));
-                } else toast(LANG === 'zh' ? '雜湊不符' : 'Hash mismatch');
+                } else toast(LANG === 'zh' ? 'CRC 校驗失敗' : 'CRC mismatch');
               }
             } else if (m.t === 'text') {
               appendChat($('pr-chat'), 'them', m.text);
@@ -3623,9 +3795,12 @@ function initP2P() {
           } catch (e) {}
         } else {
           if (currentMeta) {
-            const f = R.files.get(currentMeta.id);
-            if (f) f.chunks.push(d);
-            renderRecvFilesProgress(currentMeta.id);
+            try {
+              const p = JSON.parse(d);
+              const f = R.files.get(currentMeta.id);
+              if (f) f.chunks.set(p.seq, fromB64(p.data));
+              renderRecvFilesProgress(currentMeta.id);
+            } catch(e) {}
           }
         }
       });
@@ -3634,6 +3809,8 @@ function initP2P() {
 
   function renderRecvFiles() {
     const list = $('pr-list');
+    const empty = list.querySelector('.empty-state');
+    if (empty) empty.remove();
     if (!R.files.size) {
       list.innerHTML = `<div class="empty-state">${Icons.emptyFile}<p>${t('empty.files')}</p></div>`;
       return;
@@ -3661,7 +3838,6 @@ function initP2P() {
         }
       }
     });
-    if (list.querySelector('.empty-state')) list.innerHTML = '';
   }
   function renderRecvFilesProgress(id) {
     const f = R.files.get(id);
@@ -3670,7 +3846,7 @@ function initP2P() {
     if (!item) return;
     const fill = item.querySelector('.bar i');
     const st = item.querySelector('.muted');
-    const received = f.chunks.reduce((a, b) => a + b.byteLength, 0);
+    const received = f.chunks.size * 16384;
     if (fill) fill.style.width = Math.min(100, Math.round(received / f.meta.size * 100)) + '%';
     if (st) st.textContent = fmt(received) + ' / ' + fmt(f.meta.size);
   }
@@ -3959,6 +4135,8 @@ function initGlobal() {
    BOOT
    ============================================================ */
 async function boot() {
+  initTheme();
+  
   const libs = { QRCode: () => window.QRCode, pako: () => window.pako, zbar: () => window.zbarWasm, Peer: () => window.Peer, fflate: () => window.fflate };
   const t0 = Date.now();
   while (Object.keys(libs).some(k => !libs[k]()) && Date.now() - t0 < 20000) await sleep(100);
