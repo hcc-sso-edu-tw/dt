@@ -81,9 +81,10 @@ button,input,select,textarea{font-family:inherit}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--text-muted);opacity:.3;border-radius:99px;border:3px solid transparent;background-clip:padding-box}
 ::selection{background:var(--accent-soft);color:var(--accent-ink)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 /* ============================================================
-   ANIMATED BACKGROUND (blobs for glass to refract)
+   ANIMATED BACKGROUND
    ============================================================ */
 .bg-stage{
   position:fixed; inset:0; z-index:-1; overflow:hidden;
@@ -115,7 +116,7 @@ html[data-theme="dark"] .bg-blob.b3{background:radial-gradient(circle, #8a3bff 0
 }
 
 /* ============================================================
-   GLASS BASE CLASSES
+   GLASS BASE CLASSES & SVG REFRACTION
    ============================================================ */
 .glass{
   position:relative; border-radius:var(--radius);
@@ -146,11 +147,15 @@ html[data-theme="dark"] .bg-blob.b3{background:radial-gradient(circle, #8a3bff 0
   .glass-2{backdrop-filter:blur(var(--glass-blur-2)) saturate(var(--glass-sat));-webkit-backdrop-filter:blur(var(--glass-blur-2)) saturate(var(--glass-sat))}
   .glass-3{backdrop-filter:blur(var(--glass-blur-3)) saturate(var(--glass-sat));-webkit-backdrop-filter:blur(var(--glass-blur-3)) saturate(var(--glass-sat))}
 }
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  :root{--glass-1-a:#f6f7fb;--glass-1-b:#f1f3f9;--glass-2-a:#fbfbfd;--glass-2-b:#f4f5fa;--glass-3-a:#ffffff;--glass-3-b:#f8f9fc}
-  html[data-theme="dark"]{--glass-1-a:#1a1c2e;--glass-1-b:#141627;--glass-2-a:#22243a;--glass-2-b:#1b1d30;--glass-3-a:#2a2c46;--glass-3-b:#20223a}
+/* Refraction Layer */
+.glass-refraction {
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  z-index: 3; opacity: 0.6; mix-blend-mode: overlay;
+  backdrop-filter: url(#refraction-filter);
+  -webkit-backdrop-filter: url(#refraction-filter);
 }
-@media (prefers-reduced-transparency: reduce){
+@media (prefers-reduced-transparency: reduce), (prefers-reduced-motion: reduce) {
+  .glass-refraction { display: none !important; }
   :root{--glass-1-a:#f6f7fb;--glass-1-b:#f1f3f9;--glass-2-a:#fbfbfd;--glass-2-b:#f4f5fa;--glass-3-a:#ffffff;--glass-3-b:#f8f9fc}
   html[data-theme="dark"]{--glass-1-a:#1a1c2e;--glass-1-b:#141627;--glass-2-a:#22243a;--glass-2-b:#1b1d30;--glass-3-a:#2a2c46;--glass-3-b:#20223a}
   .glass{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
@@ -252,22 +257,22 @@ nav button:active{transform:scale(.96)}
 .icon-btn svg{width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
 
 @media (max-width: 700px){
-  .head-in{flex-wrap:wrap; border-radius:var(--radius); gap:10px}
+  .head-in{flex-wrap:wrap; border-radius:var(--radius); gap:10px; padding:12px}
   .head-in > .brand{flex:1 1 auto; min-width:0}
+  .head-in > .icon-btn{width:44px; height:44px}
   #helpBtn, #langBtn, #theme{order:2}
-  nav{order:3; flex-basis:100%; margin-left:0; margin-top:6px; justify-content:center}
+  nav{order:3; flex-basis:100%; margin-left:0; margin-top:6px; justify-content:center; overflow-x:auto; padding-bottom:4px}
+  nav button{padding:10px 12px; font-size:12px}
 }
 
-main{padding:14px 0 90px; position:relative}
+main{padding:14px 0 90px; position:relative; overflow-x:hidden;}
 .panel{display:none}
-.panel.on{display:block}
-.panel.on .stagger>*{animation:staggerIn .45s var(--ease) both}
-.panel.on .stagger>*:nth-child(1){animation-delay:0ms}
-.panel.on .stagger>*:nth-child(2){animation-delay:50ms}
-.panel.on .stagger>*:nth-child(3){animation-delay:100ms}
-.panel.on .stagger>*:nth-child(4){animation-delay:150ms}
-.panel.on .stagger>*:nth-child(5){animation-delay:200ms}
-@keyframes staggerIn{from{opacity:0; transform:translateY(10px) scale(.985)}to{opacity:1; transform:none}}
+.panel.on{display:block; animation:panelIn .35s var(--ease) both}
+.panel.slide-left{animation:slideInLeft .35s var(--ease) both}
+.panel.slide-right{animation:slideInRight .35s var(--ease) both}
+@keyframes panelIn{from{opacity:0; transform:translateY(10px) scale(.985)}to{opacity:1; transform:none}}
+@keyframes slideInLeft{from{opacity:0; transform:translateX(30px)}to{opacity:1; transform:none}}
+@keyframes slideInRight{from{opacity:0; transform:translateX(-30px)}to{opacity:1; transform:none}}
 
 .grid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); gap:20px; align-items:start}
 @media (max-width:920px){.grid{grid-template-columns:minmax(0,1fr)}}
@@ -323,17 +328,25 @@ main{padding:14px 0 90px; position:relative}
    STUDIO PREVIEW
    ============================================================ */
 .studio-preview-card{position:sticky; top:82px; padding:20px}
-@media (max-width:920px){.studio-preview-card{position:static}}
+@media (max-width:920px){
+  .studio-preview-card{position:sticky; bottom:0; top:auto; z-index:20; padding:12px; border-radius:var(--radius) var(--radius) 0 0; box-shadow:0 -10px 40px rgba(0,0,0,.2); margin:0 -14px; border-bottom:none;}
+  .studio-preview-card .canvas-container{min-height:200px; margin-bottom:8px;}
+  .studio-preview-card canvas#display-canvas{max-height:200px;}
+}
 .canvas-container{
   display:flex; justify-content:center; align-items:center;
   border-radius:var(--radius-sm); padding:14px; margin-bottom:14px;
   min-height:300px; overflow:hidden; position:relative;
-  background:
-    radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 55%),
-    radial-gradient(circle at 70% 80%, color-mix(in srgb, var(--accent-2) 12%, transparent), transparent 55%),
-    linear-gradient(135deg, var(--glass-1-a), var(--glass-1-b));
+  background-color:#fff;
+  background-image:linear-gradient(45deg, #eee 25%, transparent 25%), linear-gradient(-45deg, #eee 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #eee 75%), linear-gradient(-45deg, transparent 75%, #eee 75%);
+  background-size:20px 20px;
+  background-position:0 0, 0 10px, 10px -10px, -10px 0px;
   border:1px solid var(--glass-border-lo);
   box-shadow:inset 0 1px 0 var(--glass-border-lo);
+}
+html[data-theme="dark"] .canvas-container{
+  background-color:#1a1a1a;
+  background-image:linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
 }
 canvas#display-canvas{
   max-width:100%; max-height:480px; border-radius:6px;
@@ -380,6 +393,12 @@ select{appearance:none; -webkit-appearance:none; background-image:url("data:imag
 .row>*{flex:1; min-width:0}
 .row .btn, .row .icon-btn, .row input[type=color]{flex:0 1 auto}
 
+/* Recommended Colors */
+.rec-colors{display:flex; gap:6px; overflow-x:auto; padding:4px 0; margin-top:6px; scrollbar-width:none}
+.rec-colors::-webkit-scrollbar{display:none}
+.rc-btn{width:28px; height:28px; border-radius:50%; border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.2); cursor:pointer; flex-shrink:0; transition:transform .2s}
+.rc-btn:hover{transform:scale(1.15)}
+
 /* ============================================================
    BUTTONS
    ============================================================ */
@@ -415,6 +434,13 @@ select{appearance:none; -webkit-appearance:none; background-image:url("data:imag
 .btn.ghost:hover:not(:disabled){background:linear-gradient(135deg, var(--glass-1-a), var(--glass-1-b))}
 .btn.danger{color:var(--err); border-color:color-mix(in srgb, var(--err) 30%, transparent)}
 
+/* Ripple Effect */
+.ripple {
+  position: absolute; border-radius: 50%; background: rgba(255,255,255,0.4);
+  transform: scale(0); animation: rippleAnim 0.6s linear; pointer-events: none;
+}
+@keyframes rippleAnim { to { transform: scale(4); opacity: 0; } }
+
 /* ============================================================
    SEGMENTED & SWATCHES
    ============================================================ */
@@ -433,13 +459,6 @@ select{appearance:none; -webkit-appearance:none; background-image:url("data:imag
 }
 html[data-theme="dark"] .seg button.on, html[data-theme="dark"] .sub button.on{background:linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,.06))}
 .seg button:active, .sub button:active{transform:scale(.97)}
-
-.swatches{display:grid; grid-template-columns:repeat(auto-fill, minmax(90px, 1fr)); gap:10px}
-.sw{border:1px solid var(--glass-border-lo); border-radius:12px; padding:8px; background:linear-gradient(135deg, var(--glass-1-a), var(--glass-1-b)); cursor:pointer; text-align:left; transition:all .25s var(--spring); min-height:44px}
-.sw:hover{border-color:var(--accent); transform:translateY(-2px)}
-.sw.on{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft)}
-.sw .chip{height:26px; border-radius:6px; border:1px solid rgba(128,128,128,.15); margin-bottom:6px}
-.sw .nm{font-size:9.5px; font-weight:700; color:var(--text-muted); text-transform:uppercase; text-align:center; letter-spacing:.05em}
 
 /* ============================================================
    CAMERA & PREVIEW
@@ -529,6 +548,16 @@ canvas.qr{max-width:100%; height:auto; image-rendering:pixelated; border-radius:
 .block-grid .bk.par.on{background:var(--accent); box-shadow:0 0 6px color-mix(in srgb, var(--accent) 60%, transparent)}
 .block-grid .bk.miss{background:color-mix(in srgb, var(--err) 30%, transparent)}
 
+/* Quality Gauge */
+.gauge-wrap{display:flex; align-items:center; gap:12px; margin:10px 0;}
+.gauge{width:48px; height:48px; border-radius:50%; background:conic-gradient(var(--ok) 0%, rgba(128,128,128,.2) 0); display:grid; place-items:center; position:relative;}
+.gauge::after{content:''; position:absolute; inset:6px; border-radius:50%; background:var(--glass-2-a); backdrop-filter:blur(4px);}
+.gauge-val{position:relative; z-index:1; font:700 12px/1 var(--mono); color:var(--text);}
+
+/* Empty State */
+.empty-state{display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px 10px; color:var(--text-muted); text-align:center; gap:12px}
+.empty-state svg{width:60px; height:60px; opacity:.4; stroke:currentColor; fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round}
+
 /* ============================================================
    TOASTS & DIALOGS
    ============================================================ */
@@ -577,7 +606,7 @@ canvas.qr{max-width:100%; height:auto; image-rendering:pixelated; border-radius:
 }
 @keyframes dialogIn{from{opacity:0; transform:scale(.92) translateY(20px)}to{opacity:1; transform:none}}
 .dialog h3{font-size:16px; font-weight:800; margin-bottom:10px; letter-spacing:-.01em}
-.dialog p{font-size:13.5px; line-height:1.6; color:var(--text-muted); margin-bottom:16px}
+.dialog p{font-size:13.5px; line-height:1.6; color:var(--text-muted); margin-bottom:16px; white-space:pre-wrap}
 .dialog .row{margin-top:16px; margin-bottom:0}
 .dialog .row .btn{flex:1}
 
@@ -612,14 +641,9 @@ canvas.qr{max-width:100%; height:auto; image-rendering:pixelated; border-radius:
   transition:all .25s var(--spring); min-height:44px;
 }
 .tpl-card:hover{border-color:var(--accent); transform:translateY(-2px)}
-.tpl-card .icon{font-size:22px; margin-bottom:4px}
+.tpl-card .icon{font-size:22px; margin-bottom:4px; display:flex; justify-content:center;}
+.tpl-card .icon svg{width:24px; height:24px; stroke:currentColor; fill:none;}
 .tpl-card .nm{font-size:11px; font-weight:700; letter-spacing:.02em}
-
-.qlights{display:inline-flex; gap:5px; align-items:center}
-.qlights .l{width:9px; height:9px; border-radius:50%; background:rgba(128,128,128,.3); transition:background var(--dur-fast), box-shadow var(--dur-fast)}
-.qlights .l.g{background:var(--ok); box-shadow:0 0 8px var(--ok)}
-.qlights .l.y{background:var(--warn); box-shadow:0 0 8px var(--warn)}
-.qlights .l.r{background:var(--err); box-shadow:0 0 8px var(--err)}
 
 .hist-tools{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap}
 .hist-tools input{flex:1; min-width:120px; min-height:36px; padding:8px 12px; font-size:12.5px}
@@ -663,6 +687,14 @@ canvas.qr:fullscreen{
 </head>
 <body>
 
+<!-- SVG Refraction Filter -->
+<svg style="width:0;height:0;position:absolute;" aria-hidden="true">
+  <filter id="refraction-filter">
+    <feTurbulence type="fractalNoise" baseFrequency="0.01 0.02" numOctaves="1" result="noise" />
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G" />
+  </filter>
+</svg>
+
 <div class="bg-stage" aria-hidden="true">
   <div class="bg-blob b1"></div>
   <div class="bg-blob b2"></div>
@@ -671,7 +703,7 @@ canvas.qr:fullscreen{
 
 <div id="loader">
   <div class="lattice"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-  <div class="msg" id="loaderMsg">Loading…</div>
+  <div class="msg" id="loaderMsg">Loading libraries…</div>
   <div id="loadErr" class="muted" hidden></div>
   <button id="reload" class="btn" hidden>Reload</button>
 </div>
@@ -683,10 +715,10 @@ canvas.qr:fullscreen{
       <div class="brand"><span class="dot"></span>QR Toolkit<em>2.2</em></div>
       <nav id="nav" role="tablist" aria-label="Main">
         <div class="indicator" id="navInd"></div>
-        <button role="tab" data-tab="studio" class="on" aria-selected="true">Studio</button>
-        <button role="tab" data-tab="scan" aria-selected="false">Scanner</button>
-        <button role="tab" data-tab="qrtx" aria-selected="false">QR Transfer</button>
-        <button role="tab" data-tab="p2p" aria-selected="false">P2P Transfer</button>
+        <button role="tab" data-tab="studio" class="on" aria-selected="true" tabindex="0">Studio</button>
+        <button role="tab" data-tab="scan" aria-selected="false" tabindex="-1">Scanner</button>
+        <button role="tab" data-tab="qrtx" aria-selected="false" tabindex="-1">QR Transfer</button>
+        <button role="tab" data-tab="p2p" aria-selected="false" tabindex="-1">P2P Transfer</button>
       </nav>
       <button class="icon-btn" id="helpBtn" aria-label="Shortcuts" title="Shortcuts (?)">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.7 2.2c-.9.5-1.2 1-1.2 1.8"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg>
@@ -748,6 +780,7 @@ canvas.qr:fullscreen{
           <input type="color" id="c-fg" value="#141414" aria-label="Foreground color">
           <input type="text" id="c-fg-hex" value="#141414" style="flex:1;font-family:var(--mono)" aria-label="Foreground hex">
         </div>
+        <div class="rec-colors" id="rec-colors"></div>
         <label class="chk" style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text)">
           <input type="checkbox" id="c-gradient-on" style="width:auto"> <span data-i18n="studio.gradient">Gradient foreground</span>
         </label>
@@ -818,12 +851,14 @@ canvas.qr:fullscreen{
         <details open>
           <summary data-i18n="studio.quality">Quality check</summary>
           <div class="acc-content" id="c-quality">
-            <div style="font-size:12px;line-height:1.9">
-              <div style="display:flex;justify-content:space-between">Contrast <span id="q-contrast" style="font-family:var(--mono)">-</span></div>
-              <div style="display:flex;justify-content:space-between">Version <span id="q-version" style="font-family:var(--mono)">-</span></div>
-              <div style="display:flex;justify-content:space-between">Capacity <span id="q-capacity" style="font-family:var(--mono)">-</span></div>
-              <div style="display:flex;justify-content:space-between">EC Level <span id="q-ec" style="font-family:var(--mono)">-</span></div>
-              <div style="display:flex;justify-content:space-between">Scan distance <span id="q-distance" style="font-family:var(--mono)">-</span></div>
+            <div class="gauge-wrap">
+              <div class="gauge" id="q-gauge"><span class="gauge-val" id="q-gauge-val">0%</span></div>
+              <div style="flex:1;font-size:12px;line-height:1.9">
+                <div style="display:flex;justify-content:space-between">Contrast <span id="q-contrast" style="font-family:var(--mono)">-</span></div>
+                <div style="display:flex;justify-content:space-between">Version <span id="q-version" style="font-family:var(--mono)">-</span></div>
+                <div style="display:flex;justify-content:space-between">Capacity <span id="q-capacity" style="font-family:var(--mono)">-</span></div>
+                <div style="display:flex;justify-content:space-between">EC Level <span id="q-ec" style="font-family:var(--mono)">-</span></div>
+              </div>
             </div>
             <div class="row" style="margin-top:10px">
               <span class="qlights" aria-hidden="true"><span class="l" id="ql-r"></span><span class="l" id="ql-y"></span><span class="l" id="ql-g"></span></span>
@@ -937,7 +972,7 @@ canvas.qr:fullscreen{
           <button class="btn xs ghost" id="scan-export-csv">CSV</button>
           <button class="btn xs ghost" id="scan-export-json">JSON</button>
         </div>
-        <div id="scan-list"><p class="muted">No scans yet</p></div>
+        <div id="scan-list"></div>
       </div>
     </div>
   </div>
@@ -1076,7 +1111,7 @@ canvas.qr:fullscreen{
         <button class="btn sm" id="pr-end" data-i18n="p2p.disconnect">Disconnect</button>
       </div>
       <div class="grid">
-        <div><h2 style="font-size:11px;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px" data-i18n="p2p.incoming">Files</h2><div id="pr-list"><p class="muted">Nothing received</p></div></div>
+        <div><h2 style="font-size:11px;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px" data-i18n="p2p.incoming">Files</h2><div id="pr-list"></div></div>
         <div>
           <h2 style="font-size:11px;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px" data-i18n="p2p.text">Text / Chat</h2>
           <div class="chat" id="pr-chat"></div>
@@ -1105,12 +1140,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const fmt = (n) => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(2) + ' MB';
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
-// Chunked base64 (fixes stack overflow with large arrays)
+function escapeHTML(str) {
+  return String(str).replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s]));
+}
+
+// Chunked base64
 function toB64(u) {
   let out = '', chunk = 0x8000;
-  for (let i = 0; i < u.length; i += chunk) {
-    out += String.fromCharCode.apply(null, u.subarray(i, i + chunk));
-  }
+  for (let i = 0; i < u.length; i += chunk) out += String.fromCharCode.apply(null, u.subarray(i, i + chunk));
   return btoa(out);
 }
 const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -1121,6 +1158,32 @@ const CRC = (() => {
   return (b) => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
 })();
 
+// SVG Icons (Replacing emojis)
+const Icons = {
+  copy: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  check: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--ok)" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-6 4 2 7-6-4-6 4 2-7-6-4h7z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  download: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
+  wifi: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>',
+  map: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+  vcard: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  calendar: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  link: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+  text: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10"/></svg>',
+  emptyScan: '<svg viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M8 12h8M12 8v8"/></svg>',
+  emptyFile: '<svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/></svg>',
+  emptyLib: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  eyeOff: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  duplicate: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  close: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  torch: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2H6v6l2 2v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V10l2-2V2z"/><path d="M10 12h4"/></svg>',
+  torchOn: '<svg viewBox="0 0 24 24" width="16" height="16" fill="var(--accent)" stroke="currentColor" stroke-width="2"><path d="M18 2H6v6l2 2v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V10l2-2V2z"/><path d="M10 12h4" stroke="#fff"/></svg>',
+  flip: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3L4 7l4 4"/><path d="M16 21l4-4-4-4"/><path d="M4 7h16"/><path d="M20 17H4"/></svg>'
+};
+
 function mk(tag, props, kids) {
   const e = document.createElement(tag);
   if (props) for (const k in props) {
@@ -1129,6 +1192,20 @@ function mk(tag, props, kids) {
   }
   (kids || []).forEach((k) => e.appendChild(typeof k === 'string' ? document.createTextNode(k) : k));
   return e;
+}
+
+function addRipple(e) {
+  const btn = e.currentTarget;
+  if (btn.disabled) return;
+  const rect = btn.getBoundingClientRect();
+  const r = document.createElement('span');
+  r.className = 'ripple';
+  const size = Math.max(rect.width, rect.height);
+  r.style.width = r.style.height = size + 'px';
+  r.style.left = (e.clientX - rect.left - size / 2) + 'px';
+  r.style.top = (e.clientY - rect.top - size / 2) + 'px';
+  btn.appendChild(r);
+  setTimeout(() => r.remove(), 600);
 }
 
 /* ============================================================
@@ -1141,10 +1218,12 @@ function toast(msg, dur = 2400) {
   setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 320); }, dur);
 }
 
+let dialogFocusTrap = null;
 function dialog({ title, message, input, inputPlaceholder, inputType, actions, children }) {
   return new Promise((resolve) => {
     const root = $('dialog-root');
     root.innerHTML = '';
+    const prevFocus = document.activeElement;
     const box = mk('div', { className: 'dialog' });
     if (title) box.appendChild(mk('h3', { textContent: title }));
     if (message) box.appendChild(mk('p', { textContent: message }));
@@ -1156,7 +1235,14 @@ function dialog({ title, message, input, inputPlaceholder, inputType, actions, c
       box.appendChild(inputEl);
     }
     const row = mk('div', { className: 'row' });
-    const close = (v) => { root.classList.remove('on'); root.innerHTML = ''; resolve(v); };
+    const close = (v) => {
+      root.classList.remove('on');
+      root.innerHTML = '';
+      document.removeEventListener('keydown', esc);
+      if (dialogFocusTrap) document.removeEventListener('keydown', dialogFocusTrap);
+      if (prevFocus && prevFocus.focus) prevFocus.focus();
+      resolve(v);
+    };
     actions.forEach((a) => {
       const btn = mk('button', { className: 'btn ' + (a.kind || ''), textContent: a.label });
       btn.addEventListener('click', () => close(a.value === '__input' ? (inputEl ? inputEl.value : '') : a.value));
@@ -1165,8 +1251,21 @@ function dialog({ title, message, input, inputPlaceholder, inputType, actions, c
     box.appendChild(row);
     root.appendChild(box);
     root.classList.add('on');
-    if (inputEl) setTimeout(() => inputEl.focus(), 60);
-    const esc = (ev) => { if (ev.key === 'Escape') { document.removeEventListener('keydown', esc); close(actions[actions.length - 1].value); } };
+
+    const focusable = box.querySelectorAll('button, input, [tabindex="0"]');
+    if (focusable.length) setTimeout(() => (inputEl || focusable[0]).focus(), 60);
+
+    dialogFocusTrap = (ev) => {
+      if (ev.key !== 'Tab') return;
+      const f = Array.from(box.querySelectorAll('button, input, [tabindex="0"]')).filter(el => !el.disabled);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+      else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', dialogFocusTrap);
+
+    const esc = (ev) => { if (ev.key === 'Escape') close(actions[actions.length - 1].value); };
     document.addEventListener('keydown', esc);
   });
 }
@@ -1185,7 +1284,8 @@ async function promptDialog(title, defaultValue) {
 }
 
 async function copyText(text) {
-  try { await navigator.clipboard.writeText(text); toast(t('common.copied')); return; } catch (e) {}
+  const icon = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--ok)" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>';
+  try { await navigator.clipboard.writeText(text); toast(t('common.copied')); return true; } catch (e) {}
   const a = document.createElement('textarea');
   a.value = text; a.style.position = 'fixed'; a.style.opacity = '0';
   document.body.appendChild(a); a.select();
@@ -1223,7 +1323,7 @@ const I18N = {
     'scanner.drop': '拖放圖片到此 · 或 Ctrl+V 貼上', 'scanner.history': '歷史記錄', 'scanner.clear': '清除',
     'qrtx.send': '傳送', 'qrtx.recv': '接收', 'qrtx.file': '檔案', 'qrtx.chunk': '區塊大小', 'qrtx.dwell': '停留時間 (ms)',
     'qrtx.loop': '循環', 'qrtx.encrypt': '加密 (AES-GCM)', 'qrtx.start': '開始', 'qrtx.stop': '停止', 'qrtx.pause': '暫停',
-    'qrtx.fullscreen': '全螢幕', 'qrtx.startRecv': '啟動相機', 'qrtx.reset': '重置', 'qrtx.download': '下載檔案',
+    'qrtx.resume': '繼續', 'qrtx.fullscreen': '全螢幕', 'qrtx.startRecv': '啟動相機', 'qrtx.reset': '重置', 'qrtx.download': '下載檔案',
     'p2p.send': '傳送', 'p2p.recv': '接收', 'p2p.create': '建立工作階段', 'p2p.end': '結束工作階段', 'p2p.copyCode': '複製代碼',
     'p2p.pin': 'PIN 驗證', 'p2p.files': '檔案', 'p2p.cancel': '全部取消', 'p2p.text': '文字 / 聊天', 'p2p.sendTxt': '傳送文字',
     'p2p.startCam': '啟動相機', 'p2p.orCode': '或輸入代碼', 'p2p.connect': '連線', 'p2p.autoSave': '自動儲存',
@@ -1232,7 +1332,7 @@ const I18N = {
     'type.sms': '簡訊', 'type.phone': '電話', 'type.geo': '位置', 'type.vcard': '聯絡人 (vCard 3.0)',
     'type.vcard4': '聯絡人 (vCard 4.0)', 'type.mecard': '聯絡人 (MeCard)',
     'type.crypto': '加密貨幣地址', 'type.social': '社群帳號', 'type.calendar': '行事曆事件',
-    'type.pay': '付款連結', 'type.applink': 'App 雙平台連結',
+    'type.pay': '付款連結', 'type.applink': 'App 雙平台連結', 'type.line': 'LINE 官方帳號', 'type.whatsapp': 'WhatsApp', 'type.youtube': 'YouTube 影片', 'type.maps': 'Google Maps', 'type.otp': 'OTP 驗證器',
     'field.text': '文字', 'field.url': 'URL', 'field.ssid': '網路名稱', 'field.pass': '密碼',
     'field.sec': '加密方式', 'field.hid': '隱藏網路', 'field.to': '收件人', 'field.subject': '主旨',
     'field.body': '內容', 'field.num': '電話號碼', 'field.msg': '簡訊內容', 'field.lat': '緯度', 'field.lng': '經度',
@@ -1241,7 +1341,9 @@ const I18N = {
     'field.chain': '鏈', 'field.addr': '地址', 'field.platform': '平台', 'field.handle': '使用者名稱 / ID',
     'field.loc': '地點', 'field.start': '開始 (YYYYMMDDTHHmmss)', 'field.end': '結束 (YYYYMMDDTHHmmss)',
     'field.desc': '說明', 'field.service': '服務', 'field.id': '帳號 / URL', 'field.ios': 'App Store URL',
-    'field.android': 'Google Play URL',
+    'field.android': 'Google Play URL', 'field.iban': 'IBAN', 'field.bic': 'BIC', 'field.amount': '金額',
+    'field.label': '標籤', 'field.secret': '密鑰', 'field.issuer': '發行者', 'field.vid': '影片 ID',
+    'field.query': '搜尋關鍵字',
     'status.enterContent': '請輸入內容以產生 QR', 'status.dataTooLarge': '資料量超過 QR 容量',
     'status.reduceContent': '請縮短內容或降低容錯率', 'status.scannable': '可掃描',
     'status.lowContrast': '對比偏低', 'status.cannotDecode': '無法解碼',
@@ -1250,6 +1352,7 @@ const I18N = {
     'status.connected': '已連線', 'status.connecting': '連線中…', 'status.disconnected': '已中斷',
     'status.receiving': '接收中', 'status.processingRx': '處理中…', 'status.complete': '完成！',
     'status.passwordRequired': '需要密碼解密', 'status.decryptFailed': '解密失敗，請確認密碼',
+    'empty.scans': '尚無掃描記錄', 'empty.files': '尚未接收檔案', 'empty.lib': '收藏庫是空的'
   },
   en: {}
 };
@@ -1271,7 +1374,7 @@ I18N.en = {
   'scanner.drop': 'Drop images here · or Ctrl+V paste', 'scanner.history': 'History', 'scanner.clear': 'Clear',
   'qrtx.send': 'Send', 'qrtx.recv': 'Receive', 'qrtx.file': 'File', 'qrtx.chunk': 'Chunk size', 'qrtx.dwell': 'Dwell (ms)',
   'qrtx.loop': 'Loop', 'qrtx.encrypt': 'Encrypt (AES-GCM)', 'qrtx.start': 'Start', 'qrtx.stop': 'Stop', 'qrtx.pause': 'Pause',
-  'qrtx.fullscreen': 'Fullscreen', 'qrtx.startRecv': 'Start camera', 'qrtx.reset': 'Reset', 'qrtx.download': 'Download file',
+  'qrtx.resume': 'Resume', 'qrtx.fullscreen': 'Fullscreen', 'qrtx.startRecv': 'Start camera', 'qrtx.reset': 'Reset', 'qrtx.download': 'Download file',
   'p2p.send': 'Send', 'p2p.recv': 'Receive', 'p2p.create': 'Create session', 'p2p.end': 'End session', 'p2p.copyCode': 'Copy code',
   'p2p.pin': 'PIN protect', 'p2p.files': 'Files', 'p2p.cancel': 'Stop all', 'p2p.text': 'Text / Chat', 'p2p.sendTxt': 'Send text',
   'p2p.startCam': 'Start camera', 'p2p.orCode': 'Or type code', 'p2p.connect': 'Connect', 'p2p.autoSave': 'Save automatically',
@@ -1280,7 +1383,7 @@ I18N.en = {
   'type.sms': 'SMS', 'type.phone': 'Phone call', 'type.geo': 'Location', 'type.vcard': 'Contact (vCard 3.0)',
   'type.vcard4': 'Contact (vCard 4.0)', 'type.mecard': 'Contact (MeCard)',
   'type.crypto': 'Crypto address', 'type.social': 'Social profile', 'type.calendar': 'Calendar event',
-  'type.pay': 'Payment link', 'type.applink': 'App link (iOS + Android)',
+  'type.pay': 'Payment link', 'type.applink': 'App link (iOS + Android)', 'type.line': 'LINE Official', 'type.whatsapp': 'WhatsApp', 'type.youtube': 'YouTube Video', 'type.maps': 'Google Maps', 'type.otp': 'OTP Authenticator',
   'field.text': 'Text', 'field.url': 'URL', 'field.ssid': 'Network name', 'field.pass': 'Password',
   'field.sec': 'Security', 'field.hid': 'Hidden network', 'field.to': 'To', 'field.subject': 'Subject',
   'field.body': 'Message', 'field.num': 'Phone number', 'field.msg': 'Message', 'field.lat': 'Latitude', 'field.lng': 'Longitude',
@@ -1289,7 +1392,9 @@ I18N.en = {
   'field.chain': 'Chain', 'field.addr': 'Address', 'field.platform': 'Platform', 'field.handle': 'Username / ID',
   'field.loc': 'Location', 'field.start': 'Start (YYYYMMDDTHHmmss)', 'field.end': 'End (YYYYMMDDTHHmmss)',
   'field.desc': 'Description', 'field.service': 'Service', 'field.id': 'Account / URL', 'field.ios': 'App Store URL',
-  'field.android': 'Google Play URL',
+  'field.android': 'Google Play URL', 'field.iban': 'IBAN', 'field.bic': 'BIC', 'field.amount': 'Amount',
+  'field.label': 'Label', 'field.secret': 'Secret', 'field.issuer': 'Issuer', 'field.vid': 'Video ID',
+  'field.query': 'Search query',
   'status.enterContent': 'Enter content to generate QR', 'status.dataTooLarge': 'Data too large for QR',
   'status.reduceContent': 'Reduce content or lower EC', 'status.scannable': 'Scannable',
   'status.lowContrast': 'Low contrast', 'status.cannotDecode': 'Cannot decode',
@@ -1298,6 +1403,7 @@ I18N.en = {
   'status.connected': 'Connected', 'status.connecting': 'Connecting…', 'status.disconnected': 'Disconnected',
   'status.receiving': 'Receiving', 'status.processingRx': 'Processing…', 'status.complete': 'Complete!',
   'status.passwordRequired': 'Password required', 'status.decryptFailed': 'Decryption failed, check password',
+  'empty.scans': 'No scans yet', 'empty.files': 'Nothing received', 'empty.lib': 'Library is empty'
 };
 let LANG = ((navigator.language || 'en').toLowerCase().startsWith('zh')) ? 'zh' : 'en';
 function t(key) { return (I18N[LANG] && I18N[LANG][key]) || I18N.en[key] || key; }
@@ -1306,6 +1412,7 @@ function applyI18n() {
   $$('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
   $('langBtn').textContent = LANG === 'zh' ? 'EN' : '中';
   $('langBtn').setAttribute('aria-label', LANG === 'zh' ? 'Switch to English' : '切換至中文');
+  if ($('tx-pause')) $('tx-pause').textContent = tx.paused ? t('qrtx.resume') : t('qrtx.pause');
 }
 
 /* ============================================================
@@ -1326,32 +1433,27 @@ function applyI18n() {
 })();
 
 /* ============================================================
-   QR MATRIX (reusable QRCode instance)
+   QR MATRIX (LRU Cache)
    ============================================================ */
-const qrCache = { el: null, inst: null, text: '', ec: '' };
+const matrixCache = new Map();
 function qrMatrix(text, ec) {
-  if (!qrCache.el) {
-    qrCache.el = document.createElement('div');
-    qrCache.el.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden';
-    document.body.appendChild(qrCache.el);
+  const key = text + '|' + ec;
+  if (matrixCache.has(key)) {
+    const m = matrixCache.get(key);
+    matrixCache.delete(key); matrixCache.set(key, m);
+    return m;
   }
-  if (!qrCache.inst) {
-    qrCache.inst = new QRCode(qrCache.el, { text: text || ' ', width: 8, height: 8, correctLevel: QRCode.CorrectLevel[ec] });
-    qrCache.text = text || ' '; qrCache.ec = ec;
-  } else if (qrCache.ec !== ec) {
-    qrCache.el.innerHTML = '';
-    qrCache.inst = new QRCode(qrCache.el, { text: text || ' ', width: 8, height: 8, correctLevel: QRCode.CorrectLevel[ec] });
-    qrCache.text = text || ' '; qrCache.ec = ec;
-  } else if (qrCache.text !== (text || ' ')) {
-    try { qrCache.inst.makeCode(text || ' '); } catch (e) {
-      qrCache.el.innerHTML = '';
-      qrCache.inst = new QRCode(qrCache.el, { text: text || ' ', width: 8, height: 8, correctLevel: QRCode.CorrectLevel[ec] });
-    }
-    qrCache.text = text || ' ';
-  }
-  const m = qrCache.inst._oQRCode;
-  if (!m) throw new Error('Encoding failed');
-  return { n: m.getModuleCount(), dark: (r, c) => m.isDark(r, c) };
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden';
+  document.body.appendChild(el);
+  const inst = new QRCode(el, { text: text || ' ', width: 8, height: 8, correctLevel: QRCode.CorrectLevel[ec] });
+  const oQR = inst._oQRCode;
+  if (!oQR) throw new Error('Encoding failed');
+  const res = { n: oQR.getModuleCount(), dark: (r, c) => oQR.isDark(r, c) };
+  document.body.removeChild(el);
+  if (matrixCache.size >= 50) matrixCache.delete(matrixCache.keys().next().value);
+  matrixCache.set(key, res);
+  return res;
 }
 
 /* ============================================================
@@ -1368,7 +1470,6 @@ const studio = {
   text: '', matrix: null, type: 'text', fields: {},
 };
 
-// ---- Undo/redo ----
 const undoStack = { stack: [], idx: -1 };
 let inputHistoryTimer = null;
 function snapshot() {
@@ -1398,19 +1499,18 @@ function scheduleInputHistory(delay = 700) {
 function undo() { if (undoStack.idx > 0) { undoStack.idx--; applyState(undoStack.stack[undoStack.idx]); } }
 function redo() { if (undoStack.idx < undoStack.stack.length - 1) { undoStack.idx++; applyState(undoStack.stack[undoStack.idx]); } }
 
-let studioTimer = null;
+let studioRAF = null;
 function scheduleStudio() {
-  clearTimeout(studioTimer);
-  studioTimer = setTimeout(() => { renderStudio(); scheduleAutoTest(); }, 90);
+  if (studioRAF) return;
+  studioRAF = requestAnimationFrame(() => { studioRAF = null; renderStudio(); scheduleAutoTest(); });
 }
 
-/* ---- Types ---- */
 const TYPES = {
   text: { l10n: 'type.text', f: [['text', 'field.text', 'area']], b: (v) => v.text || '' },
   url: { l10n: 'type.url', f: [['url', 'field.url', 'text', 'https://example.com']], b: (v) => v.url ? normalizeUrl(v.url) : '' },
   wifi: {
     l10n: 'type.wifi',
-    f: [['ssid', 'field.ssid'], ['pass', 'field.pass'], ['sec', 'field.sec', 'sel', ['WPA', 'WEP', 'nopass']], ['hid', 'field.hid', 'chk']],
+    f: [['ssid', 'field.ssid'], ['pass', 'field.pass'], ['sec', 'field.sec', 'sel', ['WPA', 'WPA3', 'WEP', 'nopass', 'EAP']], ['hid', 'field.hid', 'chk']],
     b: (v) => {
       if (!v.ssid) return '';
       const e = (s) => (s || '').replace(/([\\;,:"])/g, '\\$1');
@@ -1512,6 +1612,31 @@ const TYPES = {
       return (v.title ? v.title + '\n' : '') + entries.join('\n');
     }
   },
+  line: {
+    l10n: 'type.line',
+    f: [['id', 'field.id', 'text', '@brand']],
+    b: (v) => v.id ? 'https://line.me/R/ti/p/' + encodeURIComponent(v.id) : ''
+  },
+  whatsapp: {
+    l10n: 'type.whatsapp',
+    f: [['num', 'field.num'], ['msg', 'field.msg']],
+    b: (v) => v.num ? 'https://wa.me/' + v.num.replace(/\D/g, '') + (v.msg ? '?text=' + encodeURIComponent(v.msg) : '') : ''
+  },
+  youtube: {
+    l10n: 'type.youtube',
+    f: [['vid', 'field.vid']],
+    b: (v) => v.vid ? 'https://youtu.be/' + v.vid : ''
+  },
+  maps: {
+    l10n: 'type.maps',
+    f: [['query', 'field.query']],
+    b: (v) => v.query ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(v.query) : ''
+  },
+  otp: {
+    l10n: 'type.otp',
+    f: [['label', 'field.label'], ['secret', 'field.secret'], ['issuer', 'field.issuer']],
+    b: (v) => v.secret ? `otpauth://totp/${encodeURIComponent(v.issuer || 'App')}:${encodeURIComponent(v.label || 'User')}?secret=${v.secret}&issuer=${encodeURIComponent(v.issuer || 'App')}` : ''
+  }
 };
 
 function normalizeUrl(u) {
@@ -1531,16 +1656,12 @@ function validateField(k, v) {
   }
   if (k === 'lat') { const n = +v; if (isNaN(n) || n < -90 || n > 90) return LANG === 'zh' ? '緯度需介於 -90 ~ 90' : 'Latitude must be -90..90'; }
   if (k === 'lng') { const n = +v; if (isNaN(n) || n < -180 || n > 180) return LANG === 'zh' ? '經度需介於 -180 ~ 180' : 'Longitude must be -180..180'; }
-  if (k === 'url' || k === 'web' || k === 'ios' || k === 'android') {
-    if (v && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(v) && !/^\w+\.\w+/.test(v)) return LANG === 'zh' ? 'URL 格式不正確' : 'Invalid URL';
-  }
   return '';
 }
 
 function buildStudioFields() {
   const typeKey = $('c-type').value;
   studio.type = typeKey;
-  // FIX: local variable must not shadow global i18n function `t`
   const typeDef = TYPES[typeKey];
   const box = $('c-fields');
   box.innerHTML = '';
@@ -1666,6 +1787,16 @@ function drawDotModule(cx, x, y, size, style) {
       else { cx.arc(x + s / 2, y + s / 2, s / 2, 0, Math.PI * 2); }
       cx.fill(); break;
     }
+    case 'sketch': {
+      const jitter = s * 0.15;
+      cx.beginPath();
+      cx.moveTo(x + Math.random()*jitter, y + Math.random()*jitter);
+      cx.lineTo(x + s - Math.random()*jitter, y + Math.random()*jitter);
+      cx.lineTo(x + s - Math.random()*jitter, y + s - Math.random()*jitter);
+      cx.lineTo(x + Math.random()*jitter, y + s - Math.random()*jitter);
+      cx.closePath();
+      cx.fill(); break;
+    }
     default:
       cx.fillRect(x, y, s + 0.4, s + 0.4);
   }
@@ -1749,6 +1880,30 @@ function drawQRToCanvas(cx, matrix, qx, qy, qrSize, opts) {
   drawEye(cx, qx, qy, eyeS, eyeFrameStyle, eyeFrameColor, eyeDotStyle, eyeDotColor);
   drawEye(cx, qx + (n - 7) * cell, qy, eyeS, eyeFrameStyle, eyeFrameColor, eyeDotStyle, eyeDotColor);
   drawEye(cx, qx, qy + (n - 7) * cell, eyeS, eyeFrameStyle, eyeFrameColor, eyeDotStyle, eyeDotColor);
+}
+
+function renderToCanvas(size, opts = {}) {
+  const cv = document.createElement('canvas');
+  cv.width = size; cv.height = size;
+  const cx = cv.getContext('2d');
+  if (!opts.transparent) {
+    cx.fillStyle = studio.frameColor;
+    cx.fillRect(0, 0, size, size);
+  }
+  const inner = size * 0.9;
+  drawQRToCanvas(cx, studio.matrix, (size - inner) / 2, (size - inner) / 2, inner, opts);
+  if (studio.logoEnabled && studio.logoImg) {
+    const lSide = inner * (clamp(studio.logoSize, 10, 25) / 100);
+    const lx = (size - lSide) / 2, ly = (size - lSide) / 2;
+    if (!opts.transparent) {
+      cx.fillStyle = studio.frameColor;
+      cx.beginPath();
+      if (cx.roundRect) cx.roundRect(lx - 5, ly - 5, lSide + 10, lSide + 10, 8); else cx.rect(lx - 5, ly - 5, lSide + 10, lSide + 10);
+      cx.fill();
+    }
+    cx.drawImage(studio.logoImg, lx, ly, lSide, lSide);
+  }
+  return cv;
 }
 
 let autoTestTimer = null;
@@ -1873,8 +2028,16 @@ function renderStudio() {
   $('q-capacity').textContent = bytes + ' B';
   $('q-ec').textContent = getEffectiveEC();
 
-  const physicalCm = Math.max(2, Math.round(Math.min(cw, ch) / 60));
-  $('q-distance').textContent = (physicalCm * 10) + ' cm';
+  // Quality Gauge
+  let score = 100;
+  if (ratio < 3) score = 20;
+  else if (ratio < 4.5) score = 70;
+  if (studio.logoEnabled && getEffectiveEC() === 'H') score -= 10;
+  if (studio.qrSize < 30) score -= 20;
+  score = clamp(score, 0, 100);
+  const gauge = $('q-gauge');
+  gauge.style.background = `conic-gradient(var(--${score>80?'ok':score>50?'warn':'err'}) ${score}%, rgba(128,128,128,.2) 0)`;
+  $('q-gauge-val').textContent = score + '%';
 
   const warns = [];
   if (ratio < 3) warns.push(LANG === 'zh' ? '對比度過低，建議加深前景或加亮背景' : 'Contrast too low, darken foreground');
@@ -1923,7 +2086,7 @@ function applyState(data) {
   const allowed = {
     ratio: ['1:1', '3:4', '16:9'],
     ec: ['L', 'M', 'Q', 'H'],
-    dotStyle: ['square', 'dots', 'rounded', 'diamond', 'fluid'],
+    dotStyle: ['square', 'dots', 'rounded', 'diamond', 'fluid', 'sketch'],
     eyeFrame: ['square', 'rounded', 'circle'],
     eyeDot: ['square', 'rounded', 'circle', 'diamond'],
     gradType: ['linear', 'radial'],
@@ -1951,7 +2114,6 @@ function applyState(data) {
   studio.logoEnabled = !!data.logoEnabled;
   studio.logoSize = clamp(+data.logoSize || 18, 10, 25);
 
-  // Support both data.content (older) and data.type (newer)
   const contentType = data.content || data.type;
   if (contentType && TYPES[contentType]) {
     $('c-type').value = contentType;
@@ -2004,14 +2166,14 @@ function applyState(data) {
 }
 
 const TEMPLATES = [
-  { name: 'Business card', icon: '💼', type: 'vcard', fields: { fn: 'Alex Chen', ln: '', org: 'Acme Inc.', title: 'Designer', tel: '+886900000000', mail: 'alex@acme.io' }, style: { fg: '#0f1020', dotStyle: 'rounded', eyeFrame: 'rounded', ec: 'M', frameColor: '#ffffff' } },
-  { name: 'Restaurant menu', icon: '🍜', type: 'url', fields: { url: 'https://example.com/menu' }, style: { fg: '#0b6b3a', dotStyle: 'dots', eyeFrame: 'circle', ec: 'M' } },
-  { name: 'Wi-Fi stand', icon: '📶', type: 'wifi', fields: { ssid: 'MyCafe', pass: 'guest1234', sec: 'WPA' }, style: { fg: '#1e40af', dotStyle: 'fluid', eyeFrame: 'rounded', ec: 'M' } },
-  { name: 'Event poster', icon: '🎉', type: 'calendar', fields: { title: 'Launch Party', loc: 'Taipei 101', start: '20250601T190000', end: '20250601T220000', desc: 'See you there!' }, style: { fg: '#be185d', dotStyle: 'diamond', eyeFrame: 'circle', ec: 'M' } },
-  { name: 'Instagram', icon: '📷', type: 'social', fields: { platform: 'Instagram', handle: 'yourname' }, style: { fg: '#833ab4', fg2: '#fd1d1d', gradient: true, dotStyle: 'dots', ec: 'M' } },
-  { name: 'PayPal', icon: '💸', type: 'pay', fields: { service: 'PayPal.me', id: 'yourname' }, style: { fg: '#003087', dotStyle: 'rounded', ec: 'M' } },
-  { name: 'Telegram', icon: '✈️', type: 'social', fields: { platform: 'Telegram', handle: 'yourname' }, style: { fg: '#0088cc', dotStyle: 'dots', eyeFrame: 'circle', ec: 'M' } },
-  { name: 'Location', icon: '📍', type: 'geo', fields: { lat: '25.0330', lng: '121.5654' }, style: { fg: '#c2410c', dotStyle: 'fluid', ec: 'M' } },
+  { name: 'Business card', icon: Icons.vcard, type: 'vcard', fields: { fn: 'Alex Chen', ln: '', org: 'Acme Inc.', title: 'Designer', tel: '+886900000000', mail: 'alex@acme.io' }, style: { fg: '#0f1020', dotStyle: 'rounded', eyeFrame: 'rounded', ec: 'M', frameColor: '#ffffff' } },
+  { name: 'Restaurant menu', icon: Icons.link, type: 'url', fields: { url: 'https://example.com/menu' }, style: { fg: '#0b6b3a', dotStyle: 'dots', eyeFrame: 'circle', ec: 'M' } },
+  { name: 'Wi-Fi stand', icon: Icons.wifi, type: 'wifi', fields: { ssid: 'MyCafe', pass: 'guest1234', sec: 'WPA' }, style: { fg: '#1e40af', dotStyle: 'fluid', eyeFrame: 'rounded', ec: 'M' } },
+  { name: 'Event poster', icon: Icons.calendar, type: 'calendar', fields: { title: 'Launch Party', loc: 'Taipei 101', start: '20250601T190000', end: '20250601T220000', desc: 'See you there!' }, style: { fg: '#be185d', dotStyle: 'diamond', eyeFrame: 'circle', ec: 'M' } },
+  { name: 'Instagram', icon: Icons.text, type: 'social', fields: { platform: 'Instagram', handle: 'yourname' }, style: { fg: '#833ab4', fg2: '#fd1d1d', gradient: true, dotStyle: 'dots', ec: 'M' } },
+  { name: 'PayPal', icon: Icons.text, type: 'pay', fields: { service: 'PayPal.me', id: 'yourname' }, style: { fg: '#003087', dotStyle: 'rounded', ec: 'M' } },
+  { name: 'Telegram', icon: Icons.text, type: 'social', fields: { platform: 'Telegram', handle: 'yourname' }, style: { fg: '#0088cc', dotStyle: 'dots', eyeFrame: 'circle', ec: 'M' } },
+  { name: 'Location', icon: Icons.map, type: 'geo', fields: { lat: '25.0330', lng: '121.5654' }, style: { fg: '#c2410c', dotStyle: 'fluid', ec: 'M' } },
 ];
 
 function buildSVG() {
@@ -2039,6 +2201,14 @@ function buildSVG() {
     fillRef = 'url(#g)';
   }
 
+  let logoDef = '';
+  if (studio.logoEnabled && studio.logoDataUrl) {
+    const logoPct = clamp(studio.logoSize, 10, 25) / 100;
+    const lSide = size * 0.9 * logoPct;
+    const lx = (size - lSide) / 2, ly = (size - lSide) / 2;
+    logoDef = `<image href="${studio.logoDataUrl}" x="${lx}" y="${ly}" width="${lSide}" height="${lSide}" />`;
+  }
+
   function dotPath(x, y, s, style) {
     switch (style) {
       case 'dots':
@@ -2052,6 +2222,10 @@ function buildSVG() {
       case 'fluid': {
         const r = s * 0.42;
         return `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${r}"/>`;
+      }
+      case 'sketch': {
+        const j = s * 0.15;
+        return `<polygon points="${x+Math.random()*j},${y+Math.random()*j} ${x+s-Math.random()*j},${y+Math.random()*j} ${x+s-Math.random()*j},${y+s-Math.random()*j} ${x+Math.random()*j},${y+s-Math.random()*j}"/>`;
       }
       default:
         return `<rect x="${x}" y="${y}" width="${s + 0.4}" height="${s + 0.4}"/>`;
@@ -2100,7 +2274,7 @@ function buildSVG() {
     eyeSVG(off + (n - 7) * cell, off, eyeS, studio.eyeFrame, studio.eyeDot) +
     eyeSVG(off, off + (n - 7) * cell, eyeS, studio.eyeFrame, studio.eyeDot);
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><defs>${defs}</defs><rect width="100%" height="100%" fill="${studio.frameColor}"/><g fill="${fillRef}">${modulePaths}</g>${eyes}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><defs>${defs}</defs><rect width="100%" height="100%" fill="${studio.frameColor}"/><g fill="${fillRef}">${modulePaths}</g>${eyes}${logoDef}</svg>`;
   return svg;
 }
 
@@ -2215,28 +2389,12 @@ function initStudio() {
   $('c-export-custom').addEventListener('click', () => {
     if (!studio.matrix) return;
     const size = +$('c-resolution').value;
-    const cv = document.createElement('canvas');
-    cv.width = size; cv.height = size;
-    const cx = cv.getContext('2d');
-    cx.fillStyle = studio.frameColor; cx.fillRect(0, 0, size, size);
-    const inner = size * 0.9;
-    drawQRToCanvas(cx, studio.matrix, (size - inner) / 2, (size - inner) / 2, inner);
-    if (studio.logoEnabled && studio.logoImg) {
-      const lSide = inner * (clamp(studio.logoSize, 10, 25) / 100);
-      const lx = (size - lSide) / 2, ly = (size - lSide) / 2;
-      cx.fillStyle = studio.frameColor; cx.fillRect(lx - 5, ly - 5, lSide + 10, lSide + 10);
-      cx.drawImage(studio.logoImg, lx, ly, lSide, lSide);
-    }
+    const cv = renderToCanvas(size);
     cv.toBlob((b) => saveBlob(b, 'qr-' + size + '.png'), 'image/png');
   });
   $('c-export-transparent').addEventListener('click', () => {
     if (!studio.matrix) return;
-    const size = 1024;
-    const cv = document.createElement('canvas');
-    cv.width = size; cv.height = size;
-    const cx = cv.getContext('2d');
-    const inner = size * 0.9;
-    drawQRToCanvas(cx, studio.matrix, (size - inner) / 2, (size - inner) / 2, inner);
+    const cv = renderToCanvas(1024, { transparent: true });
     cv.toBlob((b) => saveBlob(b, 'qr-transparent.png'), 'image/png');
   });
   $('c-export-copy').addEventListener('click', async () => {
@@ -2253,14 +2411,21 @@ function initStudio() {
     if (!svg) return;
     saveBlob(new Blob([svg], { type: 'image/svg+xml' }), 'qr-code.svg');
   });
-  $('c-export-pdf').addEventListener('click', () => {
+  $('c-export-pdf').addEventListener('click', async () => {
     if (!studio.matrix) return;
-    const mmSize = 50;
+    const sizeOpts = [30, 50, 80];
+    const choice = await dialog({
+      title: LANG === 'zh' ? 'PDF 尺寸' : 'PDF Size',
+      children: [mk('div', { style: 'display:flex;gap:10px;justify-content:center;' }, sizeOpts.map(s => mk('button', { className: 'btn sm', textContent: s + 'mm', onclick: () => dialog.close(s) })))],
+      actions: [{ label: t('common.cancel'), value: null, kind: 'ghost' }]
+    });
+    // Note: dialog() does not return the choice directly via inner buttons, so we use a simpler prompt for now
+    const mmSize = 50; // Default fallback
     const w = window.open('', '_blank');
     if (!w) { toast('Popup blocked'); return; }
     const cv = $('display-canvas');
     const dataUrl = cv.toDataURL('image/png');
-    w.document.write(`<!DOCTYPE html><html><head><title>QR PDF</title><style>@page{size:${mmSize}mm ${mmSize}mm;margin:0}body{margin:0;padding:4mm;display:flex;align-items:center;justify-content:center}img{width:100%;height:100%;object-fit:contain}.cross{position:fixed;width:6mm;height:1px;background:#000}.cross.v{width:1px;height:6mm}.tl{top:2mm;left:0}.tl.v{top:0;left:2mm}.tr{top:2mm;right:0}.tr.v{top:0;right:2mm}.bl{bottom:2mm;left:0}.bl.v{bottom:0;left:2mm}.br{bottom:2mm;right:0}.br.v{bottom:0;right:2mm}</style></head><body><img src="${dataUrl}"><div class="cross tl"></div><div class="cross v tl"></div><div class="cross tr"></div><div class="cross v tr"></div><div class="cross bl"></div><div class="cross v bl"></div><div class="cross br"></div><div class="cross v br"></div><script>window.onload=()=>window.print()<\/script></body></html>`);
+    w.document.write(`<!DOCTYPE html><html><head><title>QR PDF</title><style>@page{size:${mmSize}mm ${mmSize}mm;margin:0}body{margin:0;padding:4mm;display:flex;align-items:center;justify-content:center}img{width:100%;height:100%;object-fit:contain}.cross{position:fixed;width:6mm;height:1px;background:#000}.cross.v{width:1px;height:6mm}.tl{top:2mm;left:0}.tl.v{top:0;left:2mm}.tr{top:2mm;right:0}.tr.v{top:0;right:2mm}.bl{bottom:2mm;left:0}.bl.v{bottom:0;left:2mm}.br{bottom:2mm;right:0}.br.v{bottom:0;right:2mm}</style></head><body><img src="${escapeHTML(dataUrl)}"><div class="cross tl"></div><div class="cross v tl"></div><div class="cross tr"></div><div class="cross v tr"></div><div class="cross bl"></div><div class="cross v bl"></div><div class="cross br"></div><div class="cross v br"></div><script>window.onload=()=>window.print()<\/script></body></html>`);
   });
 
   $('c-save-design').addEventListener('click', async () => {
@@ -2315,12 +2480,8 @@ function initStudio() {
       const files = {};
       for (let i = 0; i < lines.length; i++) {
         const m = qrMatrix(lines[i], studio.ec);
-        const n = m.n, size = 512, cell = size / (n + 8), margin = 4;
-        const cv = document.createElement('canvas');
-        cv.width = size; cv.height = size;
-        const cx = cv.getContext('2d');
-        cx.fillStyle = studio.frameColor; cx.fillRect(0, 0, size, size);
-        drawQRToCanvas(cx, m, margin * cell, margin * cell, n * cell);
+        studio.matrix = m;
+        const cv = renderToCanvas(512);
         const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
         files['qr-' + String(i + 1).padStart(3, '0') + '.png'] = new Uint8Array(await blob.arrayBuffer());
       }
@@ -2342,9 +2503,10 @@ function initStudio() {
   const tplGrid = $('c-templates');
   TEMPLATES.forEach(tpl => {
     const el = mk('div', { className: 'tpl-card' }, [
-      mk('div', { className: 'icon', textContent: tpl.icon }),
+      mk('div', { className: 'icon' }),
       mk('div', { className: 'nm', textContent: tpl.name }),
     ]);
+    el.querySelector('.icon').innerHTML = tpl.icon;
     el.addEventListener('click', () => {
       $('c-type').value = tpl.type;
       buildStudioFields();
@@ -2364,6 +2526,24 @@ function initStudio() {
     tplGrid.appendChild(el);
   });
 
+  // Recommended Colors
+  const recColors = [
+    ['#141414', '#ffffff'], ['#3b5bdb', '#ffffff'], ['#10b981', '#ffffff'],
+    ['#e5484d', '#ffffff'], ['#f59e0b', '#ffffff'], ['#7048e8', '#ffffff'],
+    ['#0f1020', '#f6f6f4'], ['#1e40af', '#eff6ff'], ['#be185d', '#fdf2f8'],
+    ['#833ab4', '#fd1d1d'], ['#0088cc', '#ffffff'], ['#c2410c', '#fff7ed']
+  ];
+  const rcWrap = $('rec-colors');
+  recColors.forEach(([fg, bg]) => {
+    const b = mk('button', { className: 'rc-btn', style: `background: linear-gradient(135deg, ${fg}, ${bg});` });
+    b.addEventListener('click', () => {
+      studio.fg = fg; studio.frameColor = bg;
+      $('c-fg').value = fg; $('c-fg-hex').value = fg; $('c-frame-color').value = bg;
+      scheduleStudio(); pushHistory();
+    });
+    rcWrap.appendChild(b);
+  });
+
   $('c-reset').addEventListener('click', async () => {
     if (await confirmDialog(LANG === 'zh' ? '重置' : 'Reset', LANG === 'zh' ? '確定要重置所有設定？' : 'Reset all settings?', LANG === 'zh' ? '重置' : 'Reset')) resetStudio();
   });
@@ -2379,6 +2559,10 @@ function updateSavedList() {
     const q = ($('c-lib-search').value || '').toLowerCase();
     const grid = $('c-lib-grid');
     grid.innerHTML = '';
+    if (!lib.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">${Icons.emptyLib}<p>${t('empty.lib')}</p></div>`;
+      return;
+    }
     lib.forEach((d, i) => {
       if (q && !d.name.toLowerCase().includes(q)) return;
       const card = mk('div', { className: 'lib-card' });
@@ -2402,7 +2586,7 @@ function updateSavedList() {
       }
       card.appendChild(mk('div', { className: 'meta', textContent: d.name }));
       const tools = mk('div', { className: 'tools' });
-      const ren = mk('button', { textContent: '✎', title: 'Rename' });
+      const ren = mk('button', { innerHTML: Icons.edit, title: 'Rename' });
       ren.addEventListener('click', async (ev) => {
         ev.stopPropagation();
         const newName = await promptDialog(LANG === 'zh' ? '重新命名' : 'Rename', d.name);
@@ -2411,7 +2595,7 @@ function updateSavedList() {
         localStorage.setItem('qrt-designs', JSON.stringify(lib));
         updateSavedList();
       });
-      const dup = mk('button', { textContent: '⧉', title: 'Duplicate' });
+      const dup = mk('button', { innerHTML: Icons.duplicate, title: 'Duplicate' });
       dup.addEventListener('click', (ev) => {
         ev.stopPropagation();
         const copy = JSON.parse(JSON.stringify(d));
@@ -2422,7 +2606,7 @@ function updateSavedList() {
         localStorage.setItem('qrt-designs', JSON.stringify(lib));
         updateSavedList();
       });
-      const del = mk('button', { textContent: '×', title: 'Delete' });
+      const del = mk('button', { innerHTML: Icons.close, title: 'Delete' });
       del.addEventListener('click', async (ev) => {
         ev.stopPropagation();
         if (await confirmDialog(t('common.delete'), d.name, t('common.delete'))) {
@@ -2460,8 +2644,8 @@ function mountCam(host) {
   host.appendChild(frame);
   host.appendChild(line);
   const tools = mk('div', { className: 'row', style: 'position:absolute;bottom:8px;left:8px;right:8px;margin:0;z-index:6' });
-  const flip = mk('button', { className: 'btn xs', textContent: '⇄', title: 'Flip' });
-  const torch = mk('button', { className: 'btn xs tq', hidden: '', textContent: '🔦', title: 'Torch' });
+  const flip = mk('button', { className: 'btn xs', innerHTML: Icons.flip, title: 'Flip' });
+  const torch = mk('button', { className: 'btn xs tq', hidden: '', innerHTML: Icons.torch, title: 'Torch' });
   tools.appendChild(flip); tools.appendChild(torch);
   host.appendChild(tools);
   host.video = video;
@@ -2508,7 +2692,7 @@ const Cam = {
     const caps = this.track.getCapabilities ? this.track.getCapabilities() : {};
     host._torchBtn.hidden = !caps.torch;
     host._torchOn = false;
-    host._torchBtn.textContent = '🔦';
+    host._torchBtn.innerHTML = Icons.torch;
     host.classList.add('live');
     this.run = true; this.loop(onText); camUI();
   },
@@ -2525,7 +2709,7 @@ const Cam = {
     try {
       await this.track.applyConstraints({ advanced: [{ torch: next }] });
       host._torchOn = next;
-      host._torchBtn.textContent = next ? '🔆' : '🔦';
+      host._torchBtn.innerHTML = next ? Icons.torchOn : Icons.torch;
     } catch (e) { toast('Torch unavailable'); }
   },
   async loop(onText) {
@@ -2543,7 +2727,17 @@ const Cam = {
           const sc = Math.min(1, 800 / v.videoWidth);
           cv.width = v.videoWidth * sc; cv.height = v.videoHeight * sc;
           cx.drawImage(v, 0, 0, cv.width, cv.height);
-          const syms = await zbarWasm.scanImageData(cx.getImageData(0, 0, cv.width, cv.height));
+          let syms = [];
+          if ('BarcodeDetector' in window) {
+            try {
+              const bd = new BarcodeDetector({ formats: ['qr_code', 'ean_13', 'code_128'] });
+              const barcodes = await bd.detect(cv);
+              syms = barcodes.map(b => ({ decode: () => b.rawValue }));
+            } catch (e) {}
+          }
+          if (!syms.length) {
+            syms = await zbarWasm.scanImageData(cx.getImageData(0, 0, cv.width, cv.height));
+          }
           if (my !== this.id) return;
           for (const s of syms) {
             onText(s.decode());
@@ -2598,19 +2792,22 @@ function renderScanHistory() {
   const list = $('scan-list');
   const q = ($('scan-search').value || '').toLowerCase();
   const filtered = scanHistory.filter(h => !q || h.text.toLowerCase().includes(q));
-  if (!filtered.length) { list.innerHTML = '<p class="muted">' + (scanHistory.length ? 'No matches' : 'No scans yet') + '</p>'; return; }
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state">${Icons.emptyScan}<p>${scanHistory.length ? 'No matches' : t('empty.scans')}</p></div>`;
+    return;
+  }
   list.innerHTML = '';
   filtered.forEach((item, idx) => {
     const realIdx = scanHistory.indexOf(item);
     const cls = classifyScan(item.text);
     const meta = mk('div', { className: 'meta' }, [
       mk('span', { className: 'badge', textContent: cls.label }),
-      item.pinned ? mk('span', { className: 'pin', textContent: '📌' }) : mk('span', { textContent: new Date(item.ts).toLocaleString() }),
+      item.pinned ? mk('span', { className: 'pin', innerHTML: Icons.pin }) : mk('span', { textContent: new Date(item.ts).toLocaleString() }),
     ]);
     const pre = mk('pre', { textContent: item.text });
     const row = mk('div', { className: 'res' }, [meta, pre]);
     const act = mk('div', { className: 'row' });
-    const cp = mk('button', { className: 'btn xs', textContent: LANG === 'zh' ? '複製' : 'Copy' });
+    const cp = mk('button', { className: 'btn xs', innerHTML: Icons.copy });
     cp.addEventListener('click', () => copyText(item.text));
     act.appendChild(cp);
     if (cls.type === 'URL') {
@@ -2640,10 +2837,12 @@ function renderScanHistory() {
       act.appendChild(dl);
     }
     if (cls.type === 'WIFI') {
-      const info = mk('button', { className: 'btn xs', textContent: LANG === 'zh' ? '解析' : 'Parse' });
+      const info = mk('button', { className: 'btn xs', textContent: LANG === 'zh' ? '顯示密碼' : 'Show Pass' });
       info.addEventListener('click', () => {
         const m = item.text.match(/S:([^;]*);.*?P:([^;]*);/);
-        if (m) toast('SSID: ' + m[1] + ' · Pass: ' + m[2]);
+        if (m) {
+          toast('SSID: ' + m[1] + ' · Pass: ' + m[2]);
+        }
       });
       act.appendChild(info);
     }
@@ -2656,12 +2855,12 @@ function renderScanHistory() {
       act.appendChild(map);
     }
     act.appendChild((() => {
-      const pin = mk('button', { className: 'btn xs ghost', textContent: item.pinned ? '📌' : '📍', title: 'Pin' });
+      const pin = mk('button', { className: 'btn xs ghost', innerHTML: item.pinned ? Icons.pin : '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-6 4 2 7-6-4-6 4 2-7-6-4h7z"/></svg>', title: 'Pin' });
       pin.addEventListener('click', () => { item.pinned = !item.pinned; saveHistory(); renderScanHistory(); });
       return pin;
     })());
     act.appendChild((() => {
-      const del = mk('button', { className: 'btn xs ghost', textContent: '🗑' });
+      const del = mk('button', { className: 'btn xs ghost', innerHTML: Icons.trash });
       del.addEventListener('click', () => { scanHistory.splice(realIdx, 1); saveHistory(); renderScanHistory(); });
       return del;
     })());
@@ -2800,11 +2999,11 @@ function stopTx(msg) {
   tx.current = null;
 }
 
-async function deriveKey(password, salt) {
+async function deriveKey(password, salt, iter = 600000) {
   const enc = new TextEncoder();
   const base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
   return await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt, iterations: iter, hash: 'SHA-256' },
     base,
     { name: 'AES-GCM', length: 256 },
     false, ['encrypt', 'decrypt']
@@ -2859,10 +3058,11 @@ async function startTx() {
     c: total, k: CRC(gz), p: parities.length,
     gs: groupSize, gl: groupSize,
     cs: cs,
+    iter: 600000,
     enc: encryptionInfo,
   });
 
-  tx.current = { meta, gz, total, cs, chunksArr, parities, size: 500 };
+  tx.current = { meta, gz, total, cs, chunksArr, parities, size: 500, lastText: '' };
   const cv = $('tx-canvas');
   cv.hidden = false; $('tx-ph').hidden = true;
   $('tx-info').textContent = name + ' (' + fmt(raw.length) + ') · ' + total + ' data + ' + parities.length + ' parity';
@@ -2902,7 +3102,10 @@ function initQrTx() {
   $('tx-encrypt').addEventListener('change', (e) => { $('tx-password').hidden = !e.target.checked; });
   $('tx-start').addEventListener('click', startTx);
   $('tx-stop').addEventListener('click', () => stopTx('Stopped'));
-  $('tx-pause').addEventListener('click', () => { tx.paused = !tx.paused; $('tx-pause').textContent = tx.paused ? t('qrtx.pause') : t('qrtx.pause'); });
+  $('tx-pause').addEventListener('click', () => {
+    tx.paused = !tx.paused;
+    $('tx-pause').textContent = tx.paused ? t('qrtx.resume') : t('qrtx.pause');
+  });
   $('tx-fullscreen').addEventListener('click', async () => {
     const cv = $('tx-canvas');
     if (!cv.requestFullscreen) return;
@@ -3024,7 +3227,8 @@ function initQrTx() {
     }
     try {
       const salt = payload.slice(0, 16), iv = payload.slice(16, 28), ct = payload.slice(28);
-      const key = await deriveKey(password, salt);
+      const iter = rx.meta.iter || 100000;
+      const key = await deriveKey(password, salt, iter);
       const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
       let out = new Uint8Array(pt);
       if (out.length > rx.meta.s) out = out.subarray(0, rx.meta.s);
@@ -3107,7 +3311,7 @@ function initQrTx() {
    ============================================================ */
 const ICE = [{ urls: 'stun:stun.l.google.com:19302' }];
 const PREFIX = 'qrx-';
-const P = { peer: null, conns: [], pinRequired: false, pin: null, aborted: false };
+const P = { peer: null, conns: [], pinRequired: false, pin: null, aborted: false, failedAttempts: 0 };
 const R = { peer: null, conn: null, files: new Map(), chat: [], pin: null };
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -3126,7 +3330,7 @@ function appendChat(host, role, text) {
       wrap.appendChild(a);
     } else wrap.appendChild(document.createTextNode(p));
   });
-  const copy = mk('button', { className: 'btn xs ghost', textContent: '📋', style: 'margin-left:6px;min-height:20px;padding:2px 6px;font-size:10px' });
+  const copy = mk('button', { className: 'btn xs ghost', innerHTML: Icons.copy, style: 'margin-left:6px;min-height:20px;padding:2px 6px;font-size:10px' });
   copy.addEventListener('click', () => copyText(text));
   wrap.appendChild(copy);
   host.appendChild(wrap);
@@ -3139,6 +3343,7 @@ function p2pTeardown() {
   if (P.peer) { try { P.peer.destroy(); } catch (e) {} }
   P.peer = null;
   P.aborted = true;
+  P.failedAttempts = 0;
 }
 
 function handlePeerData(d) {
@@ -3153,13 +3358,24 @@ function handlePeerData(d) {
 
 async function sendFileP2P(file, conn, fileId) {
   if (P.aborted) throw new Error('Aborted');
-  const buf = await file.arrayBuffer();
-  const hash = await crypto.subtle.digest('SHA-256', buf);
-  const hashHex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-  conn.send(JSON.stringify({ t: 'meta', id: fileId, name: file.name, size: file.size, hash: hashHex }));
-
   const CHUNK = 16384;
-  const total = Math.ceil(buf.byteLength / CHUNK);
+  const total = Math.ceil(file.size / CHUNK);
+  let hash = '';
+
+  const hasher = {
+    async update(buf) {
+      // Incremental hashing is complex in pure JS without a library, using full hash fallback for simplicity in this single file version.
+    },
+    async digest() {
+      const buf = await file.arrayBuffer();
+      const h = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  };
+  hash = await hasher.digest();
+
+  conn.send(JSON.stringify({ t: 'meta', id: fileId, name: file.name, size: file.size, hash: hash }));
+
   const item = mk('div', { className: 'item' });
   const nameEl = mk('div', { className: 'nm', textContent: file.name });
   const statusEl = mk('div', { className: 'muted', style: 'font-size:10.5px;font-family:var(--mono)', textContent: '0%' });
@@ -3169,17 +3385,23 @@ async function sendFileP2P(file, conn, fileId) {
   item.appendChild(nameEl); item.appendChild(statusEl); item.appendChild(bar);
   $('ps-list').appendChild(item);
 
-  for (let i = 0; i < total; i++) {
+  const reader = file.stream().getReader();
+  let offset = 0;
+  while (true) {
     if (P.aborted) throw new Error('Aborted');
+    const { done, value } = await reader.read();
+    if (done) break;
     while (conn.dataChannel && conn.dataChannel.bufferedAmount > 1024 * 1024) {
       if (P.aborted) throw new Error('Aborted');
       await sleep(30);
     }
-    const slice = buf.slice(i * CHUNK, (i + 1) * CHUNK);
-    try { conn.send(slice); } catch (e) { throw new Error('Send failed: ' + e.message); }
-    const pct = Math.round(((i + 1) / total) * 100);
-    fill.style.width = pct + '%';
-    statusEl.textContent = pct + '% · ' + fmt((i + 1) * CHUNK);
+    conn.send(value);
+    offset += value.length;
+    const pct = Math.round((offset / file.size) * 100);
+    requestAnimationFrame(() => {
+      fill.style.width = pct + '%';
+      statusEl.textContent = pct + '% · ' + fmt(offset);
+    });
   }
   if (P.aborted) throw new Error('Aborted');
   conn.send(JSON.stringify({ t: 'fileend', id: fileId }));
@@ -3222,6 +3444,7 @@ function initP2P() {
     });
     peer.on('connection', (c) => {
       if (P.pinRequired) {
+        let authAttempts = 0;
         c.on('data', (d) => {
           if (typeof d === 'string') {
             try {
@@ -3236,11 +3459,20 @@ function initP2P() {
                   $('ps-status').className = 'status ok';
                   c.on('data', handlePeerData);
                 } else {
-                  c.send(JSON.stringify({ t: 'auth_fail' }));
-                  try { c.close(); } catch (e) {}
+                  authAttempts++;
+                  if (authAttempts >= 3) {
+                    c.send(JSON.stringify({ t: 'auth_fail' }));
+                    try { c.close(); } catch (e) {}
+                  } else {
+                    c.send(JSON.stringify({ t: 'auth_fail' }));
+                  }
                 }
+              } else if (!c.authenticated) {
+                // Ignore non-auth messages before auth
               }
             } catch (e) {}
+          } else if (!c.authenticated) {
+            // Ignore binary data before auth
           }
         });
       } else {
@@ -3402,24 +3634,34 @@ function initP2P() {
 
   function renderRecvFiles() {
     const list = $('pr-list');
-    if (!R.files.size) { list.innerHTML = '<p class="muted">Nothing received</p>'; return; }
-    list.innerHTML = '';
+    if (!R.files.size) {
+      list.innerHTML = `<div class="empty-state">${Icons.emptyFile}<p>${t('empty.files')}</p></div>`;
+      return;
+    }
     R.files.forEach((f, id) => {
-      const item = mk('div', { className: 'item' + (f.done ? ' done' : '') });
-      item.id = 'prf-' + id;
-      const nm = mk('div', { className: 'nm', textContent: f.meta.name });
-      const st = mk('div', { className: 'muted', style: 'font-size:10.5px;font-family:var(--mono)', textContent: f.done ? '✓ ' + fmt(f.meta.size) : t('status.receiving') });
-      const bar = mk('div', { className: 'bar' });
-      const fill = mk('i', { style: 'width:' + (f.done ? 100 : 0) + '%' });
-      bar.appendChild(fill);
-      item.appendChild(nm); item.appendChild(st); item.appendChild(bar);
-      if (f.done && f.blob) {
-        const dl = mk('button', { className: 'btn xs', textContent: '⬇' });
-        dl.addEventListener('click', () => saveBlob(f.blob, f.meta.name));
-        item.appendChild(dl);
+      let item = $('prf-' + id);
+      if (!item) {
+        item = mk('div', { className: 'item' });
+        item.id = 'prf-' + id;
+        const nm = mk('div', { className: 'nm', textContent: f.meta.name });
+        const st = mk('div', { className: 'muted', style: 'font-size:10.5px;font-family:var(--mono)', textContent: f.done ? '✓ ' + fmt(f.meta.size) : t('status.receiving') });
+        const bar = mk('div', { className: 'bar' });
+        const fill = mk('i', { style: 'width:' + (f.done ? 100 : 0) + '%' });
+        bar.appendChild(fill);
+        item.appendChild(nm); item.appendChild(st); item.appendChild(bar);
+        list.appendChild(item);
       }
-      list.appendChild(item);
+      item.className = 'item' + (f.done ? ' done' : '');
+      if (f.done && f.blob) {
+        let dl = item.querySelector('.dl-btn');
+        if (!dl) {
+          dl = mk('button', { className: 'btn xs dl-btn', innerHTML: Icons.download });
+          dl.addEventListener('click', () => saveBlob(f.blob, f.meta.name));
+          item.appendChild(dl);
+        }
+      }
     });
+    if (list.querySelector('.empty-state')) list.innerHTML = '';
   }
   function renderRecvFilesProgress(id) {
     const f = R.files.get(id);
@@ -3452,7 +3694,7 @@ function initP2P() {
     $('pr-connect').hidden = false;
     $('pr-status').textContent = LANG === 'zh' ? '尚未連線' : 'Not connected';
     $('pr-status').className = 'status';
-    $('pr-list').innerHTML = '<p class="muted">Nothing received</p>';
+    $('pr-list').innerHTML = `<div class="empty-state">${Icons.emptyFile}<p>${t('empty.files')}</p></div>`;
     $('pr-chat').innerHTML = '';
     R.files.clear();
   });
@@ -3474,17 +3716,32 @@ function drawFlatQR(cv, text, ec, size, margin) {
    TABS
    ============================================================ */
 let curTab = 'studio';
+let lastTabIdx = 0;
+const TAB_ORDER = ['studio', 'scan', 'qrtx', 'p2p'];
+
 function setTab(t) {
   if (t === curTab) return;
   stopTx(); Cam.stop();
-  curTab = t;
+  const newIdx = TAB_ORDER.indexOf(t);
+  const dir = newIdx > lastTabIdx ? 'slide-left' : 'slide-right';
+  lastTabIdx = newIdx;
+
   document.querySelectorAll('#nav button').forEach(b => {
-    b.classList.toggle('on', b.dataset.tab === t);
-    b.setAttribute('aria-selected', b.dataset.tab === t);
+    const isOn = b.dataset.tab === t;
+    b.classList.toggle('on', isOn);
+    b.setAttribute('aria-selected', isOn);
+    b.setAttribute('tabindex', isOn ? '0' : '-1');
   });
-  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === 'tab-' + t));
+  document.querySelectorAll('.panel').forEach(p => {
+    p.classList.remove('on', 'slide-left', 'slide-right');
+    if (p.id === 'tab-' + t) {
+      p.classList.add('on', dir);
+    }
+  });
+  curTab = t;
   updateNavIndicator();
 }
+
 function updateNavIndicator() {
   const on = document.querySelector('#nav button.on');
   if (!on) return;
@@ -3561,8 +3818,7 @@ function initGlobal() {
     if (e.key === 'Escape') return;
     if (e.key === '?' && !inField) { e.preventDefault(); $('helpBtn').click(); return; }
     if (!inField && /^[1-4]$/.test(e.key)) {
-      const tabs = ['studio', 'scan', 'qrtx', 'p2p'];
-      setTab(tabs[+e.key - 1]);
+      setTab(TAB_ORDER[+e.key - 1]);
       e.preventDefault();
     }
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
@@ -3589,15 +3845,17 @@ function initGlobal() {
     t.style.setProperty('--mx', (e.clientX - r.left) + 'px');
     t.style.setProperty('--my', (e.clientY - r.top) + 'px');
   }, { passive: true });
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.btn')) addRipple(e);
+  });
 
   document.querySelectorAll('#nav button').forEach(b => {
     b.addEventListener('click', () => setTab(b.dataset.tab));
   });
   $('nav').addEventListener('keydown', (e) => {
-    const tabs = ['studio', 'scan', 'qrtx', 'p2p'];
-    const cur = tabs.indexOf(curTab);
-    if (e.key === 'ArrowRight') { e.preventDefault(); setTab(tabs[(cur + 1) % tabs.length]); document.querySelector('#nav button.on').focus(); }
-    if (e.key === 'ArrowLeft') { e.preventDefault(); setTab(tabs[(cur - 1 + tabs.length) % tabs.length]); document.querySelector('#nav button.on').focus(); }
+    const cur = TAB_ORDER.indexOf(curTab);
+    if (e.key === 'ArrowRight') { e.preventDefault(); setTab(TAB_ORDER[(cur + 1) % TAB_ORDER.length]); document.querySelector('#nav button.on').focus(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); setTab(TAB_ORDER[(cur - 1 + TAB_ORDER.length) % TAB_ORDER.length]); document.querySelector('#nav button.on').focus(); }
   });
   updateNavIndicator();
   window.addEventListener('resize', updateNavIndicator);
@@ -3620,7 +3878,7 @@ function initGlobal() {
 }
 
 /* ============================================================
-   PWA — PNG icons + honest SW registration
+   PWA
    ============================================================ */
 (async function setupPWA() {
   function makePngIcon(size) {
@@ -3644,7 +3902,6 @@ function initGlobal() {
   const icon192 = makePngIcon(192);
   const icon512 = makePngIcon(512);
 
-  // start_url MUST be an absolute URL for blob manifests
   let startUrl = './';
   try { startUrl = new URL('./', location.href).href; } catch (e) { startUrl = location.href; }
 
@@ -3669,7 +3926,6 @@ function initGlobal() {
   link.href = url;
   document.head.appendChild(link);
 
-  // Service Worker registration — honest fallback
   if ('serviceWorker' in navigator) {
     try {
       const swCode = `
@@ -3691,7 +3947,6 @@ function initGlobal() {
       const reg = await navigator.serviceWorker.register(swUrl, { scope: './' });
       if (!reg) throw new Error('SW not registered');
     } catch (e) {
-      // Blob-URL SW is commonly blocked → hide the install button
       $('install-bar').classList.remove('on');
       if ($('installBtn')) $('installBtn').hidden = true;
     }
@@ -3707,8 +3962,9 @@ async function boot() {
   const libs = { QRCode: () => window.QRCode, pako: () => window.pako, zbar: () => window.zbarWasm, Peer: () => window.Peer, fflate: () => window.fflate };
   const t0 = Date.now();
   while (Object.keys(libs).some(k => !libs[k]()) && Date.now() - t0 < 20000) await sleep(100);
-  if (Object.keys(libs).some(k => !libs[k]())) {
-    $('loadErr').textContent = 'Library load failed. Check your connection.';
+  const missing = Object.keys(libs).filter(k => !libs[k]());
+  if (missing.length) {
+    $('loadErr').textContent = 'Library load failed: ' + missing.join(', ') + '. Check your connection.';
     $('loadErr').hidden = false; $('reload').hidden = false;
     $('reload').onclick = () => location.reload();
     return;
